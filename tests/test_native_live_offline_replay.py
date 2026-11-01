@@ -103,7 +103,7 @@ class NativeLiveOfflineReplayTests(unittest.TestCase):
         self.assertIn("-5.0546736E-05", _dump_json(row, sort_keys=False))
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "native.fidelity.jsonl"
-            path.write_text(_dump_json(row, sort_keys=False) + "\\n",
+            path.write_text(_dump_json(row, sort_keys=False) + "\n",
                             encoding="utf-8")
             recovered = load_live(path)
             self.assertEqual(_digest(row), _digest(recovered[0]))
