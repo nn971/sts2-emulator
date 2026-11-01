@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Sts2Emulator.Core;
 using Sts2ReferenceMod.Trace;
 using Sts2ReferenceMod.Transport;
 
@@ -24,6 +25,16 @@ public sealed class NativeLiveEventHubTests
         JsonSerializer.SerializeToElement(new { hp = 50, draw_pile_count = 5 }),
         JsonSerializer.SerializeToElement(new[] { new { kind = "end_turn" } }),
         "PARTIAL_CARD_PLAY_AND_END_TURN_ONLY", "NOT_TESTED", "HUMAN_ONLY");
+
+    [Fact]
+    public void CanonicalFingerprintMatchesPythonForNativeRngExponentsAndEscapes()
+    {
+        using var document = JsonDocument.Parse(
+            """{"type":"native_rng_scalar_boundary","ordinal":371,"data":{"selected_float":-5.0546736E-05,"label":"<native>&"}}""");
+        Assert.Equal(
+            "1984f86719ddf531392b0e39b369f29ec5fa55b93d11646177c8526ab409b072",
+            CanonicalJson.Sha256(document.RootElement));
+    }
 
     [Fact]
     public async Task PublicAndFidelityEventsHaveIndependentCursorsAndJournalFiles()
