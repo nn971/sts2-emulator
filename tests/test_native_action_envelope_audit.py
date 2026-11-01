@@ -280,6 +280,26 @@ class EnvelopeAuditTests(unittest.TestCase):
         forged = copy.deepcopy(rows)
         forged[3]["data"]["full_legal_menu"] = "VERIFIED"
         self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+        # New captures record callback-time state explicitly. Legacy
+        # observations without a snapshot remain acceptable but unverified.
+        self.assertEqual("UNOBSERVED_LEGACY",
+                         result["native_ui_play_begins"][0][
+                             "source_ui_state_observation"])
+        observed = copy.deepcopy(rows)
+        observed[3]["state"] = {"player": {"hp": 50}}
+        observed[3]["data"]["ui_state_observation"] = (
+            "SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT")
+        verified = audit(observed)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", verified["status"])
+        self.assertEqual("SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT",
+                         verified["native_ui_play_begins"][0][
+                             "source_ui_state_observation"])
+        mismatched = copy.deepcopy(observed)
+        mismatched[3]["state"] = None
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(mismatched)["status"])
+        mismatched = copy.deepcopy(observed)
+        mismatched[3]["data"]["ui_state_observation"] = "UNOBSERVED"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(mismatched)["status"])
 
     def test_source_reserved_hand_choice_id_links_initial_menu_to_selection(self):
         rows = sample()
