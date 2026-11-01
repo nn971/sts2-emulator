@@ -450,6 +450,20 @@ def post_feedback(base: str, token: str, receipt: dict, timeout: int = 10):
             raise RuntimeError("Fidelity feedback endpoint rejected report")
 
 
+def _notify_terminal_fault(base: str, token: str,
+                           coordinator: IncrementalFidelityCoordinator,
+                           status: str, reason: str):
+    coordinator._fail(status, reason)
+    receipt = coordinator._maybe_receipt()
+    if receipt is not None:
+        try:
+            post_feedback(base, token, receipt)
+        except (OSError, RuntimeError):
+            # Persist the local first divergence even when the bridge itself
+            # is unavailable. Never mask the original source error.
+            pass
+
+
 def follow(base: str, token: str, coordinator: IncrementalFidelityCoordinator,
            *, max_reconnects: int = 3):
     """Reconnect from the last verified cursor; refusal/gaps stop replay."""
@@ -469,11 +483,16 @@ def follow(base: str, token: str, coordinator: IncrementalFidelityCoordinator,
                         post_feedback(base, token, report)
                     if coordinator.stopped:
                         return
+        except LiveFidelityError as error:
+            _notify_terminal_fault(base, token, coordinator, error.status, str(error))
+            return
         except (TimeoutError, OSError, urllib.error.URLError, EOFError):
             reconnects += 1
             if reconnects > max_reconnects:
-                raise LiveFidelityError("EMULATOR_COORDINATOR_ERROR",
-                                        "SSE disconnect/reconnect limit reached")
+                _notify_terminal_fault(base, token, coordinator,
+                    "EMULATOR_COORDINATOR_ERROR",
+                    "SSE disconnect/reconnect limit reached")
+                return
             time.sleep(min(reconnects, 3))
 
 
