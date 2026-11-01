@@ -190,6 +190,12 @@ public sealed class NativeLiveEventHubTests
             Assert.Null(hub.AcceptFidelityResult(result)); // reconnect retry
             Assert.Equal("CONFLICTING_FIDELITY_RESULT",
                 hub.AcceptFidelityResult(result with { PlayerCheckpointsMatched = 2 }));
+            var blocked = result with {
+                Status = "BLOCKED_STREAM_INTEGRITY",
+                Reason = "Missing native source sequence" };
+            Assert.Null(hub.AcceptFidelityResult(blocked));
+            Assert.Equal(blocked, hub.LatestFidelityResult);
+            Assert.Equal("CONFLICTING_FIDELITY_RESULT", hub.AcceptFidelityResult(result));
             Assert.Equal("UNOBSERVED_FIDELITY_CURSOR",
                 hub.AcceptFidelityResult(result with { ThroughSequence = 50 }));
             Assert.Equal("STALE_FIDELITY_SESSION",
