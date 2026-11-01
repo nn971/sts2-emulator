@@ -38,6 +38,10 @@ jobs:
       - name: RNG, native Inspector and actual-engine fidelity unit tests
         run: |
           dotnet test Sts2Emulator.sln -c Release --no-build --filter 'FullyQualifiedName~RandomBoundaryJournalV111Tests|FullyQualifiedName~RandomIndexProvidersV111Tests|FullyQualifiedName~RandomIntentProviderV111Tests|FullyQualifiedName~ControlledInitialHpV111Tests|FullyQualifiedName~ControlledIntentsV111Tests|FullyQualifiedName~NativeInitialHpRollEvidenceV111Tests|FullyQualifiedName~NativeShuffleSourceImportV111Tests|FullyQualifiedName~NativeShuffleStepFidelityV111Tests|FullyQualifiedName~NativeFisherYatesV111Tests|FullyQualifiedName~NativeShuffleOperationEvidenceV111Tests|FullyQualifiedName~NativeRngCallsiteScopesV111Tests|FullyQualifiedName~NativeRngSourceRegistryV111Tests|FullyQualifiedName~NativeAgentBoundaryFeedTests|FullyQualifiedName~NativeLiveEventHubTests|FullyQualifiedName~NativeRngScalarEvidenceV111Tests|FullyQualifiedName~NativeRngStreamCheckpointV111Tests|FullyQualifiedName~NativeActionEnvelopeRecorderTests|FullyQualifiedName~NativeRunPreludeRecorderTests|FullyQualifiedName~NativeStandardActMapV111Tests|FullyQualifiedName~NativeObservedMapV111Tests|FullyQualifiedName~NativeObservedFirstCombatActionsV111Tests|FullyQualifiedName~NativeObservedTurnCheckpointsV111Tests|FullyQualifiedName~NativeSilentPotionGenerationV111Tests|FullyQualifiedName~NativeUpFrontRelicBagsV111Tests|FullyQualifiedName~NativeUpFrontRoomsV111Tests|FullyQualifiedName~NativeStartupRoomQueueCapturedEvidenceV111Tests|FullyQualifiedName~NativeEventRngV111Tests|FullyQualifiedName~NativeNeowOfferV111Tests|FullyQualifiedName~NativeEngineFidelityV111Tests|FullyQualifiedName~NativeEngineFidelityBatchV111Tests'
+      - name: M1 live event and coordinator Python contracts
+        run: python -m unittest discover -s tests -p 'test_native_live_*.py' -v
+      - name: Live SSE coordinator and first-divergence JSONL smoke (emulator-derived synthetic source only)
+        run: python tools/native_live_fidelity_jsonl_smoke.py
       - name: Native Inspector strict and sidecar audit tools
         run: python -m unittest discover -s tests -p 'test_native_*.py' -v
       - name: Unified gate and explicit source RNG first-divergence tests
@@ -48,8 +52,6 @@ jobs:
         run: python tools/native_lockstep_shadow_jsonl_smoke.py
       - name: Persistent emulator turn-start replay (emulator-derived synthetic source only)
         run: python tools/native_turn_checkpoint_jsonl_smoke.py
-      - name: Live SSE coordinator and first-divergence JSONL smoke (emulator-derived synthetic source only)
-        run: python tools/native_live_fidelity_jsonl_smoke.py
       - name: Independent native prelude bootstrap and native Neow RNG reconstruction offline tests
         run: python -m unittest discover -s tests -p 'test_native_run_bootstrap.py' -v
       - name: Independent run-start to first-combat emulator JSONL smoke (synthetic source only)
