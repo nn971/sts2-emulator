@@ -104,6 +104,22 @@ class NativeSourceJournalTests(unittest.TestCase):
         self.assertEqual(3, cmd["pre_request_state"]["combat"]["energy"])
         self.assertEqual(1, cmd["post_execution_state"]["combat"]["energy"])
         self.assertFalse(cmd["emulator_applied"])
+        self.assertEqual("SOURCE_OBSERVED_DIFFERENT",
+                         cmd["request_to_execution_state_agreement"])
+        self.assertIsNone(cmd["last_native_completion_before_request"])
+        self.assertEqual("UNOBSERVED",
+                         cmd["last_native_completion_to_request_state_agreement"])
+        self.assertEqual("NATIVE_CALLBACKS_NOT_FULL_LEGAL_MENU",
+                         cmd["source_boundary"])
+        observed = report["source_executor_observed_transitions"]
+        self.assertEqual(1, len(observed))
+        self.assertEqual(1, observed[0]["executor_action_id"])
+        self.assertEqual({"player": {"hp": 50}, "combat": {"energy": 2}},
+                         observed[0]["pre_execution_state"])
+        self.assertEqual({"player": {"hp": 50}, "combat": {"energy": 1}},
+                         observed[0]["post_execution_state"])
+        self.assertEqual("NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED",
+                         observed[0]["source_boundary"])
         self.assertEqual("SOURCE_OBSERVED",
                          cmd["native_executor_object_identity"])
         self.assertEqual("UNVERIFIED", cmd["originating_human_input"])
@@ -157,6 +173,30 @@ class NativeSourceJournalTests(unittest.TestCase):
         self.assertEqual("NATIVE_SOURCE_REQUEST_LINK_MISSING",
                          report["source_unlinked_canonical_executor_actions"][0][
                              "reason"])
+
+    def test_automatic_executor_transition_is_preserved_without_human_command(self):
+        rows = source_capture()
+        state = {"player": {"hp": 50}, "combat": {"energy": 1}}
+        rows[-1:-1] = [
+            {"type": "action_started", "action_id": 2,
+             "native_type": "ReadyToBeginEnemyTurnAction",
+             "canonical_action": None, "state": state},
+            {"type": "action_completed", "action_id": 2, "state": state},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED",
+                         report["status"])
+        self.assertEqual(1, len(report["source_linked_commands"]))
+        self.assertEqual(2, len(report[
+            "source_executor_observed_transitions"]))
+        auto = report["source_executor_observed_transitions"][1]
+        self.assertEqual(2, auto["executor_action_id"])
+        self.assertIsNone(auto["canonical_action_candidate"])
+        self.assertFalse(auto["emulator_applied"])
+        self.assertEqual("NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED",
+                         auto["source_boundary"])
 
     def test_missing_true_run_identity_remains_explicit(self):
         rows = [r for r in source_capture() if r["type"] != "native_run_identity"]
