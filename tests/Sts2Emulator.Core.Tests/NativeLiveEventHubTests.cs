@@ -195,7 +195,8 @@ public sealed class NativeLiveEventHubTests
                 Reason = "Missing native source sequence" };
             Assert.Null(hub.AcceptFidelityResult(blocked));
             Assert.Equal(blocked, hub.LatestFidelityResult);
-            Assert.Equal("CONFLICTING_FIDELITY_RESULT", hub.AcceptFidelityResult(result));
+            Assert.Null(hub.AcceptFidelityResult(blocked));
+            Assert.Equal("FIDELITY_SESSION_BLOCKED", hub.AcceptFidelityResult(result));
             Assert.Equal("UNOBSERVED_FIDELITY_CURSOR",
                 hub.AcceptFidelityResult(result with { ThroughSequence = 50 }));
             Assert.Equal("STALE_FIDELITY_SESSION",
