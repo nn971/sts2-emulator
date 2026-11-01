@@ -338,6 +338,23 @@ class NativeSourceJournalTests(unittest.TestCase):
         self.assertEqual("NOT_VERIFIED", window["strict_decision"])
         self.assertEqual("NOT_VERIFIED", window["full_legal_menu"])
         self.assertEqual("UNVERIFIED", window["human_input_origin"])
+        self.assertEqual("UNOBSERVED_LEGACY",
+                         window["ui_begin_state_observation"])
+        self.assertEqual("UNOBSERVED",
+                         window["ui_begin_to_request_state_agreement"])
+        # A future native UI-begin snapshot gives an exact comparison to
+        # the later source request even if the previous executor is active.
+        ui = next(row for row in rows
+                  if row["type"] == "native_ui_play_begin")
+        ui["state"] = copy.deepcopy(state)
+        ui["data"]["ui_state_observation"] = (
+            "SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT")
+        with_state = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED",
+                         with_state["status"])
+        window = with_state["source_ui_request_windows"][1]
+        self.assertEqual("SOURCE_OBSERVED_EQUAL",
+                         window["ui_begin_to_request_state_agreement"])
 
     def test_duplicate_ui_begins_remain_ambiguous(self):
         rows = source_capture()
