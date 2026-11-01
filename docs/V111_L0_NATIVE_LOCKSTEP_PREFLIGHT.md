@@ -1188,6 +1188,15 @@ a genuinely overlapping executor from an earlier UI event that overlaps
 a completed executor but queues later. An empty delta is evidence only
 for the measured projection; a missing snapshot is reported as null.
 
+The journal also separates canonical player-command candidates from
+noncanonical native executor callbacks. The pinned capture has **21**
+canonical play/end-turn commands and **5** linked
+`ReadyToBeginEnemyTurnAction` executor requests. They are reported in
+`source_linked_commands` and `source_linked_noncanonical_executor_actions`,
+respectively; neither category is permitted to invent a strict decision
+boundary. `source_requests_without_executor_start` represents genuinely
+unmatched requests and is empty on the pinned native capture.
+
 The strict decision recorder and its fail-closed legal-menu requirements
 are unchanged. This journal can isolate the first observed mechanics gap
 and guide a later mapped emulator replay; source callback agreement
