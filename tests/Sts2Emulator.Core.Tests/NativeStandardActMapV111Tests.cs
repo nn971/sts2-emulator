@@ -129,7 +129,7 @@ public sealed class NativeStandardActMapV111Tests
             // the relic bag prefix until its own translation is implemented.
             Assert.Null(started.NativeStartupRooms);
             Assert.Null(started.NativeStartupQueueTrace);
-            Assert.Equal(229UL, started.NativeRunRng!.Streams.Single(
+            Assert.Equal(230UL, started.NativeRunRng!.Streams.Single(
                 stream => stream.StreamId == "run.up_front").CallCount);
         }
         Assert.Equal(sourceStartupStream.Streams
@@ -197,7 +197,7 @@ public sealed class NativeStandardActMapV111Tests
         Assert.Equal(1, comparison.Act);
         Assert.Equal(PrototypeRoomType.Combat, comparison.RoomType);
         Assert.Equal(0, comparison.QueueIndex);
-        Assert.Equal("SlimesWeak", comparison.SourceEncounterId);
+        Assert.Equal("FuzzyWurmCrawlerWeak", comparison.SourceEncounterId);
         Assert.Equal(entered.World!.EncounterIds.Last(),
             comparison.ActualEmulatorEncounterId);
         Assert.Equal(comparison.ActualEmulatorEncounterId ==
