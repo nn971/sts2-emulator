@@ -28,10 +28,10 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
     // refer to the source initial hand ordered by its visible positions.
     private static readonly ObservedAction[] Observed =
     [
-        new(1, 1, 76, 3, 0, 56, [0, 2, 3, 4, 5, 6], [1]),
-        new(2, 5, 104, 2, 5, 56, [0, 2, 3, 4, 6], [1, 5]),
-        new(3, 6, 137, 1, 5, 50, [0, 2, 3, 4], [1, 5, 6]),
-        new(4, 4, 171, 0, 5, 44, [0, 2, 3], [1, 5, 6, 4])
+        new(1, 1, 86, 3, 0, 56, [0, 2, 3, 4, 5, 6], [1]),
+        new(2, 5, 107, 2, 5, 56, [0, 2, 3, 4, 6], [1, 5]),
+        new(3, 6, 141, 1, 5, 50, [0, 2, 3, 4], [1, 5, 6]),
+        new(4, 4, 175, 0, 5, 44, [0, 2, 3], [1, 5, 6, 4])
     ];
 
     private static string Token(string value) => string.Concat(
