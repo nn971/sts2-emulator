@@ -983,7 +983,11 @@ capture in `NativeObservedMapV111Tests`.
   **111** and **118** Fisher–Yates swaps respectively, hence
   `run.up_front` is at **229** after these two real source phases.
   This prefix is deterministic but lacks a native intermediate
-  checkpoint; the capture observed only the final 412.
+  checkpoint; the capture observed only the final 412. The
+  independent run bootstrap now records this as
+  `checks.native_upfront_startup=SOURCE_UPFRONT_DIVERGED`
+  (412 source versus 229 emulator), while continuing separate map
+  and Neow comparisons instead of hiding the earliest RNG gap.
 - The remaining **183 source draws** occur after relic-bag
   population, as `RunManager.GenerateRooms` distributes shared
   Ancients and builds pre-generated event/encounter/elite/boss
