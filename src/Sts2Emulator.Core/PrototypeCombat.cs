@@ -1018,7 +1018,12 @@ public sealed partial class PrototypeGameEngine
             // immutable state and refuse a conflicting shuffle owner.
             var before = state.NativeRunRng!.Streams.Single(
                 stream => stream.StreamId == "run.shuffle");
-            var persisted = next.NativeRunRng?.Fork()
+            // The combat-owned bundle may already have advanced other
+            // streams during this Step. Retain those cursors and replace
+            // *only* run.shuffle, so no enemy-intent or other source RNG
+            // operation can be rolled back by this handoff.
+            var persisted = (next.World?.Combat?.NativeRng?.RunStreams
+                    ?? next.NativeRunRng)?.Fork()
                 ?? throw new InvalidDataException(
                     "Native combat lost its source RNG bundle.");
             var index = Array.FindIndex(persisted.Streams,
