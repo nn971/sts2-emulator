@@ -14,7 +14,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_run_bootstrap import (
     _neow_native_id, _source_preflight, _emulator_opening_profile,
-    run_bootstrap, _native_upfront_diagnosis, SCHEMA,
+    run_bootstrap, _native_upfront_diagnosis,
+    _native_upfront_room_prefix_diagnosis, SCHEMA,
 )
 from native_neow_rng_verify import neow_event_rng, verify_neow_event_rng, xxhash64
 
@@ -105,6 +106,49 @@ class NativeUpFrontBoundaryTests(unittest.TestCase):
         snap["state"]["native_run_rng"]["streams"][0]["state_bytes"] = "bogus"
         self.assertEqual("BLOCKED_UPFRONT_CURSOR_ENCODING",
                          _native_upfront_diagnosis(sample, snap)["status"])
+
+
+    def test_native_rng_parity_does_not_hide_source_room_queue_mismatch(self):
+        # Observed native first combat: FUZZY_WURM_CRAWLER_WEAK.
+        # Independently reconstructed UpFront source queue currently starts
+        # with SlimesWeak, even though its 412-call RNG cursor is identical.
+        source = {"source_room_arrivals": [{
+            "ordinal": 12, "act_index": 0, "room_type": "Monster",
+            "room_model_id": "FUZZY_WURM_CRAWLER_WEAK"}]}
+        snapshot = {"state": {"native_startup_rooms": {"acts": [
+            {"act": 1, "normal_encounters":
+                ["SlimesWeak", "FuzzyWurmCrawlerWeak"],
+             "elite_encounters": ["ByrdonisElite"], "boss_encounter": "TheKinBoss"},
+            {"act": 2, "normal_encounters": ["BowlbugsWeak"],
+             "elite_encounters": [], "boss_encounter": "KaiserCrabBoss"},
+            {"act": 3, "normal_encounters": ["TurretOperatorWeak"],
+             "elite_encounters": [], "boss_encounter": "TestSubjectBoss"}]}}}
+        result = _native_upfront_room_prefix_diagnosis(source, snapshot)
+        self.assertEqual("SOURCE_ROOM_QUEUE_FIRST_DIFFERENCE", result["status"])
+        self.assertEqual("FUZZY_WURM_CRAWLER_WEAK",
+                         result["first_difference"]["native"])
+        self.assertEqual("SlimesWeak",
+                         result["first_difference"]["emulator_source_queue"])
+        self.assertEqual("$.native_startup_rooms.acts[0].normal_encounters[0]",
+                         result["first_difference"]["path"])
+        self.assertEqual("NOT_VERIFIED", result["full_queue_identity_parity"])
+
+        # A matching observed prefix is still not proof of the unobserved
+        # remainder of the source-generated queues.
+        snapshot["state"]["native_startup_rooms"]["acts"][0][
+            "normal_encounters"] = ["FuzzyWurmCrawlerWeak", "SlimesWeak"]
+        source["source_room_arrivals"].append({
+            "ordinal": 21, "act_index": 0, "room_type": "Monster",
+            "room_model_id": "SLIMES_WEAK"})
+        matched = _native_upfront_room_prefix_diagnosis(source, snapshot)
+        self.assertEqual("SOURCE_ROOM_QUEUE_OBSERVED_PREFIX_MATCHED",
+                         matched["status"])
+        self.assertEqual(2, matched["source_observed_prefix_length"])
+        self.assertEqual("NOT_VERIFIED", matched["full_queue_identity_parity"])
+
+        source["source_room_arrivals"][0]["room_model_id"] = ""
+        self.assertEqual("BLOCKED_NATIVE_ROOM_IDENTITY",
+            _native_upfront_room_prefix_diagnosis(source, snapshot)["status"])
 
 
 class FakeState:
