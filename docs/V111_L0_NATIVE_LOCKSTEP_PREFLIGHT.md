@@ -1138,6 +1138,39 @@ It labels request/execute and prior-completion/request state agreement
 without manufacturing an executable decision boundary or asserting
 emulator mechanics parity.
 
+#### Source executor callback comparison after decision 9
+
+The source journal now compares each of the 26 observed executor
+start/complete pairs as **source-only callback projections**. It records
+measured changes during the executor interval separately from measured
+changes between the closest earlier completed executor and the next start.
+The comparison also reports the earlier completion ID, callback snapshot
+agreement, any still-active executor IDs, and observed intervening record
+types. This handles nested executor intervals without confusing them with
+the distinct *UI began during previous execution* chronology at the
+strict decision-9 gap.
+
+Using the **existing** native action sidecar (no original-game launch):
+
+```fish
+python tools/native_lockstep_source_journal.py --sidecar /path/to/existing/action-sidecar.jsonl --out /tmp/native-source-action-journal.json
+```
+
+Inspect `source_executor_observed_transitions` by `start_ordinal`; decision 9
+was observed at sidecar ordinal 414, followed by the first strict gap at
+executor #12 / ordinal 459. The new fields
+`source_executor_observed_delta` and
+`preceding_completion_to_start_observed_delta` measure only fields
+present in both snapshots. `active_prior_executor_action_ids` distinguishes
+a genuinely overlapping executor from an earlier UI event that overlaps
+a completed executor but queues later. An empty delta is evidence only
+for the measured projection; a missing snapshot is reported as null.
+
+The strict decision recorder and its fail-closed legal-menu requirements
+are unchanged. This journal can isolate the first observed mechanics gap
+and guide a later mapped emulator replay; source callback agreement
+alone cannot certify native state settlement, RNG parity, or human input.
+
 **Next acceptance gate:** expand the independently checked first-combat
 prefix beyond its first two end-turn boundaries; then add a source-verified
 event-driven decision boundary for overlapping UI actions. The strict
