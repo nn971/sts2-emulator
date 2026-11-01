@@ -1249,17 +1249,32 @@ match through lethal on turn 6. The emulator enters Reward afterwards.
 This establishes the tested source-observable projection, not full
 native-state or legal-decision parity.
 
-**Next acceptance gate — settled-state parity:** collect and compare
-independent *turn-boundary* snapshots only after native mechanics and UI
-callbacks have settled. A comparison checkpoint requires source-observed
-quiescence: no action-executor work (including queued/suspended operations),
-no active card-play animation or targeting, no unresolved native player
-choice/overlay, and completion of the associated automatic effects. In
-particular, an `EndPlayerTurnAction` request is **not** a settled turn-end
-boundary. Prefer the first fully idle `PlayerTurnPhase.Play` frame after
-the previous enemy turn has finished (turn start), then optionally a
-similarly certified post-turn-end/pre-enemy-action state if the engine exposes
-an atomic boundary.
+**Next acceptance gate — default turn-boundary parity:** there are
+**two default checkpoints in every complete combat round**:
+
+1. `PLAYER_TURN_START`: after the previous enemy turn, all
+   start-of-player-turn mechanics and card draws have resolved, with
+   the player entering the playable phase.
+2. `ENEMY_TURN_START`: after player end-of-turn cleanup and effects
+   have resolved, **before the first enemy action/effect is applied**.
+
+Both must be emitted from a source-observed phase/settlement boundary,
+not inferred merely from `combat.turn`, a UI frame, an `EndPlayerTurnAction`
+request/completion, or a `ReadyToBeginEnemyTurnAction` callback.
+A checkpoint requires evidence that the phase's previous automatic effects
+are complete; there is no queued/running/suspended action to be resolved
+*before* the boundary; relevant pending card animations, targeting, choices,
+or overlays have ended; and the native phase and state were captured
+consistently. In the enemy-start case, an atomic source hook at the
+handoff to enemy processing may be necessary because the executor
+could be continuously busy across the phase change. Such a hook
+must capture the pre-enemy state before the first enemy effect and
+should not be replaced by a later idle frame.
+
+Until that hook/settlement evidence exists, emit
+`SETTLEMENT_UNVERIFIED` and retain only diagnostic source snapshots.
+A missing checkpoint is acceptable; an invented checkpoint or a
+post-enemy-action observation labelled `ENEMY_TURN_START` is not.
 
 Use executor starts/completions, UI-play-begins, request callbacks and
 RNG checkpoints for **diagnostics**, including locating the first
