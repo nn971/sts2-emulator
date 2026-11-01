@@ -48,6 +48,8 @@ jobs:
         run: python tools/native_lockstep_shadow_jsonl_smoke.py
       - name: Persistent emulator turn-start replay (emulator-derived synthetic source only)
         run: python tools/native_turn_checkpoint_jsonl_smoke.py
+      - name: Live SSE coordinator and first-divergence JSONL smoke (emulator-derived synthetic source only)
+        run: python tools/native_live_fidelity_jsonl_smoke.py
       - name: Independent native prelude bootstrap and native Neow RNG reconstruction offline tests
         run: python -m unittest discover -s tests -p 'test_native_run_bootstrap.py' -v
       - name: Independent run-start to first-combat emulator JSONL smoke (synthetic source only)
