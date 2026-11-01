@@ -32,11 +32,13 @@ def fixture():
                   "request_execution_link": "SAME_NATIVE_ACTION_OBJECT",
                   "human_origin": "UNVERIFIED"}},
         {"type": "action_completed", "action_id": 1,
+         "native_type": "EndPlayerTurnAction",
          "state": copy.deepcopy(ended)},
         {"type": "action_started", "action_id": 2,
          "native_type": "ReadyToBeginEnemyTurnAction",
          "state": copy.deepcopy(ended)},
         {"type": "action_completed", "action_id": 2,
+         "native_type": "ReadyToBeginEnemyTurnAction",
          "state": copy.deepcopy(ended)},
         {"type": "terminal",
          "data": {"status": "OBSERVED", "open_actions": []}},
@@ -87,6 +89,7 @@ class NativeTurnBoundaryDiagnosticsTests(unittest.TestCase):
     def test_non_end_turn_auto_action_remains_ambiguous(self):
         rows = fixture()
         rows[3]["native_type"] = "PlayCardAction"
+        rows[4]["native_type"] = "PlayCardAction"
         rows[2]["native_type"] = "PlayCardAction"
         rows[3]["canonical_action"] = {"kind": "play_card", "payload": {}}
         rows[2]["canonical_action"] = {"kind": "play_card", "payload": {}}
