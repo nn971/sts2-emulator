@@ -912,3 +912,70 @@ The passive reference mod records an initial_map_snapshot containing the finaliz
 The run-prelude auditor checks provenance and structural consistency. The native_map_fidelity Python comparator checks all nodes, edges, entry choices and map RNG words against an independently generated emulator start_run snapshot. The native prelude bootstrap runs this comparison before replaying any observed Neow or map choice.
 
 The original game and emulator map are not yet proven equal: a fresh v111 source capture and local STS2_NATIVE build are outstanding. Synthetic test data provides regression coverage only.
+
+## Original-game v111 pinned-seed acceptance evidence (2026-11-01)
+
+A single staged reference-mod run against the pinned native v0.111.0
+`sts2.dll` (SHA-256 `0861bfa1df347538d932f22d580e75420f08082792eb914e53b4882764acdbe9`)
+produced a complete first-combat run prelude and two combat trace/sidecar
+pairs. The minimum public, mechanics-only expectations are retained as
+`NativeObservedMapV111Tests`; no user IDs or raw logs are committed.
+
+**Independently matched:**
+
+- Silent A10 seed `6JK8MD0VQQTA`, Overgrowth, exact first
+  `StandardActMap`: 74 source nodes including Ancient and Boss,
+  73 emulator map nodes (Ancient is represented as entry IDs),
+  all room types, coordinates, links and entry nodes.
+- Source map-local `act_1_map` cursor **272**, with **all four
+  xoshiro words equal** to the independently generated emulator map RNG.
+- Neow offered `PHIAL_HOLSTER`, `LOST_COFFER`,
+  `SILVER_CRUCIBLE` in that order; independently reconstructed
+  event-local `NEOW` RNG cursor **19** and all four words.
+  The matching availability profile permits Kaleidoscope and Scroll Boxes.
+- First map visit (row 1, col 0) and weak combat identity
+  `FUZZY_WURM_CRAWLER_WEAK`; first combat player HP **56**,
+  gold **99**, single Fuzzy Wurm Crawler HP **59/59**.
+
+**First reproducible remaining visible difference: opening combat hand.**
+
+The native first stable decision shows
+`Strike, Neutralize, Ascender's Bane, Defend, Strike, Defend, Strike`;
+the emulator instead draws
+`Defend, Strike, Neutralize, Strike, Defend, Defend, Survivor`.
+Generic emulator starter-card IDs omit the Silent suffix, so
+the test normalizes names before comparison. The original-game
+pre-combat persistent RNG snapshot reports `run.UpFront=412`,
+`run.Shuffle=12`, `run.Niche=1`, and
+`run.CombatPotionGeneration=4`; the experimental emulator's
+`NativeRunRng` still reports **zero** calls on those streams at
+first combat entry. Accordingly **full native combat-entry RNG parity
+is not established**. Keep the known failure explicitly represented
+by a negative regression, and change it to a positive parity assertion
+once the original-run startup / deck shuffle RNG is correctly modeled.
+
+**Capture limitations and later trace coverage:**
+
+- Run prelude: 16 ordered records, one complete source map snapshot,
+  Neow choice, first map vote/move outcomes and combat link. It still
+  declares `source_macro_choices_complete=false`; queue acceptance
+  and human-origin provenance are not fully certified.
+- First combat: 16 complete strict decision/action/transition
+  lifecycles; the strict trace safely stops at Survivor's nested card
+  choice. The action sidecar continues through 26 executor actions.
+- Second combat: two strict decisions, of which the second is
+  incomplete due to `executor_action_without_unique_strict_decision`
+  during a card-play animation. Its sidecar observes 21 executor
+  actions. It is not evidence of strict lockstep success.
+- Hook installation, map observation and first-combat capture are
+  confirmed by original-game logs. These do not establish that every
+  source draw or mechanical operation has been reproduced by the
+  emulator.
+
+**Next no-launch development gate:** implement the native persistent
+run/player stream consumption in run initialization (including
+`UpFront`) and first combat entry, then native shuffle/draw
+semantics. Compare the exact first hand, draw pile and RNG counters
+before attempting per-action combat lockstep. This captured run is
+sufficient to develop against; another costly game launch is reserved
+for validation after substantive fixes.
