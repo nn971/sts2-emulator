@@ -997,11 +997,25 @@ capture in `NativeObservedMapV111Tests`.
   each act). The independent recurrence predicts the 412-call RNG
   words `[14133024965363381498, 3052595882297166200,
   14908445774459425184, 16826779579573568376]`.
-  `native_run_bootstrap.py` compares the actual native checkpoint
-  with the emulator cursor, including all four words. The source's
-  room queues were **not captured**, so queue-content parity remains
-  unverified and the prototype world is not yet driven by the
-  pre-generated source queues. This full queue schedule is scoped to
+  The native `run-prelude-20261101-054003216-...` RunStarted
+  checkpoint independently records **412 and exactly those four
+  predicted state words**, establishing full UpFront cursor/state parity
+  for this capture. This alone cannot establish queue identity parity:
+  the source-predicted first weak encounter is `SlimesWeak`, whereas
+  native `RunManager.RoomEntered` reports `FUZZY_WURM_CRAWLER_WEAK`
+  for the first combat. Existing prototype combat selection matches
+  the observed native encounter and remains authoritative until the
+  source registration/order discrepancy is diagnosed.
+- `native_run_bootstrap.py` now reports the first source-observed
+  encounter-prefix mismatch independently from the RNG checkpoint.
+  A new read-only `startup_room_queues` record at native RunStarted
+  projects the existing three `ActModel._rooms` queues (event, normal,
+  elite, boss, Ancient, second boss). The native prelude auditor validates
+  the new record and the bootstrap compares the complete native queues
+  against generated emulator queues when that record is available. The
+  **existing capture did not include the new record**; next native
+  validation can capture it without advancing RNG or changing actions.
+  The full source-replay schedule remains scoped to
   Overgrowth -> Hive -> Glory; the experimental Underdocks opening
   retains its 229-draw relic-bag prefix.
 - The first combat HP, map, Neow, encounter, opening hand/draw pile,
@@ -1028,10 +1042,11 @@ capture in `NativeObservedMapV111Tests`.
   source draw or mechanical operation has been reproduced by the
   emulator.
 
-**Next no-launch development gate:** execute the native run-prelude
-bootstrap against the existing source capture and check full UpFront
-counter/state parity at `RunStarted`. Then determine the minimal
-mapping from the retained source room queues to actual emulator room
-entry while preserving the ordinary training profile. Exact potion
-inventory and source-generated room/Ancient identities require an
-expanded passive capture only when a new game launch is worthwhile.
+**Next gate:** verify the pinned source pool registration/order
+against the local game assembly when convenient and resolve the first
+weak-queue identity discrepancy before making generated source queues
+authoritative at room entry. The read-only full three-act queue
+instrumentation and its auditor are ready for the next **necessary**
+native capture; compile the reference mod against the installed game
+assembly before that launch. Exact potion inventory remains a separate
+unobserved native output.
