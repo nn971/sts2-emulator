@@ -105,4 +105,58 @@ public sealed class NativeObservedMapV111Tests
                 $"k={p.KaleidoscopeAllowed},s={p.ScrollBoxesAllowed}:" +
                 $"{string.Join(",", p.OfferedRelicIds)} rng={p.EventRng}")));
     }
+
+    [Fact]
+    public void GenuineNativeFirstCombatEntryShowsFirstVisibleDifference()
+    {
+        var configuration = RunConfiguration.Create("silent", 10, ActIdentity.Overgrowth)
+            with { FidelityId = V111Build.NativeStandardMapOpeningFidelityId };
+        var engine = new PrototypeGameEngine();
+        var state = V111RunFactory.Create(CapturedSeed, configuration);
+        state = engine.Step(state, engine.GetLegalActions(state).Single()).State;
+        var firstNeowOptions = engine.GetLegalActions(state);
+        var neow = firstNeowOptions.SingleOrDefault(a =>
+            a.Kind == "event_choice"
+            && a.Payload.GetRawText().Contains("take_proto.native.neow.phialholster",
+                StringComparison.Ordinal));
+        Assert.True(neow is not null,
+            "Pinned native Neow selection is missing: " +
+            string.Join(", ", firstNeowOptions.Select(a => a.Payload.GetRawText())));
+        state = engine.Step(state, neow!).State;
+        var acknowledgement = engine.GetLegalActions(state);
+        if (acknowledgement.Count(a => a.Kind == "continue_event") == 1)
+        {
+            state = engine.Step(state,
+                acknowledgement.Single(a => a.Kind == "continue_event")).State;
+        }
+        var mapOptions = engine.GetLegalActions(state);
+        var leftmost = mapOptions.SingleOrDefault(a =>
+            a.Kind == "choose_map_node"
+            && a.Payload.GetRawText().Contains("1:1:0", StringComparison.Ordinal));
+        Assert.True(leftmost is not null,
+            "Pinned native visited node 1:1:0 not in emulator legal actions: " +
+            string.Join(", ", mapOptions.Select(a => a.Payload.GetRawText())));
+        state = engine.Step(state, leftmost!).State;
+        var combat = state.World?.Combat;
+        var encounter = state.World?.EncounterIds.LastOrDefault() ?? "<none>";
+        var enemies = combat?.Enemies ?? [];
+        var report = $"phase={state.Phase}; player_hp={state.Player.Hp}; " +
+            $"gold={state.Player.Gold}; encounter={encounter}; enemies=" +
+            string.Join(",", enemies.Select(e =>
+                $"{e.EnemyId}(hp={e.Hp},max={e.MaxHp})")) +
+            $"; native_persistent_run_rng=" +
+            string.Join(",", state.NativeRunRng?.Streams.Select(s =>
+                $"{s.StreamId}:{s.CallCount}") ?? []);
+        static string Token(string id) => string.Concat(
+            id.Split('.').Last().Where(char.IsLetterOrDigit)
+                .Select(char.ToUpperInvariant));
+        Assert.True(combat is not null && state.Phase == RunPhase.Combat
+            && state.Player.Hp == 56 && state.Player.Gold == 99
+            && Token(encounter) == "FUZZYWURMCRAWLERWEAK"
+            && enemies.Length == 1
+            && Token(enemies[0].EnemyId) == "FUZZYWURMCRAWLER"
+            && enemies[0].Hp == 59,
+            "Native observed first-combat boundary differs from emulator: " + report);
+    }
+
 }
