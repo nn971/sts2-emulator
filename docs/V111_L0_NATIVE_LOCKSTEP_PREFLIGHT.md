@@ -973,69 +973,65 @@ capture in `NativeObservedMapV111Tests`.
   **Fortifier** and **Vulnerable Potion**. The native passive trace
   did not record potion IDs: **the cursor is source-observed parity,
   while those two identities are source-derived predictions**.
-- `run.up_front`: native at `RunStarted` **412**. Its initial
-  source-owned `RelicGrabBag.Populate` phase is now independently
-  implemented and retained in the experimental run snapshot:
-  the shared grab bag has 115 eligible relics (118 source models,
-  excluding 2 Ancient and 1 Event relic), and the fully unlocked
-  Silent personal bag has 122 (shared 115 plus seven eligible
-  Silent-specific models). Four rarity buckets produce
-  **111** and **118** Fisher–Yates swaps respectively, hence
-  `run.up_front` is at **229** after these two real source phases.
-  The next phase, `NativeUpFrontRoomsV111.Generate`, translates
-  `RunManager.GenerateRooms` in source order using actual model
-  registrations: a two-draw shared Ancient assignment, event shuffles,
-  three separate refillable encounter grab bags per act, source
-  tag-based rejection sampling, and the A10 second-boss draw. Both
-  relic bags and all three generated room/encounter/Ancient queues
-  are retained in deep-forkable run snapshots.
-- For seed `6JK8MD0VQQTA`, the independently calculated UpFront
-  checkpoints are: **229** after relic bags, **231** after Ancient
-  distribution, **261** after Act 1 events, **295** after Act 1
-  completion, **355** after Act 2, and **412** after Act 3. The final
-  183 calls include **six rejected grab-bag candidates** (two in
-  each act). The independent recurrence predicts the 412-call RNG
-  words `[14133024965363381498, 3052595882297166200,
+- `run.up_front`: Native `RunStarted` at **412**. The source
+  uses different relic-bag overloads: shared `Populate(IEnumerable)`
+  retains all **118** source relic models across six rarity buckets,
+  including one Event relic and two Ancient relics. Shuffling the
+  two-Ancient bucket consumes **one** extra draw (the Event singleton
+  consumes zero). Player `Populate(Player)` excludes Event/Ancient
+  rarities, leaving 122 eligible relics in four buckets. The native
+  relic shuffles therefore consume **112 + 118 = 230** UpFront draws,
+  correcting the previous erroneous 111 + 118 = 229 model.
+- For seed `6JK8MD0VQQTA`, corrected source-ordered checkpoints are
+  **230** after relic bags, **232** after allocating shared Ancients,
+  **262** after Act 1 event shuffle, **295** after Act 1,
+  **355** after Act 2, and **412** after Act 3. The final
+  182 calls include five rejected grab-bag candidates (1, 2, 2).
+  The final four xoshiro words remain
+  `[14133024965363381498, 3052595882297166200,
   14908445774459425184, 16826779579573568376]`.
-  The native `run-prelude-20261101-054003216-...` RunStarted
-  checkpoint independently records **412 and exactly those four
-  predicted state words**, establishing full UpFront cursor/state parity
-  for this capture. This alone cannot establish queue identity parity:
-  the source-predicted first weak encounter is `SlimesWeak`, whereas
-  native `RunManager.RoomEntered` reports `FUZZY_WURM_CRAWLER_WEAK`
-  for the first combat. Existing prototype combat selection matches
-  the observed native encounter and remains authoritative until the
-  source registration/order discrepancy is diagnosed.
+- On **2026-11-01 10:37 UTC**, an independently observed native
+  `startup_room_queues` record captured every event, normal encounter,
+  elite, boss, second boss and Ancient identity for all three acts at
+  `RunManager.RunStarted` (17-record run prelude). The corrected
+  C# reconstruction matches **every native queue identity and position**
+  in a sanitized golden regression. The omitted shared-bag draw had
+  shifted Act 1 events/encounters, but an extra rejection later
+  cancelled that shift at the end-of-act counter. It also placed the
+  shared Ancient Darv in Hive instead of Glory, predicting Nonupeipe
+  rather than the native-observed Glory Ancient **Tanx**.
+  With the fix, Act 1's first three weak encounters are
+  Fuzzy Wurm Crawler, Slimes and Nibbits, and Darv belongs to Glory.
+  Neither earlier matching final UpFront words nor a matched boss
+  could independently establish this queue identity agreement.
 - Native map combat entry now records a forkable, diagnostic-only
   `native_startup_queue_trace`: source queue index, source encounter ID,
   uniquely crosswalked prototype encounter ID, actual entered encounter ID,
   and a match/difference status. This leaves encounter selection, training
   profiles and all RNG streams unchanged. Crosswalking supports both
   `proto.encounter.*` and region-qualified `proto.native.<region>.encounter.*`,
-  with fail-closed act/room/uniqueness checks. The first pinned seed's
-  generated source queue predicts `SlimesWeak`; an emulator entry can
-  still independently choose the native-observed `FuzzyWurmCrawlerWeak`.
+  with fail-closed act/room/uniqueness checks. The corrected first
+  source queue predicts `FuzzyWurmCrawlerWeak`, matching the native
+  observation. Actual prototype combat selection remains independent
+  of this diagnostic trace.
 - Native prelude replay now separately checks the **actual** emulator
   encounter identity against the original game's `RoomEntered.room_model_id`
   after entering combat; a different or missing identity blocks that
   comparison even if RNG/HP/gold happened to agree.
-- `native_run_bootstrap.py` now reports the first source-observed
-  encounter-prefix mismatch independently from the RNG checkpoint.
-  A new read-only `startup_room_queues` record at native RunStarted
-  projects the existing three `ActModel._rooms` queues (event, normal,
-  elite, boss, Ancient, second boss). The native prelude auditor validates
-  the new record and the bootstrap compares the complete native queues
-  against generated emulator queues when that record is available. The
-  **existing capture did not include the new record**; next native
-  validation can capture it without advancing RNG or changing actions.
-  The full source-replay schedule remains scoped to
-  Overgrowth -> Hive -> Glory; the experimental Underdocks opening
-  retains its 229-draw relic-bag prefix.
+- `native_run_bootstrap.py` separately compares the observed
+  encounter prefix and all three native `ActModel._rooms` queues
+  against source-generated predictions when captured. The 2026-11-01
+  prelude is complete and supplies all three arrays; source queues
+  remain **diagnostic-only** and do not change prototype combat
+  selection. The full source-replay route is Overgrowth -> Hive ->
+  Glory. Experimental Underdocks retains the corrected 230-draw
+  relic-bag prefix until its source room generator is implemented.
 - The first combat HP, map, Neow, encounter, opening hand/draw pile,
   `run.shuffle`, `run.niche`, and Phial Holster's native potion
   RNG are verified against original-game observations. Native potion
-  identities, startup room/Ancient allocations, per-action combat
-  transitions and postcombat rewards remain separate acceptance gates.
+  identities, per-action combat transitions and postcombat rewards
+  remain separate acceptance gates. Startup room/Ancient identities
+  are observed and independently matched for this seed only.
 
 **Capture limitations and later trace coverage:**
 
@@ -1088,10 +1084,10 @@ assembly build proves public API compatibility; actual reflection
 behavior, hooks, queue identities and gameplay parity remain pending
 original-game validation.
 
-**Next gate:** verify generated weak-pool identities against the
-installed game's `ActModel._rooms` before making source queues authoritative.
-The read-only three-act queue capture and its auditor are ready for the next
-**necessary** native validation; compile the reference mod against the
-installed game assembly before that launch. Until then, the source queue
-cursor reports differences but does not change combat selection.
+**Next gate:** the native three-act room-queue identities are now
+verified for `6JK8MD0VQQTA`. Before another original-game launch,
+analyze the already captured passive combat trace and action sidecar,
+and extend native-to-emulator first-combat and action-boundary checks.
+A separate seed will eventually be useful for generalization, but is
+not required to resolve the original startup queue discrepancy.
 Exact potion inventory remains a separate unobserved native output.
