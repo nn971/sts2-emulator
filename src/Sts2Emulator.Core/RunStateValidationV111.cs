@@ -111,8 +111,11 @@ public sealed partial record RunState
         var currentBossFloor = world.Map.GenerationProfileId switch
         {
             PrototypeGoldenPathMapV111.ProfileId => PrototypeGoldenPathMapV111.BossFloor,
+            ExperimentalFixedRouteOvergrowthMapV111.ProfileId =>
+                PrototypeNativeOvergrowthMap.BossFloor,
             PrototypeNativeOvergrowthMap.GenerationProfileId
                 or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
+                or ExperimentalFixedRouteOvergrowthMapV111.ProfileId
                 or PrototypeNativeUnderdocks.GenerationProfileId =>
                 PrototypeNativeOvergrowthMap.BossFloor,
             PrototypeNativeLaterActMap.HiveProfileId
@@ -343,6 +346,7 @@ public sealed partial record RunState
                     PrototypeContent.MapGenerationProfileId
                     or PrototypeNativeOvergrowthMap.GenerationProfileId
                     or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
+                    or ExperimentalFixedRouteOvergrowthMapV111.ProfileId
                     or PrototypeNativeUnderdocks.GenerationProfileId
                     || (world.RulesetId == V111Build.RulesetId
                         && world.Map.GenerationProfileId is
@@ -378,6 +382,7 @@ public sealed partial record RunState
                 PrototypeContent.MapGenerationProfileId
                 or PrototypeNativeOvergrowthMap.GenerationProfileId
                 or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
+                or ExperimentalFixedRouteOvergrowthMapV111.ProfileId
                 or PrototypeNativeUnderdocks.GenerationProfileId
             || (world.RulesetId == V111Build.RulesetId
                 && world.Map.GenerationProfileId is
@@ -1450,9 +1455,18 @@ public sealed partial record RunState
 
     private static void ValidateMap(RunWorldState world)
     {
-        if (world.Map.GenerationProfileId == PrototypeGoldenPathMapV111.ProfileId)
+        if (world.Map.GenerationProfileId is
+            PrototypeGoldenPathMapV111.ProfileId
+            or ExperimentalFixedRouteOvergrowthMapV111.ProfileId)
         {
-            var expected = PrototypeGoldenPathMapV111.Generate(world.Act);
+            var fixedTrainingRoute = world.Map.GenerationProfileId
+                == ExperimentalFixedRouteOvergrowthMapV111.ProfileId;
+            if (fixedTrainingRoute && (world.Act != 1 || !world.NativeOvergrowthOpening))
+                throw new InvalidOperationException(
+                    "Experimental fixed route is valid only for native-structure Act 1.");
+            var expected = fixedTrainingRoute
+                ? ExperimentalFixedRouteOvergrowthMapV111.Generate()
+                : PrototypeGoldenPathMapV111.Generate(world.Act);
             if (world.Map.Nodes.Length != expected.Nodes.Length
                 || !world.Map.Nodes.Zip(expected.Nodes).All(pair =>
                     pair.First.NodeId == pair.Second.NodeId
