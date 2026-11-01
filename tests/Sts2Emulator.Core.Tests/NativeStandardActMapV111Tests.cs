@@ -106,9 +106,17 @@ public sealed class NativeStandardActMapV111Tests
         Assert.Equal(0UL, started.Rng.Streams.Single(s => s.StreamId == "event").CallCount);
         Assert.Equal(NativeNeowOfferV111.Predict(seed, true, true).EventRng,
             NativeRngV111.ToSnapshot(Assert.Single(started.NativeEventRng!.Streams)));
-        Assert.Equal(NativeRngV111.CreateBundle(seed).Streams
+        var sourceStartupStream = NativeRngV111.CreateBundle(seed);
+        var expectedBags = NativeUpFrontRelicBagsV111.Populate(
+            sourceStartupStream);
+        Assert.NotNull(started.NativeStartupRelicBags);
+        Assert.Equal(expectedBags.AfterPlayerBag,
+            started.NativeStartupRelicBags!.AfterPlayerBag);
+        Assert.Equal(229UL, started.NativeRunRng!.Streams.Single(
+            stream => stream.StreamId == "run.up_front").CallCount);
+        Assert.Equal(sourceStartupStream.Streams
             .Select(NativeRngV111.ToSnapshot),
-            started.NativeRunRng!.Streams.Select(NativeRngV111.ToSnapshot));
+            started.NativeRunRng.Streams.Select(NativeRngV111.ToSnapshot));
 
         var snapshot = RunSnapshot.Load(RunSnapshot.Save(started));
         Assert.Equal(CanonicalJson.Sha256(started), CanonicalJson.Sha256(snapshot));
