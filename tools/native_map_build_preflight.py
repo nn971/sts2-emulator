@@ -28,6 +28,21 @@ NATIVE_PROJECT = MOD_ROOT / "Sts2ReferenceMod.csproj"
 METADATA_PROJECT = REPO_ROOT / "tools" / "NativeV111MetadataProbe" / "NativeV111MetadataProbe.csproj"
 DLL_PATH = MOD_ROOT / "bin" / "Release" / "net9.0" / "Sts2ReferenceMod.dll"
 
+# Fail closed if a stale or partial metadata probe accidentally reports
+# success without checking the turn-boundary APIs. These are static names,
+# not a claim that the native callback occurs at a settled phase boundary.
+TURN_CHECKPOINT_METADATA_MEMBERS = frozenset({
+    ("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "IsInProgress"),
+    ("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "DebugOnlyGetState"),
+    ("MegaCrit.Sts2.Core.Combat.CombatState", "property", "CurrentSide"),
+    ("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "event",
+     "BeforeActionExecuted"),
+    ("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "event",
+     "AfterActionExecuted"),
+    ("MegaCrit.Sts2.Core.GameActions.ReadyToBeginEnemyTurnAction", "type", ""),
+    ("MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction", "type", ""),
+})
+
 
 def find_data_dir(game_root: Path) -> Path:
     """Accept either the game root or its exact managed data directory."""
@@ -108,7 +123,12 @@ def probe_native_metadata(data: Path) -> dict:
         or not isinstance(result.get("checks"), list)
         or not result["checks"]
         or not all(isinstance(c, dict) and c.get("present") is True
-                   for c in result["checks"])):
+                   for c in result["checks"])
+        or not TURN_CHECKPOINT_METADATA_MEMBERS.issubset({
+            (c.get("type"), c.get("kind"), c.get("member"))
+            for c in result["checks"] if isinstance(c, dict)
+            and c.get("present") is True
+        })):
         raise RuntimeError("Native metadata probe returned an invalid or mismatched contract")
     return result
 
