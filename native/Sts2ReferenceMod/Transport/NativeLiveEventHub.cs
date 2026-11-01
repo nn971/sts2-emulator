@@ -15,6 +15,10 @@ public sealed class NativeLiveEventHub : IAsyncDisposable
     public const string PublicChannel = "public";
     public const string FidelityChannel = "fidelity";
 
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+    };
     private readonly object _sync = new();
     private readonly AsyncTraceWriter _publicWriter;
     private readonly AsyncTraceWriter _fidelityWriter;
@@ -86,7 +90,7 @@ public sealed class NativeLiveEventHub : IAsyncDisposable
         {
             if (_runId is null || boundary.SessionId != _runId) return false;
             return AppendLocked(PublicChannel, "decision", boundary.DecisionId,
-                null, JsonSerializer.SerializeToElement(boundary));
+                null, JsonSerializer.SerializeToElement(boundary, JsonOptions));
         }
     }
 
@@ -107,7 +111,7 @@ public sealed class NativeLiveEventHub : IAsyncDisposable
         lock (_sync)
             return _runId is not null && AppendLocked(FidelityChannel,
                 record.Type, null, record.Ordinal,
-                JsonSerializer.SerializeToElement(record));
+                JsonSerializer.SerializeToElement(record, JsonOptions));
     }
 
     public IReadOnlyList<NativeLiveEvent> ReadAfter(string channel, long cursor,
