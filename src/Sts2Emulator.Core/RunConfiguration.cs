@@ -218,7 +218,9 @@ public static class V111RunFactory
             ? PrototypeNativeOvergrowthRunFactory.Create(
                 input.RunSeed, config.Ascension,
                 useNativeNeowEventRng: config.UsesNativeNeowOpening)
-            : PrototypeNativeUnderdocksRunFactory.Create(input.RunSeed, config.Ascension);
+            : PrototypeNativeUnderdocksRunFactory.Create(
+                input.RunSeed, config.Ascension,
+                useNativeNeowEventRng: true);
         // Restlessness is a historical training adapter addition, not a native
         // A0 starter. Keep it only in the explicit legacy factories.
         var deck = config.Ascension < 5

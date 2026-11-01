@@ -95,6 +95,24 @@ public sealed class NativeNeowOfferV111Tests
     }
 
     [Fact]
+    public void UnderdocksV111AlsoOwnsLocalNeowRngWithoutPrototypeEventDraw()
+    {
+        const string seed = "native-neow-underdocks-start";
+        var root = V111RunFactory.Create(seed,
+            RunConfiguration.Create("silent", 10, ActIdentity.Underdocks));
+        var engine = new PrototypeGameEngine();
+        var started = engine.Step(root, engine.GetLegalActions(root).Single()).State;
+        var predicted = NativeNeowOfferV111.Predict(seed, true, true);
+        Assert.Equal(predicted.OfferedRelicIds.Select(id => "take_" + id),
+            started.World!.Event!.OfferedChoiceIds);
+        Assert.Equal(predicted.EventRng,
+            NativeRngV111.ToSnapshot(Assert.Single(started.NativeEventRng!.Streams)));
+        Assert.Equal(0UL, started.Rng.Streams.Single(
+            x => x.StreamId == "event").CallCount);
+        RunConfiguration.ValidateState(started);
+    }
+
+    [Fact]
     public void NativeNeowGeneratorHasDifferentSeedOwnershipThanPrototype()
     {
         var seed = "native-local-event-ownership";
