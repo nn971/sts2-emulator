@@ -56,6 +56,50 @@ public sealed class NativeUpFrontRoomsV111Tests
                 stream => stream.StreamId == "run.up_front")));
     }
 
+    [Theory]
+    [InlineData(1, PrototypeRoomType.Combat, "SlimesWeak",
+        "proto.encounter.slimes_weak")]
+    [InlineData(1, PrototypeRoomType.Combat, "FuzzyWurmCrawlerWeak",
+        "proto.encounter.fuzzy_wurm_crawler_weak")]
+    [InlineData(1, PrototypeRoomType.Elite, "ByrdonisElite",
+        "proto.encounter.byrdonis_elite")]
+    [InlineData(1, PrototypeRoomType.Boss, "TheKinBoss",
+        "proto.encounter.the_kin_boss")]
+    public void CrosswalkResolvesUnambiguousSourceIdentities(
+        int act, PrototypeRoomType room, string sourceId, string emulatorId)
+    {
+        var mapped = NativeUpFrontEncounterCrosswalkV111.Resolve(
+            act, room, sourceId);
+        Assert.Equal("RESOLVED", mapped.Status);
+        Assert.Equal(emulatorId, mapped.EmulatorId);
+    }
+
+    [Fact]
+    public void CrosswalkFailsClosedForUnknownOrWrongActAndAuditsEveryQueue()
+    {
+        var missing = NativeUpFrontEncounterCrosswalkV111.Resolve(
+            1, PrototypeRoomType.Combat, "DoesNotExistWeak");
+        Assert.Equal("UNSUPPORTED_SOURCE_ENCOUNTER", missing.Status);
+        Assert.Null(missing.EmulatorId);
+        var wrongRoom = NativeUpFrontEncounterCrosswalkV111.Resolve(
+            1, PrototypeRoomType.Elite, "SlimesWeak");
+        Assert.Equal("UNSUPPORTED_SOURCE_ENCOUNTER", wrongRoom.Status);
+        Assert.Null(wrongRoom.EmulatorId);
+
+        var rng = NativeRngV111.CreateBundle(Seed);
+        _ = NativeUpFrontRelicBagsV111.Populate(rng);
+        var rooms = NativeUpFrontRoomsV111.Generate(rng, 10);
+        var mappings = NativeUpFrontEncounterCrosswalkV111.Audit(rooms);
+        Assert.Equal(91, mappings.Length);
+        Assert.DoesNotContain(mappings, mapping =>
+            mapping.Status == "AMBIGUOUS_SOURCE_ENCOUNTER");
+        Assert.All(mappings.Where(mapping => mapping.Act == 1),
+            mapping => Assert.Equal("RESOLVED", mapping.Status));
+        Assert.Equal(rooms.FinalRng,
+            NativeRngV111.ToSnapshot(rng.Streams.Single(
+                stream => stream.StreamId == "run.up_front")));
+    }
+
     [Fact]
     public void GeneratedQueuesAndAncientSubsetsForkWithoutSharedArrays()
     {
