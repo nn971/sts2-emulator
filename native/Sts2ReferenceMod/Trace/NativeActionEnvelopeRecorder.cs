@@ -18,6 +18,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
 {
     public const string Schema = "native-action-envelope-v1";
     private readonly AsyncTraceWriter _writer;
+    private readonly Func<NativeActionEnvelopeRecord, bool>? _eventSink;
     private readonly Dictionary<object, long> _running =
         new(ReferenceEqualityComparer.Instance);
     private readonly List<long> _activeOrder = [];
@@ -67,9 +68,11 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         bool nativeHandChoiceFlowHookInstalled = false,
         bool nativeManualPlayHookInstalled = false,
         bool nativeUiPlayBeginHookInstalled = false,
-        bool nativeUiGateHookInstalled = false)
+        bool nativeUiGateHookInstalled = false,
+        Func<NativeActionEnvelopeRecord, bool>? eventSink = null)
     {
         _gameBuild = gameBuild;
+        _eventSink = eventSink;
         _writer = new AsyncTraceWriter(path, queueCapacity);
         Write(new NativeActionEnvelopeRecord(
             Type: "header", Ordinal: Next(),
@@ -972,6 +975,11 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     private void Write(NativeActionEnvelopeRecord record)
     {
         if (!_writer.TryEnqueue(record)) _incomplete = true;
+        if (_eventSink is null) return;
+        // A live transport failure marks this recording incomplete. It never
+        // interrupts the game's executor or modifies accepted native actions.
+        try { if (!_eventSink(record)) _incomplete = true; }
+        catch (Exception) { _incomplete = true; }
     }
 
     private long Next() => ++_sequence;
