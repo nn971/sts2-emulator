@@ -100,7 +100,7 @@ def test_jsonl_map(command: list[str]) -> dict:
                     raise AssertionError("No unique emulator start_run")
                 state = root.step(legal[0]["actionId"])
                 snapshot = json.loads(state.save_snapshot())
-                # Source relic bags end at 229 calls for both routes.
+                # Source relic bags end at 230 calls for both routes.
                 # The pinned Overgrowth route additionally generates all
                 # three acts; its final count varies by seed because tag
                 # rejection sampling can consume extra RNG draws.
@@ -108,19 +108,19 @@ def test_jsonl_map(command: list[str]) -> dict:
                                if s["stream_id"] == "run.up_front")
                 bags = snapshot["state"].get("native_startup_relic_bags")
                 if not isinstance(bags, dict) or (
-                        bags["after_player_bag"]["counter"] != 229):
+                        bags["after_player_bag"]["counter"] != 230):
                     raise AssertionError("Real JSONL snapshot lost source relic bags")
                 rooms = snapshot["state"].get("native_startup_rooms")
                 if act == "Overgrowth":
                     if (not isinstance(rooms, dict)
                         or len(rooms.get("acts", [])) != 3
                         or rooms["final_rng"]["counter"] != upfront["call_count"]
-                        or upfront["call_count"] <= 229):
+                        or upfront["call_count"] <= 230):
                         raise AssertionError(
                             "Real JSONL startup lost source three-act UpFront queues")
-                elif rooms is not None or upfront["call_count"] != 229:
+                elif rooms is not None or upfront["call_count"] != 230:
                     raise AssertionError(
-                        "Underdocks must retain its independent 229-draw prefix")
+                        "Underdocks must retain its independent 230-draw prefix")
                 source = synthetic_audit_from_snapshot(snapshot, act)
                 equal = compare_native_map(source, snapshot)
                 if equal["status"] != "SOURCE_MAP_AND_RNG_MATCHED":
