@@ -110,7 +110,8 @@ class FakeSession:
     def reset(self, seed, **kwargs):
         self.reset_count += 1
         if kwargs != {"mode": "v111", "character": "silent",
-                      "first_act": "Overgrowth", "ascension": 10}:
+                      "first_act": "Overgrowth", "ascension": 10,
+                      "fidelity_id": "v111-experimental-native-neow-opening-v1"}:
             raise AssertionError(kwargs)
         return FakeState(0, {"seed": seed, "ascension": 10,
                              "offers": self.offers, "hp": self.hp})
