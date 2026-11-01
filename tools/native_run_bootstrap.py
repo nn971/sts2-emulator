@@ -295,7 +295,9 @@ def _native_upfront_full_queue_diagnosis(source, emulator_snapshot):
                         "first_difference": {
                             "path": "$.native_startup_rooms.acts[" + str(index)
                                 + "]." + key
-                                + (f"[{q_index}]" if len(pairs) > 1 else ""),
+                                + (f"[{q_index}]" if key in
+                                   ("events", "normal_encounters",
+                                    "elite_encounters") else ""),
                             "native": native_id, "emulator": emu_id,
                         },
                     }
