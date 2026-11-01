@@ -27,6 +27,7 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
     private bool _incomplete;
     private bool _linked;
     private bool _initialMapRecorded;
+    private bool _startupRoomQueuesRecorded;
     private int _linkedActIndex;
     private int? _linkedMapColumn;
     private int? _linkedMapRow;
@@ -46,6 +47,7 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
         && _eventRequests.Count == 0;
     public bool IsIncomplete => _incomplete;
     public bool HasInitialMapSnapshot => _initialMapRecorded;
+    public bool HasStartupRoomQueues => _startupRoomQueuesRecorded;
 
     public NativeRunPreludeRecorder(
         string path, string gameBuild, string runId, string seed,
@@ -76,6 +78,57 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
             source_macro_choices_complete = false,
             emulator_bootstrap = "NOT_TESTED"
         });
+    }
+
+    /// <summary>
+    /// RunManager.GenerateRooms has already completed when RunStarted fires.
+    /// This observes the complete native ActModel RoomSet queues before
+    /// Neow or any map travel, without enumerating content pools or RNG.
+    /// </summary>
+    public void StartupRoomQueues(IReadOnlyList<NativeStartupActRoomQueueView> acts)
+    {
+        if (_closed) return;
+        bool valid = !_startupRoomQueuesRecorded && acts.Count == 3
+            && acts.Select(a => a.ActIndex).SequenceEqual([0, 1, 2])
+            && acts.All(a => !string.IsNullOrWhiteSpace(a.ActId)
+                && a.Events.Length is >= 1 and <= 100
+                && a.NormalEncounters.Length is >= 1 and <= 30
+                && a.EliteEncounters.Length == 15
+                && !string.IsNullOrWhiteSpace(a.BossEncounter)
+                && !string.IsNullOrWhiteSpace(a.Ancient)
+                && a.Events.Concat(a.NormalEncounters)
+                    .Concat(a.EliteEncounters).All(id =>
+                        !string.IsNullOrWhiteSpace(id))
+                && a.EventsVisited == 0
+                && a.NormalEncountersVisited == 0
+                && a.EliteEncountersVisited == 0
+                && a.BossEncountersVisited == 0);
+        if (!valid)
+        {
+            ObservationFailure("startup_room_queues",
+                "INVALID_OR_DUPLICATE_SOURCE_ROOM_QUEUE_PROJECTION");
+            return;
+        }
+        Write("startup_room_queues", new
+        {
+            acts = acts.Select(a => new
+            {
+                act_index = a.ActIndex, act_id = a.ActId,
+                events = a.Events, normal_encounters = a.NormalEncounters,
+                elite_encounters = a.EliteEncounters,
+                boss_encounter = a.BossEncounter,
+                second_boss_encounter = a.SecondBossEncounter,
+                ancient = a.Ancient,
+                events_visited = a.EventsVisited,
+                normal_encounters_visited = a.NormalEncountersVisited,
+                elite_encounters_visited = a.EliteEncountersVisited,
+                boss_encounters_visited = a.BossEncountersVisited
+            }).ToArray(),
+            source = "ActModel._rooms after RunManager.GenerateRooms",
+            source_rng_consumed_by_inspector = false,
+            native_queue_emulator_parity = "NOT_TESTED"
+        });
+        _startupRoomQueuesRecorded = true;
     }
 
     /// <summary>
@@ -493,6 +546,7 @@ public sealed class NativeRunPreludeRecorder : IAsyncDisposable
             opaque_requests_missing_postfix = _requests.Values.Count(p => p.Opaque),
             event_choice_requests_missing_postfix = _eventRequests.Count,
             initial_map_snapshot_recorded = _initialMapRecorded,
+            startup_room_queues_recorded = _startupRoomQueuesRecorded,
             source_macro_choices_complete = false,
             native_rng_parity = "NOT_TESTED",
             emulator_bootstrap = "NOT_TESTED"
@@ -537,3 +591,11 @@ public sealed record NativeMapPointView(
 
 public sealed record NativeMapRngView(
     int Counter, ulong S0, ulong S1, ulong S2, ulong S3);
+
+public sealed record NativeStartupActRoomQueueView(
+    int ActIndex, string ActId,
+    string[] Events, string[] NormalEncounters,
+    string[] EliteEncounters, string BossEncounter,
+    string? SecondBossEncounter, string Ancient,
+    int EventsVisited, int NormalEncountersVisited,
+    int EliteEncountersVisited, int BossEncountersVisited);
