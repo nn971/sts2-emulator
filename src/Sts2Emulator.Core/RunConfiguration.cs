@@ -223,9 +223,10 @@ public static class V111RunFactory
         // prototype event RNG or modifying any persistent named streams.
         var nativeEvent = opening.World!.Event
             ?? throw new InvalidDataException("Native opening did not initialize Neow.");
+        var nativeChoices = nativeEvent.OfferedChoiceIds;
         if (nativeEvent.EventId != PrototypeNativeOvergrowthEvents.NeowEventId
-            || nativeEvent.OfferedChoiceIds is not { Length: 3 } ids
-            || ids.Distinct(StringComparer.Ordinal).Count() != 3
+            || nativeChoices is null || nativeChoices.Length != 3
+            || nativeChoices.Distinct(StringComparer.Ordinal).Count() != 3
             || opening.NativeEventRng is null)
             throw new InvalidDataException("Native initial Neow event RNG/choices invariant failed.");
         return opening with
