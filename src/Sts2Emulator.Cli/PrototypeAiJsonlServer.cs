@@ -10621,15 +10621,30 @@ internal static class PrototypeAiJsonlServer
                         // exactly the same path as native-structure CLI runs.
                         var seed = RequiredString(request, "seed");
                         var ascension = OptionalInt(request, "ascension") ?? 0;
-                        var state = PrototypeNativeOvergrowthRunFactory.Create(
-                            seed, ascension);
+                        // The optional research map profile replaces only
+                        // the map after ordinary run/Neow initialization.
+                        // Default reset behavior and RNG initialization stay
+                        // unchanged. Unknown profiles fail before Store().
+                        var mapProfileId = OptionalString(request, "map_profile_id");
+                        var state = mapProfileId switch
+                        {
+                            null or PrototypeNativeOvergrowthMap.GenerationProfileId =>
+                                PrototypeNativeOvergrowthRunFactory.Create(
+                                    seed, ascension),
+                            ExperimentalFixedRouteOvergrowthMapV111.ProfileId =>
+                                ExperimentalFixedRouteOvergrowthMapV111.Create(
+                                    seed, ascension),
+                            _ => throw new ArgumentException(
+                                $"Unsupported Overgrowth map profile '{mapProfileId}'.")
+                        };
                         var handle = Store(state);
                         Write(new
                         {
                             requestId,
                             ok = true,
                             stateHandle = handle,
-                            schemaId = NativeOvergrowthResetId
+                            schemaId = NativeOvergrowthResetId,
+                            mapGenerationProfileId = state.World!.Map.GenerationProfileId
                         });
                         break;
                     }
