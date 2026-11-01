@@ -1001,7 +1001,9 @@ capture in `NativeObservedMapV111Tests`.
   with the emulator cursor, including all four words. The source's
   room queues were **not captured**, so queue-content parity remains
   unverified and the prototype world is not yet driven by the
-  pre-generated source queues.
+  pre-generated source queues. This full queue schedule is scoped to
+  Overgrowth -> Hive -> Glory; the experimental Underdocks opening
+  retains its 229-draw relic-bag prefix.
 - The first combat HP, map, Neow, encounter, opening hand/draw pile,
   `run.shuffle`, `run.niche`, and Phial Holster's native potion
   RNG are verified against original-game observations. Native potion
