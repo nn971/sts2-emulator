@@ -49,7 +49,7 @@ Last-Event-ID: 27
 The server responds with standard SSE frames (`id`, `event: native`,
 `data`) and sends periodic comment heartbeats. A client may also pass
 `?after_seq=27`. The `Last-Event-ID` header takes precedence. Each stream
-has its own sequence sequence and replay history.
+has its own sequence and replay history.
 
 ## Envelope and disk recording
 
@@ -177,6 +177,24 @@ even an agreement is labelled `PROJECTED_AGREEMENT_UNCERTIFIED`.
 - Source callback ordering and accepted-player action coverage need further
   native hook auditing. The coordinator freezes at unsupported or ambiguous
   source events.
+
+## Recorded native transport-contract rehearsal
+
+A private native v111 Silent A10 first-combat sidecar and its paired prelude
+were checked locally without publishing native snapshots or source trace
+contents. The independent source identities and prelude combat link agreed.
+The sidecar contains 896 ordered records, including six player-start and five
+enemy-start candidates, 21 canonical executor starts, and an observed terminal.
+Rewrapping those records in 897 fidelity envelopes (including the session
+marker) retained all source ordinals and passed uninterrupted fingerprint and
+sequence checks. Two source RNG floats used uppercase scientific exponents;
+the Python live validator now preserves their original lexical representation.
+
+This is **transport preservation only**. The original independent six-turn
+emulator replay report is existing evidence from PR #231. The newly added
+persistent coordinator has not yet been exercised on this private native
+capture with an executable emulator in the current environment. It must
+separately pass the six-turn gate before a live game launch is requested.
 
 ## Test gates and remaining M1 work
 
