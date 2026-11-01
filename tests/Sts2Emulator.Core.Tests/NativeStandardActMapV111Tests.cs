@@ -191,7 +191,8 @@ public sealed class NativeStandardActMapV111Tests
             .First(a => a.Kind == "choose_map_node");
         var entered = engine.Step(atMap, move).State;
         Assert.Equal(RunPhase.Combat, entered.Phase);
-        var trace = Assert.NotNull(entered.NativeStartupQueueTrace);
+        Assert.NotNull(entered.NativeStartupQueueTrace);
+        var trace = entered.NativeStartupQueueTrace!;
         var comparison = Assert.Single(trace.Comparisons);
         Assert.Equal(1, comparison.Act);
         Assert.Equal(PrototypeRoomType.Combat, comparison.RoomType);
