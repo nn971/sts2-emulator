@@ -92,12 +92,14 @@ class NativeMapBuildPreflightTests(unittest.TestCase):
                 self.assertIn(str(data / "sts2.dll"), run.call_args.args[0])
                 self.assertIn("--project", run.call_args.args[0])
             observed["managed_assembly_sha256"] = "0" * 64
+            Success.stdout = json.dumps(observed)
             with patch.object(preflight.subprocess, "run",
                               return_value=Success()):
                 with self.assertRaisesRegex(RuntimeError, "mismatched contract"):
                     preflight.probe_native_metadata(data)
             observed["managed_assembly_sha256"] = digest
             observed["checks"][0]["present"] = False
+            Success.stdout = json.dumps(observed)
             with patch.object(preflight.subprocess, "run",
                               return_value=Success()):
                 with self.assertRaisesRegex(RuntimeError, "mismatched contract"):
