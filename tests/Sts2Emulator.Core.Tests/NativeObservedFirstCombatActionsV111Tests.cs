@@ -283,5 +283,25 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
             Assert.Equal(step.DiscardNativeIds.Select(id =>
                 nativeToEmulatorCard[checked((int)id)]), combat.DiscardPile);
         }
+
+        // Native executor #17 pre-action observation (ordinal 577):
+        // complete turn 3 and compare the next turn's dealt hand.
+        state = engine.Step(state, engine.GetLegalActions(state)
+            .Single(action => action.Kind == "end_turn")).State;
+        var turnFour = Assert.IsType<CombatState>(state.World!.Combat);
+        var targetFour = Assert.Single(turnFour.Enemies);
+        Assert.True(state.Player.Hp == 56 && turnFour.Turn == 4
+            && turnFour.Energy == 3 && turnFour.PlayerBlock == 0
+            && targetFour.Hp == 23 && targetFour.Block == 0,
+            $"Native turn 4 executor prestep differs: hp={state.Player.Hp}, " +
+            $"turn={turnFour.Turn}, energy={turnFour.Energy}, " +
+            $"block={turnFour.PlayerBlock}, enemy_hp={targetFour.Hp}");
+        Assert.Equal(new long[] { 8, 10, 4, 3, 9 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), turnFour.Hand);
+        Assert.Equal(new long[] { 7, 5 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), turnFour.DrawPile.Reverse());
+        Assert.Equal(new long[] { 1, 11, 12, 0, 6 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), turnFour.DiscardPile);
+        NativeRunRngV111.Validate(state);
     }
 }
