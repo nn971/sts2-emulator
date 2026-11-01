@@ -110,7 +110,7 @@ public static class NativeUpFrontRoomsV111
 
     /// <summary>
     /// Continue the real source UpFront stream immediately after the two
-    /// relic-bag populations (229 calls), preserving all three act queues.
+    /// relic-bag populations (230 calls), preserving all three act queues.
     /// No anonymous fast-forwarding or native state import is performed.
     /// </summary>
     public static Result Generate(RngBundle runStreams, int ascension)
@@ -118,7 +118,7 @@ public static class NativeUpFrontRoomsV111
         ArgumentNullException.ThrowIfNull(runStreams);
         if (ascension is < 0 or > 10)
             throw new ArgumentOutOfRangeException(nameof(ascension));
-        if (Snapshot(runStreams).Counter != 229)
+        if (Snapshot(runStreams).Counter != 230)
             throw new InvalidDataException(
                 "Native GenerateRooms must follow both source relic bags.");
         if (SharedEvents.Length != 18 || Catalogs.Length != 3)
