@@ -800,8 +800,9 @@ parity remain separately unverified.
 
 ### Live v111 Neow event-local native RNG integration
 
-The standard `V111RunFactory.Initialize` path now constructs Neow's
-actual three offered actions through `NativeNeowOfferV111.Predict` and
+For the explicit `v111-experimental-native-neow-opening-v1` replay
+profile, `V111RunFactory.Initialize` constructs Neow's actual three
+offered actions through `NativeNeowOfferV111.Predict` and
 `NativeRngV111`, using the independent content-local event seed,
 inside the ordinary `start_run` state transition. The adapter retains
 the source-equivalent order, curse exclusions, conditional extra options,
@@ -851,3 +852,15 @@ fully unlocked for the current v111 simulation profile; the source
 capture/probe continues to test four unlock hypotheses independently.
 Native mod runtime nonperturbation, map generator, settled event effects,
 and first-combat parity are not yet certified.
+
+### Replay-only native Neow opening profile and training isolation
+
+Use `reset_v111` with `fidelity_id=v111-experimental-native-neow-opening-v1`
+for strict first-combat source-prelude replay. The independent bootstrap
+selects this profile explicitly. In this mode the Neow event-local native
+RNG is initialized and retained in `NativeEventRng` by the opening
+factory without consuming a discarded prototype event draw. Ordinary
+v111 simulations and legacy training preserve their previous Neow
+choices and RNG. Source-side unlock gates and game-runtime fidelity are
+still unverified; the inspector must compare the observed complete
+source menu, not accept a model-predicted menu as source evidence.
