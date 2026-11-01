@@ -19,7 +19,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from native_action_envelope_audit import load as load_sidecar
 from native_lockstep_source_journal import build as build_source_journal
 
 SCHEMA = "sts2-native-live-event-v1"
@@ -103,9 +102,9 @@ def simulate_sidecar(records: list[dict]) -> list[dict]:
     for record in records:
         ordinal = record.get("ordinal")
         kind = record.get("type")
-        if type(ordinal) is not int or ordinal <= 0 or not isinstance(kind, str):
+        if type(ordinal) is not int or ordinal != len(events) or not isinstance(kind, str):
             raise LiveEventError("INVALID_SOURCE_RECORD",
-                                 "Native sidecar has invalid ordinal/type")
+                                 "Native sidecar ordinal is invalid or noncontiguous")
         events.append(_envelope(run_id, len(events) + 1, kind,
                                 record, ordinal))
     return events
@@ -167,7 +166,7 @@ def recover_sidecar(events: list[dict]) -> list[dict]:
                 raise LiveEventError("LIVE_SOURCE_KIND_MISMATCH",
                                      f"Event {seq} has mismatched source type")
             ordinal = row.get("source_ordinal")
-            if type(ordinal) is not int or ordinal <= source_ordinal or (
+            if type(ordinal) is not int or ordinal != source_ordinal + 1 or (
                     payload.get("ordinal") != ordinal):
                 raise LiveEventError("LIVE_SOURCE_ORDINAL_MISMATCH",
                                      f"Event {seq} breaks source ordering")
@@ -249,9 +248,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.sidecar:
-            records, error = load_sidecar(args.sidecar)
-            if error is not None:
-                raise LiveEventError("SOURCE_SIDECAR_READ_FAILED", error)
+            records = load_live(args.sidecar)
             events = simulate_sidecar(records)
         else:
             events = load_live(args.fidelity_events)
