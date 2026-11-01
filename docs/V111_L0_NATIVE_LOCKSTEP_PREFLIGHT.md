@@ -864,3 +864,43 @@ v111 simulations and legacy training preserve their previous Neow
 choices and RNG. Source-side unlock gates and game-runtime fidelity are
 still unverified; the inspector must compare the observed complete
 source menu, not accept a model-predicted menu as source evidence.
+
+### Experimental source-equivalent StandardActMap opening (2026-11-01)
+
+The native-game `StandardActMap.CreateFor` in pinned
+`Flaaax/STS2-source@706ef1c9fa2219220065849fd5265328607ece20`
+allocates an independent `Rng(runSeed, "act_1_map")` for both Overgrowth
+and Underdocks. The **type-count Gaussians precede the seven source paths**;
+the complete source algorithm also performs type-queue assignment,
+duplicate-path pruning and repair, then deterministic geometry cleanup
+(center, spread, straighten). These operations cannot be replaced with
+an equivalent-looking prototype map or a changed RNG stream name.
+
+`NativeStandardActMapV111.Generate(seed, ascension)` implements this
+source-shaped sequence with the existing audited native RNG codec and
+`NativeRngV111Contexts.ForActMap`. Its diagnostic result exposes
+`AfterQuotas`, `AfterPaths`, `AfterTypes`, `AfterPruning` and
+`FinalRng` snapshots, the finalized `MapState`, and its source
+type quotas. The translated graph and stream are independent of
+`NativeRunRng` (15 persistent streams) and `NativeEventRng` (Neow).
+
+The separate, **explicitly experimental** v111 fidelity profile
+`v111-experimental-native-standard-map-opening-v1` selects both this
+native-map construction and the existing native Neow event-local RNG
+in the persistent `start_run` transition. `RunState.NativeMapRng`
+is retained through snapshots and forks. All prior training and
+Neow-only profiles keep their previous prototype map generator.
+
+The prelude bootstrap now selects this map profile **only for pinned native
+source-build captures**; explicitly emulator-derived synthetic fixture
+transport remains on the older Neow-only profile. The bootstrap still
+reports an uncertified candidate until the source offers, native full map
+and map-local RNG checkpoints, selected room, mechanics and decision
+boundaries have been separately verified against the installed game.
+
+**Acceptance still outstanding:** capture and compare the *entire*
+original `StandardActMap` topology and room types, original map-local
+RNG state/counter at a certified source boundary, postprocessing node
+coordinates, and the first accepted map choice. A matching first visited
+node alone is insufficient. This update does not complete L1, claim
+original-game parity, or require a new game launch.
