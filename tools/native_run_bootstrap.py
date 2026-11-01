@@ -250,6 +250,60 @@ def _native_upfront_room_prefix_diagnosis(source, emulator_snapshot):
     }
 
 
+def _native_upfront_full_queue_diagnosis(source, emulator_snapshot):
+    """Compare whole generated native queues, if a new source capture has them."""
+    native = source.get("source_startup_room_queues")
+    if native is None:
+        return {"status": "SOURCE_FULL_ROOM_QUEUES_NOT_CAPTURED",
+                "full_queue_identity_parity": "NOT_TESTED"}
+    observed = native.get("acts") if isinstance(native, dict) else None
+    retained = emulator_snapshot.get("state", {}).get("native_startup_rooms")
+    predicted = retained.get("acts") if isinstance(retained, dict) else None
+    if not isinstance(observed, list) or len(observed) != 3:
+        return {"status": "BLOCKED_SOURCE_FULL_ROOM_QUEUES"}
+    if not isinstance(predicted, list) or len(predicted) != 3:
+        return {"status": "BLOCKED_EMULATOR_FULL_ROOM_QUEUES"}
+
+    def token(value):
+        return "".join(ch.upper() for ch in value if ch.isalnum())
+
+    for index, (a, b) in enumerate(zip(observed, predicted)):
+        if a.get("act_index") != index or b.get("act") != index + 1:
+            return {"status": "BLOCKED_FULL_ROOM_QUEUE_ACT_ORDER"}
+        for key in ("events", "normal_encounters", "elite_encounters",
+                    "boss_encounter", "second_boss_encounter", "ancient"):
+            left, right = a.get(key), b.get(key)
+            if key in ("events", "normal_encounters", "elite_encounters"):
+                if not isinstance(left, list) or not isinstance(right, list):
+                    return {"status": "BLOCKED_FULL_ROOM_QUEUE_ENTRIES"}
+                length = max(len(left), len(right))
+                pairs = [(left[i] if i < len(left) else None,
+                          right[i] if i < len(right) else None)
+                         for i in range(length)]
+            else:
+                pairs = [(left, right)]
+            for q_index, (native_id, emu_id) in enumerate(pairs):
+                if native_id is not None and not isinstance(native_id, str):
+                    return {"status": "BLOCKED_FULL_ROOM_QUEUE_ENTRIES"}
+                if emu_id is not None and not isinstance(emu_id, str):
+                    return {"status": "BLOCKED_FULL_ROOM_QUEUE_ENTRIES"}
+                if (token(native_id) if native_id is not None else None) != (
+                        token(emu_id) if emu_id is not None else None):
+                    return {
+                        "status": "SOURCE_FULL_ROOM_QUEUES_DIVERGED",
+                        "full_queue_identity_parity": "DIVERGED",
+                        "first_difference": {
+                            "path": "$.native_startup_rooms.acts[" + str(index)
+                                + "]." + key
+                                + (f"[{q_index}]" if len(pairs) > 1 else ""),
+                            "native": native_id, "emulator": emu_id,
+                        },
+                    }
+    return {"status": "SOURCE_FULL_ROOM_QUEUES_MATCHED",
+            "full_queue_identity_parity": "MATCHED",
+            "first_difference": None}
+
+
 def _source_preflight(source):
     if not isinstance(source, dict) or source.get("schema") != "native-run-prelude-audit-v1":
         return "BLOCKED_UNAUDITED_SOURCE", "Expected independent prelude auditor output"
@@ -423,6 +477,8 @@ def run_bootstrap(source: dict, session):
                 source, opening_snapshot)
             checks["native_upfront_room_prefix"] = (
                 _native_upfront_room_prefix_diagnosis(source, opening_snapshot))
+            checks["native_upfront_full_queues"] = (
+                _native_upfront_full_queue_diagnosis(source, opening_snapshot))
             map_check = compare_native_map(source, opening_snapshot)
             checks["native_map_comparison"] = map_check
             checks["native_map_rng_alignment"] = (
