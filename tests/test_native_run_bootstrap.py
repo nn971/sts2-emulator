@@ -139,7 +139,7 @@ class BootstrapTests(unittest.TestCase):
                          [x["kind"] for x in result["emulator_steps"]])
         self.assertEqual(1, session.reset_count)
         self.assertIsInstance(snapshot, str)
-        self.assertEqual("EXPORTED_UNCERTIFIED", result["candidate_emulator_snapshot"])
+        self.assertEqual("PRODUCED_UNCERTIFIED", result["candidate_emulator_snapshot"])
         self.assertEqual("NOT_TESTED", result["native_rng_alignment"])
         self.assertFalse(result["ready_for_native_lockstep"])
 
