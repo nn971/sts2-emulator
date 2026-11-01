@@ -18,12 +18,15 @@ public sealed class NativeSourceRecycleShuffleV111 : IDisposable
     private static readonly AsyncLocal<NativeSourceRecycleShuffleV111?> Active = new();
 
     private readonly NativeSourceRecycleShuffleV111? _parent;
-    private readonly RngBundle _nativeRunRng;
+    private readonly RngBundle _initialRunRng;
+    private RngBundle? _nativeRunRng;
     private bool _disposed;
 
     private NativeSourceRecycleShuffleV111(RngBundle runRng)
     {
-        _nativeRunRng = runRng.Fork();
+        // Most combat actions do not recycle a pile. Avoid cloning all
+        // named native RNG streams on each ordinary play_card/end_turn.
+        _initialRunRng = runRng;
         _parent = Active.Value;
         if (_parent is not null)
             throw new InvalidOperationException(
@@ -39,8 +42,10 @@ public sealed class NativeSourceRecycleShuffleV111 : IDisposable
 
     public int Recycles { get; private set; }
 
-    public RngStreamState SourceShuffleStream => _nativeRunRng.Streams.Single(
-        stream => stream.StreamId == "run.shuffle");
+    public RngStreamState SourceShuffleStream =>
+        (_nativeRunRng ?? throw new InvalidOperationException(
+            "Native recycle RNG was never advanced.")).Streams.Single(
+                stream => stream.StreamId == "run.shuffle");
 
     public static long[]? TryRecycle(CombatState combat, long[] eligible)
     {
@@ -69,6 +74,7 @@ public sealed class NativeSourceRecycleShuffleV111 : IDisposable
             return model != 0 ? model :
                 a.UpgradeLevel.CompareTo(b.UpgradeLevel);
         });
+        scope._nativeRunRng ??= scope._initialRunRng.Fork();
         NativeRngV111.Shuffle(scope._nativeRunRng, "run.shuffle", sorted);
         // Source post-shuffle order is front/top-first. Prototype arrays
         // are bottom-first; invert once to preserve the same draw order.
