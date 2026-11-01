@@ -9,8 +9,10 @@ currently executable. Source RNG and native mechanics parity stay unverified.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import re
+import struct
 from pathlib import Path
 
 from native_run_prelude_audit import audit, load
@@ -102,6 +104,61 @@ def _neow_native_id(option):
     if relic not in _RELIC_TO_EMULATOR:
         raise ValueError("Unsupported native Neow relic identity: " + relic)
     return _RELIC_TO_EMULATOR[relic]
+
+
+def _native_upfront_diagnosis(source, emulator_snapshot):
+    """Compare the source RunStarted cursor to the emulator's real startup.
+
+    Relic bags are currently an explicit 229-draw source prefix; the native
+    RunStarted observation also includes subsequent three-act GenerateRooms
+    work. Report this *actual* mismatch while allowing independent map and
+    Neow checks to continue. No source cursor is imported into the emulator.
+    """
+    samples = [s for s in source.get("source_run_rng_snapshots", [])
+               if s.get("site") == "run_started"]
+    if len(samples) != 1:
+        return {"status": "BLOCKED_SOURCE_UPFRONT_CHECKPOINT"}
+    source_streams = [s for s in samples[0].get("streams", [])
+                      if s.get("scope") == "run"
+                      and s.get("stream_id") == "UpFront"]
+    emu_streams = [s for s in emulator_snapshot.get("state", {})
+                   .get("native_run_rng", {}).get("streams", [])
+                   if s.get("stream_id") == "run.up_front"]
+    if len(source_streams) != 1 or len(emu_streams) != 1:
+        return {"status": "BLOCKED_UPFRONT_STREAM_IDENTITY"}
+    native, emulator = source_streams[0], emu_streams[0]
+    try:
+        encoded = emulator["state_bytes"]
+        words = struct.unpack("<QQQQ",
+            base64.b64decode(encoded, validate=True))
+        emulator_count = emulator["call_count"]
+        if type(emulator_count) is not int:
+            raise ValueError("Invalid emulator RNG counter")
+        expected = (native["s0"], native["s1"], native["s2"], native["s3"])
+        native_count = native["counter"]
+        if type(native_count) is not int:
+            raise ValueError("Invalid native RNG counter")
+    except (KeyError, ValueError, TypeError, struct.error):
+        return {"status": "BLOCKED_UPFRONT_CURSOR_ENCODING"}
+    matched = (native_count == emulator_count and expected == words)
+    return {
+        "status": ("SOURCE_UPFRONT_MATCHED" if matched
+                   else "SOURCE_UPFRONT_DIVERGED"),
+        "source_boundary": "RunManager.RunStarted",
+        "emulator_boundary": "emulator.start_run_after_relic_bags",
+        "source_counter": native_count,
+        "emulator_counter": emulator_count,
+        "remaining_source_draws": native_count - emulator_count,
+        "source_cursor_words_match": expected == words,
+        "source_upfront_all_phases_reconstructed": False,
+        "first_difference": (None if matched else {
+            "path": "$.native_run_rng.run.up_front.counter"
+                if native_count != emulator_count else
+                "$.native_run_rng.run.up_front.state_bytes",
+            "native": native_count if native_count != emulator_count else expected,
+            "emulator": emulator_count if native_count != emulator_count else words,
+        }),
+    }
 
 
 def _source_preflight(source):
@@ -272,8 +329,10 @@ def run_bootstrap(source: dict, session):
         state = root.step(initial[0]["actionId"])
         steps.append({"kind": "start_run", "action_id": initial[0]["actionId"]})
         if has_pinned_native_build(ident):
-            map_check = compare_native_map(
-                source, json.loads(state.save_snapshot()))
+            opening_snapshot = json.loads(state.save_snapshot())
+            checks["native_upfront_startup"] = _native_upfront_diagnosis(
+                source, opening_snapshot)
+            map_check = compare_native_map(source, opening_snapshot)
             checks["native_map_comparison"] = map_check
             checks["native_map_rng_alignment"] = (
                 map_check["native_map_rng_alignment"])
