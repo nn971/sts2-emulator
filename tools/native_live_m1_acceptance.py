@@ -85,20 +85,26 @@ def inspect_pair(sidecar: Path, prelude: Path) -> dict:
     }
 
 
-def discover_pair(root: Path) -> tuple[Path, Path]:
+def discover_pair(root: Path, min_player_turns: int = 6) -> tuple[Path, Path]:
     if not root.is_dir():
         raise AcceptanceError("BLOCKED_SOURCE_PAIRING",
                               "Native trace directory does not exist")
     preludes = list(root.rglob("run-prelude-*.jsonl"))
     sidecars = sorted(root.rglob("passive-*.actions.jsonl"),
                       key=lambda path: path.stat().st_mtime, reverse=True)
+    fallback = None
     for sidecar in sidecars:
         for prelude in preludes:
             try:
-                inspect_pair(sidecar, prelude)
+                evidence = inspect_pair(sidecar, prelude)
             except AcceptanceError:
                 continue
-            return sidecar, prelude
+            if fallback is None:
+                fallback = (sidecar, prelude)
+            if evidence["player_turn_checkpoint_candidates"] >= min_player_turns:
+                return sidecar, prelude
+    if fallback is not None:
+        return fallback
     raise AcceptanceError("BLOCKED_SOURCE_PAIRING",
                           "No complete native sidecar and matching run prelude found")
 
@@ -175,7 +181,8 @@ def main() -> int:
         parser.error("--min-player-turns must be positive")
     try:
         sidecar, prelude = ((args.sidecar, args.prelude)
-                            if args.sidecar else discover_pair(args.trace_dir))
+                            if args.sidecar else discover_pair(args.trace_dir,
+                                                             args.min_player_turns))
         report = acceptance_result(sidecar, prelude, dotnet=args.dotnet,
             cli_dll=args.cli_dll, coordinator_report=args.out.with_name(
                 args.out.stem + ".coordinator.json"),
