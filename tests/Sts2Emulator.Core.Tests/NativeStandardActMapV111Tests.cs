@@ -117,8 +117,9 @@ public sealed class NativeStandardActMapV111Tests
             var expectedRooms = NativeUpFrontRoomsV111.Generate(sourceStartupStream, 10);
             Assert.NotNull(started.NativeStartupRooms);
             Assert.Equal(expectedRooms.FinalRng, started.NativeStartupRooms!.FinalRng);
-            Assert.Equal(412UL, started.NativeRunRng!.Streams.Single(
-                stream => stream.StreamId == "run.up_front").CallCount);
+            Assert.Equal((ulong)expectedRooms.FinalRng.Counter,
+                started.NativeRunRng!.Streams.Single(
+                    stream => stream.StreamId == "run.up_front").CallCount);
         }
         else
         {
