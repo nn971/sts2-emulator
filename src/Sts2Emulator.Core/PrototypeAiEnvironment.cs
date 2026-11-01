@@ -62,7 +62,13 @@ public sealed record PrototypeAiCombat(
     PrototypeAiEnemy[] Enemies,
     string? PendingChoiceId,
     // Active player powers are visible on the combat HUD.
-    PrototypeAiPower[]? PlayerPowers = null);
+    PrototypeAiPower[]? PlayerPowers = null,
+    // Public only when a player card-selection dialog is pending.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiCard[]? SelectionCandidates = null,
+    // Cards already chosen in an opt-in sequential selection dialog.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiCard[]? SelectionSelectedCards = null);
 
 public sealed record PrototypeAiMapNode(
     string NodeId,
@@ -532,7 +538,8 @@ public sealed class PrototypeAiEnvironment
                     state.Player.Relics.Any(relic =>
                         PrototypeContent.Relic(
                             relic.RelicId)
-                            .HideEnemyIntents)),
+                            .HideEnemyIntents),
+                    state.ExperimentalCompactCardSelection),
             Reward: world?.Reward is null
                 ? null
                 : new PrototypeAiReward(
@@ -936,7 +943,8 @@ public sealed class PrototypeAiEnvironment
         CombatState combat,
         int act,
         int ascension,
-        bool hideEnemyIntents)
+        bool hideEnemyIntents,
+        bool exposeCompactSelection)
     {
         var byId = combat.Cards.ToDictionary(card => card.InstanceId);
 
@@ -992,6 +1000,13 @@ public sealed class PrototypeAiEnvironment
             PlayerPowers: combat.PlayerPowers
                 .Select(power => new PrototypeAiPower(
                     power.PowerId, power.Stacks))
-                .ToArray());
+                .ToArray(),
+            SelectionCandidates: !exposeCompactSelection
+                || combat.PendingChoice is null
+                ? null : combat.PendingChoice.CandidateCardInstanceIds
+                    .Select(Card).ToArray(),
+            SelectionSelectedCards: exposeCompactSelection
+                && combat.PendingChoice?.SequentialSelectedCardInstanceIds
+                is { } selected ? selected.Select(Card).ToArray() : null);
     }
 }
