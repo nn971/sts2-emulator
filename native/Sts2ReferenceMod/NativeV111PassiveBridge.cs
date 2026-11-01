@@ -123,7 +123,7 @@ internal static class NativeV111PassiveBridge
             try
             {
                 TryCaptureInitialNativeMap();
-                if (action is MoveToMapCoordAction or VoteForMapCoordAction
+                if ((action is MoveToMapCoordAction or VoteForMapCoordAction)
                     && !_runPrelude.HasInitialMapSnapshot
                     && !_missingMapAtFirstInputReported)
                 {
@@ -441,7 +441,7 @@ internal static class NativeV111PassiveBridge
                 .Append(map.StartingMapPoint)
                 .Append(map.BossMapPoint)
                 .Concat(map.SecondBossMapPoint is { } second
-                    ? [second] : Array.Empty<MapPoint>())
+                    ? new[] { second } : Array.Empty<MapPoint>())
                 .OrderBy(p => p.coord.row).ThenBy(p => p.coord.col)
                 .Select(p => new NativeMapPointView(
                     p.coord.col, p.coord.row, p.PointType.ToString(),
