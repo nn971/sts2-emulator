@@ -116,6 +116,8 @@ public sealed class NativeStandardActMapV111Tests
         {
             var expectedRooms = NativeUpFrontRoomsV111.Generate(sourceStartupStream, 10);
             Assert.NotNull(started.NativeStartupRooms);
+            Assert.NotNull(started.NativeStartupQueueTrace);
+            Assert.Empty(started.NativeStartupQueueTrace!.Comparisons);
             Assert.Equal(expectedRooms.FinalRng, started.NativeStartupRooms!.FinalRng);
             Assert.Equal((ulong)expectedRooms.FinalRng.Counter,
                 started.NativeRunRng!.Streams.Single(
@@ -126,6 +128,7 @@ public sealed class NativeStandardActMapV111Tests
             // Underdocks has a distinct source room catalogue and retains
             // the relic bag prefix until its own translation is implemented.
             Assert.Null(started.NativeStartupRooms);
+            Assert.Null(started.NativeStartupQueueTrace);
             Assert.Equal(229UL, started.NativeRunRng!.Streams.Single(
                 stream => stream.StreamId == "run.up_front").CallCount);
         }
@@ -150,8 +153,18 @@ public sealed class NativeStandardActMapV111Tests
                 snapshot.NativeStartupRooms!.Acts[0].Events);
             Assert.NotSame(started.NativeStartupRooms,
                 started.Fork().NativeStartupRooms);
+            Assert.NotSame(started.NativeStartupQueueTrace,
+                snapshot.NativeStartupQueueTrace);
+            Assert.NotSame(started.NativeStartupQueueTrace!.NormalVisits,
+                snapshot.NativeStartupQueueTrace!.NormalVisits);
+            Assert.NotSame(started.NativeStartupQueueTrace,
+                started.Fork().NativeStartupQueueTrace);
         }
-        else Assert.Null(snapshot.NativeStartupRooms);
+        else
+        {
+            Assert.Null(snapshot.NativeStartupRooms);
+            Assert.Null(snapshot.NativeStartupQueueTrace);
+        }
         RunConfiguration.ValidateState(snapshot);
     }
 
