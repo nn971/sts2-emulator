@@ -120,6 +120,14 @@ class NativeSourceJournalTests(unittest.TestCase):
                          observed[0]["post_execution_state"])
         self.assertEqual("NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED",
                          observed[0]["source_boundary"])
+        self.assertEqual({"energy": {"before": 2, "after": 1}},
+                         observed[0]["source_executor_observed_delta"])
+        self.assertIsNone(observed[0]["preceding_completed_executor_action_id"])
+        self.assertEqual("UNOBSERVED",
+                         observed[0]["preceding_completion_to_start_state_agreement"])
+        self.assertEqual([], observed[0]["active_prior_executor_action_ids"])
+        self.assertEqual("NATIVE_CALLBACK_PROJECTIONS_ONLY",
+                         observed[0]["source_comparison"])
         self.assertEqual("SOURCE_OBSERVED",
                          cmd["native_executor_object_identity"])
         self.assertEqual("UNVERIFIED", cmd["originating_human_input"])
@@ -197,6 +205,70 @@ class NativeSourceJournalTests(unittest.TestCase):
         self.assertFalse(auto["emulator_applied"])
         self.assertEqual("NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED",
                          auto["source_boundary"])
+        self.assertEqual(1, auto["preceding_completed_executor_action_id"])
+        self.assertEqual("SOURCE_OBSERVED_EQUAL",
+                         auto["preceding_completion_to_start_state_agreement"])
+        self.assertEqual({}, auto["preceding_completion_to_start_observed_delta"])
+        self.assertEqual([], auto["active_prior_executor_action_ids"])
+
+    def test_inter_executor_state_change_is_observed_without_claiming_an_action(self):
+        rows = source_capture()
+        # Native callbacks may have effects *between* executor envelopes.
+        # A source-only comparison must record them separately from the
+        # next executor's own delta, even with no player decision available.
+        rows[-1:-1] = [
+            {"type": "action_started", "action_id": 2,
+             "native_type": "ReadyToBeginEnemyTurnAction",
+             "canonical_action": None,
+             "state": {"player": {"hp": 48}, "combat": {"energy": 0}}},
+            {"type": "action_completed", "action_id": 2,
+             "state": {"player": {"hp": 48}, "combat": {"energy": 0}}},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", result["status"])
+        current = result["source_executor_observed_transitions"][1]
+        self.assertEqual(1, current["preceding_completed_executor_action_id"])
+        self.assertEqual("SOURCE_OBSERVED_DIFFERENT",
+                         current["preceding_completion_to_start_state_agreement"])
+        self.assertEqual({
+            "player_hp": {"before": 50, "after": 48},
+            "energy": {"before": 1, "after": 0},
+        }, current["preceding_completion_to_start_observed_delta"])
+        self.assertEqual({}, current["source_executor_observed_delta"])
+        self.assertEqual("NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED",
+                         current["source_boundary"])
+        self.assertFalse(current["emulator_applied"])
+        self.assertEqual("NOT_TESTED", result["emulator_parity"])
+
+    def test_nested_executor_start_tracks_active_owner_not_last_completion(self):
+        rows = source_capture()
+        completed = next(i for i, row in enumerate(rows)
+                         if row["type"] == "action_completed"
+                         and row.get("action_id") == 1)
+        # Nested source executor action starts and completes while action 1
+        # is still active. This is not the UI overlap at decision 9.
+        rows[completed:completed] = [
+            {"type": "action_started", "action_id": 2,
+             "parent_action_id": 1,
+             "native_type": "ReadyToBeginEnemyTurnAction",
+             "canonical_action": None,
+             "state": {"player": {"hp": 50}, "combat": {"energy": 2}}},
+            {"type": "action_completed", "action_id": 2,
+             "state": {"player": {"hp": 50}, "combat": {"energy": 2}}},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", result["status"])
+        nested = result["source_executor_observed_transitions"][1]
+        self.assertEqual([1], nested["active_prior_executor_action_ids"])
+        self.assertIsNone(nested["preceding_completed_executor_action_id"])
+        self.assertEqual("UNOBSERVED",
+                         nested["preceding_completion_to_start_state_agreement"])
+        self.assertEqual("NATIVE_CALLBACK_PROJECTIONS_ONLY",
+                         nested["source_comparison"])
 
     def test_missing_true_run_identity_remains_explicit(self):
         rows = [r for r in source_capture() if r["type"] != "native_run_identity"]
