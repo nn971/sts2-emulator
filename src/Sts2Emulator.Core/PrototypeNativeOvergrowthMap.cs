@@ -34,6 +34,12 @@ public static class PrototypeNativeOvergrowthMap
     public static bool IsGenerationProfile(string? profileId) =>
         profileId is GenerationProfileId or LegacyGenerationProfileId;
 
+    // Research fixed maps retain native-structure Overgrowth gameplay and
+    // chance rules without asserting native map-generation fidelity.
+    public static bool UsesOvergrowthGameplay(string? profileId) =>
+        IsGenerationProfile(profileId)
+        || profileId == ExperimentalFixedRouteOvergrowthMapV111.ProfileId;
+
     private sealed class MapRandom(RngBundle streams, string streamId, bool native)
     {
         private readonly NativeRandomIndexProviderV111 _nativeIndex = new();
