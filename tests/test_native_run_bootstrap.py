@@ -90,6 +90,18 @@ class NativeUpFrontBoundaryTests(unittest.TestCase):
         }]}}}
         self.assertEqual("SOURCE_UPFRONT_MATCHED",
                          _native_upfront_diagnosis(sample, snap)["status"])
+        self.assertFalse(_native_upfront_diagnosis(sample, snap)[
+            "source_upfront_all_phases_reconstructed"])
+        snap["state"]["native_startup_rooms"] = {"acts": [
+            {"act": index, "events": ["Event"],
+             "normal_encounters": ["Weak"], "elite_encounters": ["Elite"],
+             "boss_encounter": "Boss", "ancient": "Ancient"}
+            for index in (1, 2, 3)]}
+        self.assertTrue(_native_upfront_diagnosis(sample, snap)[
+            "source_upfront_all_phases_reconstructed"])
+        self.assertEqual("UNOBSERVED_NATIVE_QUEUES",
+            _native_upfront_diagnosis(sample, snap)[
+                "source_upfront_room_identity_parity"])
         snap["state"]["native_run_rng"]["streams"][0]["state_bytes"] = "bogus"
         self.assertEqual("BLOCKED_UPFRONT_CURSOR_ENCODING",
                          _native_upfront_diagnosis(sample, snap)["status"])
