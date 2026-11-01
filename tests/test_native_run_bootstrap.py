@@ -11,7 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_run_bootstrap import (
-    _neow_native_id, _source_preflight, run_bootstrap, SCHEMA,
+    _neow_native_id, _source_preflight, _emulator_opening_profile,
+    run_bootstrap, SCHEMA,
 )
 from native_neow_rng_verify import neow_event_rng, verify_neow_event_rng, xxhash64
 
@@ -118,6 +119,15 @@ class FakeSession:
 
 
 class BootstrapTests(unittest.TestCase):
+    def test_source_build_uses_native_map_only_for_pinned_game(self):
+        real = {"game_build": "assembly=v0.111.0;mvid=" + "a" * 32
+                + ";sha256=" + "b" * 64}
+        synthetic = fixture()["run_identity"]
+        self.assertEqual("v111-experimental-native-standard-map-opening-v1",
+                         _emulator_opening_profile(real))
+        self.assertEqual("v111-experimental-native-neow-opening-v1",
+                         _emulator_opening_profile(synthetic))
+
     def test_source_neow_mapping_requires_original_text_and_relic_id(self):
         item = fixture()["source_event_choice_requests"][0]["options"][2]
         self.assertEqual("take_proto.native.neow.heftytablet",
