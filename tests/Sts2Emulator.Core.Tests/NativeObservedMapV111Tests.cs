@@ -207,10 +207,12 @@ public sealed class NativeObservedMapV111Tests
 
         // Native RunStarted UpFront counter 412 is reconstructed by
         // source relic bags and three-act pre-generated room queues.
-        // Their contents have not been observed in the passive source.
+        // Full native queue identities were observed in the 2026-11-01
+        // startup_room_queues record and checked independently in a
+        // separate three-act golden regression.
         Assert.Equal(412UL, state.NativeRunRng.Streams.Single(
             stream => stream.StreamId == "run.up_front").CallCount);
-        Assert.Equal(229,
+        Assert.Equal(230,
             state.NativeStartupRelicBags!.AfterPlayerBag.Counter);
         Assert.Equal(412, state.NativeStartupRooms!.FinalRng.Counter);
         Assert.Equal(3, state.NativeStartupRooms.Acts.Length);
