@@ -252,5 +252,36 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
         Assert.Equal(expectedShuffle, NativeRngV111.ToSnapshot(combatShuffle));
         // The combat and persistent run owners must agree across all streams.
         NativeRunRngV111.Validate(state);
+        // Original source executor observations beyond strict decision 9:
+        // Neutralize #11 (453), Defend #12 (471), Defend #13 (491),
+        // Strike #14 (524). Their callbacks are not fresh decision boundaries.
+        foreach (var step in new[]
+        {
+            new ObservedAction(11, 1, 453, 3, 0, 29, [12, 0, 6, 11], [1]),
+            new ObservedAction(12, 11, 471, 2, 5, 29, [12, 0, 6], [1, 11]),
+            new ObservedAction(13, 12, 491, 1, 10, 29, [0, 6], [1, 11, 12]),
+            new ObservedAction(14, 0, 524, 0, 10, 23, [6], [1, 11, 12, 0])
+        })
+        {
+            var play = engine.GetLegalActions(state).Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId ==
+                    nativeToEmulatorCard[step.NativeCardInstanceId]
+                && action.ReadPayload<PlayCardPayload>().TargetEnemyId ==
+                    (step.NativeExecutorActionId is 11 or 14 ? enemy.InstanceId : null));
+            state = engine.Step(state, play).State;
+            var combat = Assert.IsType<CombatState>(state.World!.Combat);
+            var target = Assert.Single(combat.Enemies);
+            Assert.True(state.Player.Hp == 56 && combat.Turn == 3
+                && combat.Energy == step.Energy
+                && combat.PlayerBlock == step.PlayerBlock
+                && target.Hp == step.EnemyHp,
+                $"Native executor {step.NativeExecutorActionId} at {step.SourceCompleteOrdinal}: " +
+                $"energy={combat.Energy}; block={combat.PlayerBlock}; enemy={target.Hp}");
+            Assert.Equal(step.HandNativeIds.Select(id =>
+                nativeToEmulatorCard[checked((int)id)]), combat.Hand);
+            Assert.Equal(step.DiscardNativeIds.Select(id =>
+                nativeToEmulatorCard[checked((int)id)]), combat.DiscardPile);
+        }
     }
 }
