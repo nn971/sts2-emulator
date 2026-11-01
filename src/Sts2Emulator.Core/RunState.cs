@@ -97,7 +97,15 @@ public sealed record RunState(
     // Unlike NativeRunRng, this RNG has a content-derived lifetime.
     RngBundle? NativeEventRng = null,
     // Source-owned act map stream, independent of the 15 persistent streams.
-    RngBundle? NativeMapRng = null)
+    RngBundle? NativeMapRng = null,
+    // The source relic-bag phase ends at UpFront counter 230;
+    // source room pre-generation is retained separately below.
+    NativeUpFrontRelicBagsV111.Result? NativeStartupRelicBags = null,
+    // Source-ordered UpFront event/encounter/boss/Ancient pre-generation.
+    NativeUpFrontRoomsV111.Result? NativeStartupRooms = null,
+    // Diagnostic-only queue cursor; records expected versus actually
+    // entered encounters without changing gameplay or named RNG streams.
+    NativeStartupRoomQueueTraceV111.Snapshot? NativeStartupQueueTrace = null)
 {
     public RunState Fork() => this with
     {
@@ -106,6 +114,9 @@ public sealed record RunState(
         NativeRunRng = NativeRunRng?.Fork(),
         NativeEventRng = NativeEventRng?.Fork(),
         NativeMapRng = NativeMapRng?.Fork(),
+        NativeStartupRelicBags = NativeStartupRelicBags?.Fork(),
+        NativeStartupRooms = NativeStartupRooms?.Fork(),
+        NativeStartupQueueTrace = NativeStartupQueueTrace?.Fork(),
         ExtensionState = ExtensionState.Clone(),
         World = World?.Fork(),
         Configuration = Configuration?.Fork()

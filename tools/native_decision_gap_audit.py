@@ -63,6 +63,7 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
     stable_id = None
     consumed = set()
     last_matched_start = 0
+    last_matched_executor_id = None
     nested_pause = []
     frames = []
     candidates = []
@@ -70,12 +71,21 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
     # index all source return observations before walking executor starts.
     requested = {}
     returned = {}
+    completed = {}
+    ui_begins = []
+    strict_gap_records = []
     for row in sidecar:
         details = row.get("data") or {}
         if row.get("type") == "native_input_request":
             requested[details.get("input_request_id")] = row
         elif row.get("type") == "native_input_outcome":
             returned[details.get("input_request_id")] = row
+        elif row.get("type") == "action_completed":
+            completed[row.get("action_id")] = row
+        elif row.get("type") == "native_ui_play_begin":
+            ui_begins.append(row)
+        elif row.get("type") == "strict_input_gap":
+            strict_gap_records.append(row)
     choices = []
     hand_menus = []
     menu_revisions = []
@@ -122,6 +132,7 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
                 consumed.add(stable_id)
                 report["matched_actions"] += 1
                 last_matched_start = i
+                last_matched_executor_id = aid
                 continue
             report["unmatched_actions"] += 1
             if report["first_gap"] is None:
@@ -203,6 +214,10 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
                     ],
                     "sidecar_ordinal": i,
                     "executor_action_id": aid,
+                    "previous_matched_executor_action_id":
+                        last_matched_executor_id,
+                    "previous_matched_executor_start_ordinal":
+                        last_matched_start or None,
                     "native_type": record.get("native_type"),
                     "candidate_action": record.get("canonical_action"),
                     "last_strict_decision_id": stable_id,
@@ -251,6 +266,88 @@ def audit(strict: list[dict], sidecar: list[dict]) -> dict:
             and (r.get("data") or {}).get("combat_card_id") == cid
         ] if candidate.get("kind") == "play_card" else []
         gap["ui_play_correlation"] = "CARD_ID_CANDIDATES_NOT_UNIQUE_PROOF"
+
+        # A native UI play may begin while the preceding executor action is
+        # still resolving, then enqueue after that action completes. This
+        # temporal overlap explains why the frame-gated strict recorder has
+        # no *new* decision, even though the source input and executor start
+        # are observed. Never certify a missing legal menu from these facts.
+        start = gap.get("previous_matched_executor_start_ordinal") or 0
+        first = gap["sidecar_ordinal"]
+        previous_id = gap.get("previous_matched_executor_action_id")
+        prior_completed = completed.get(previous_id)
+        complete_at = (prior_completed.get("ordinal")
+                       if prior_completed is not None else None)
+        request_id = gap.get("source_input_request_id")
+        request = requested.get(request_id)
+        request_at = request.get("ordinal") if request is not None else None
+        candidates = [r for r in ui_begins
+                      if candidate.get("kind") == "play_card"
+                      and (r.get("data") or {}).get("combat_card_id") == cid
+                      and start < r.get("ordinal", 0) < first
+                      and (request_at is None
+                           or r["ordinal"] < request_at)]
+        unique_ui = candidates[0] if len(candidates) == 1 else None
+        begin_at = unique_ui.get("ordinal") if unique_ui else None
+        source_start = next((r for r in sidecar
+                             if r.get("ordinal") == first), {})
+        correlated_request = (request is not None
+                              and _canonical(request.get("canonical_action"))
+                                  == _canonical(candidate)
+                              and (source_start.get("data") or {})
+                                  .get("input_request_id") == request_id)
+        observed_gaps = [r for r in strict_gap_records
+                         if r.get("action_id") ==
+                            gap.get("executor_action_id")
+                         and first < r.get("ordinal", 0)]
+        unique_strict_gap = (
+            observed_gaps[0] if len(observed_gaps) == 1 else None)
+        gap_data = (unique_strict_gap or {}).get("data") or {}
+        overlap = (begin_at is not None and complete_at is not None
+                   and request_at is not None and correlated_request
+                   and start < begin_at < complete_at < request_at < first)
+        gap["source_timing"] = {
+            "source_ui_begin_ordinal": begin_at,
+            "ui_begin_candidate_count": len(candidates),
+            "previous_executor_action_completed_ordinal": complete_at,
+            "input_request_ordinal": request_at,
+            "source_request_executor_action_identity_correlated":
+                correlated_request,
+            "ui_begin_before_previous_action_completed":
+                begin_at < complete_at if begin_at is not None
+                and complete_at is not None else None,
+            "request_after_previous_action_completed":
+                request_at > complete_at if request_at is not None
+                and complete_at is not None else None,
+            "classification": (
+                "NATIVE_UI_PLAY_BEGIN_OVERLAPPED_PREVIOUS_EXECUTOR_ACTION"
+                if overlap else "TEMPORAL_CAUSE_UNVERIFIED"),
+            "strict_input_gap_ordinal": (
+                unique_strict_gap.get("ordinal")
+                if unique_strict_gap else None),
+            "strict_last_reported_frame_gate":
+                gap_data.get("last_reported_gate"),
+            "strict_decision_generation":
+                gap_data.get("decision_generation"),
+            "strict_last_captured_generation":
+                gap_data.get("last_captured_generation"),
+            "source_observation_only": True,
+            "fresh_semantic_legal_menu_verified": False,
+        }
+        # Compare two *observed* states, without treating their equality as
+        # evidence of a stable frame or valid full legal-action menu.
+        request_state = request.get("state") if request else None
+        complete_state = (prior_completed.get("state")
+                          if prior_completed else None)
+        start_state = source_start.get("state")
+        gap["source_timing"]["request_and_start_state_agree"] = (
+            request_state == start_state
+            if isinstance(request_state, dict)
+            and isinstance(start_state, dict) else None)
+        gap["source_timing"]["last_completion_and_request_state_agree"] = (
+            complete_state == request_state
+            if isinstance(complete_state, dict)
+            and isinstance(request_state, dict) else None)
     unpaired_strict = sorted(set(actions) - consumed)
     if unpaired_strict:
         report["errors"].append("STRICT_ACTION_WITHOUT_MATCHED_EXECUTOR_START")

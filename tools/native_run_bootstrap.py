@@ -9,13 +9,16 @@ currently executable. Source RNG and native mechanics parity stay unverified.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import re
+import struct
 from pathlib import Path
 
 from native_run_prelude_audit import audit, load
 from native_neow_rng_verify import verify_neow_event_rng
 from native_run_rng_verify import verify_run_streams
+from native_map_fidelity import compare_native_map
 from native_neow_rng_probe_audit import compare as compare_neow_rng, has_pinned_native_build
 
 SCHEMA = "native-first-combat-bootstrap-v1"
@@ -103,6 +106,321 @@ def _neow_native_id(option):
     return _RELIC_TO_EMULATOR[relic]
 
 
+def _native_upfront_diagnosis(source, emulator_snapshot):
+    """Compare the complete source-ordered UpFront schedule at RunStarted.
+
+    Verify both the native counter and four RNG words. The generated event,
+    encounter and Ancient queues are retained for future continuation, but
+    their identities remain unobserved by the passive native capture.
+    """
+    samples = [s for s in source.get("source_run_rng_snapshots", [])
+               if s.get("site") == "run_started"]
+    if len(samples) != 1:
+        return {"status": "BLOCKED_SOURCE_UPFRONT_CHECKPOINT"}
+    source_streams = [s for s in samples[0].get("streams", [])
+                      if s.get("scope") == "run"
+                      and s.get("stream_id") == "UpFront"]
+    emu_streams = [s for s in emulator_snapshot.get("state", {})
+                   .get("native_run_rng", {}).get("streams", [])
+                   if s.get("stream_id") == "run.up_front"]
+    if len(source_streams) != 1 or len(emu_streams) != 1:
+        return {"status": "BLOCKED_UPFRONT_STREAM_IDENTITY"}
+    native, emulator = source_streams[0], emu_streams[0]
+    try:
+        encoded = emulator["state_bytes"]
+        words = struct.unpack("<QQQQ",
+            base64.b64decode(encoded, validate=True))
+        emulator_count = emulator["call_count"]
+        if type(emulator_count) is not int:
+            raise ValueError("Invalid emulator RNG counter")
+        expected = (native["s0"], native["s1"], native["s2"], native["s3"])
+        native_count = native["counter"]
+        if type(native_count) is not int:
+            raise ValueError("Invalid native RNG counter")
+    except (KeyError, ValueError, TypeError, struct.error):
+        return {"status": "BLOCKED_UPFRONT_CURSOR_ENCODING"}
+    matched = (native_count == emulator_count and expected == words)
+    retained = emulator_snapshot.get("state", {}).get("native_startup_rooms")
+    acts = retained.get("acts") if isinstance(retained, dict) else None
+    generated_queues_present = (isinstance(acts, list) and len(acts) == 3
+        and [act.get("act") for act in acts if isinstance(act, dict)] == [1, 2, 3]
+        and all(isinstance(act.get("events"), list)
+                and isinstance(act.get("normal_encounters"), list)
+                and isinstance(act.get("elite_encounters"), list)
+                and isinstance(act.get("boss_encounter"), str)
+                and isinstance(act.get("ancient"), str)
+                for act in acts if isinstance(act, dict)))
+    return {
+        "status": ("SOURCE_UPFRONT_MATCHED" if matched
+                   else "SOURCE_UPFRONT_DIVERGED"),
+        "source_boundary": "RunManager.RunStarted",
+        "emulator_boundary": ("emulator.start_run_after_source_generate_rooms"
+                              if generated_queues_present else
+                              "emulator.start_run_without_retained_source_rooms"),
+        "source_counter": native_count,
+        "emulator_counter": emulator_count,
+        "remaining_source_draws": native_count - emulator_count,
+        "source_cursor_words_match": expected == words,
+        "source_upfront_all_phases_reconstructed": generated_queues_present,
+        "source_upfront_room_identity_parity": "OBSERVED_PREFIX_COMPARED_SEPARATELY",
+        "first_difference": (None if matched else {
+            "path": "$.native_run_rng.run.up_front.counter"
+                if native_count != emulator_count else
+                "$.native_run_rng.run.up_front.state_bytes",
+            "native": native_count if native_count != emulator_count else expected,
+            "emulator": emulator_count if native_count != emulator_count else words,
+        }),
+    }
+
+
+
+def _native_upfront_room_prefix_diagnosis(source, emulator_snapshot):
+    """Compare pre-generated queue prefixes with actually entered native rooms.
+
+    RNG-state agreement cannot establish queue-content agreement: identical
+    call counts can select different encounters if source pools or ordering
+    differ. Observed RoomEntered identities are independent native evidence;
+    the source does not expose the entire pre-generated queue yet.
+    """
+    startup = emulator_snapshot.get("state", {}).get("native_startup_rooms")
+    acts = startup.get("acts") if isinstance(startup, dict) else None
+    if (not isinstance(acts, list) or len(acts) != 3
+        or [a.get("act") for a in acts if isinstance(a, dict)] != [1, 2, 3]):
+        return {"status": "BLOCKED_SOURCE_ROOM_QUEUE_SNAPSHOT"}
+
+    # Native RunManager.RoomEntered is authoritative for an encountered
+    # identity, regardless of unverified map-input queue provenance.
+    observed = [room for room in source.get("source_room_arrivals", [])
+                if room.get("room_type") in ("Monster", "Elite", "Boss")]
+    if not observed:
+        return {"status": "SOURCE_ROOM_QUEUE_PREFIX_UNOBSERVED",
+                "full_queue_identity_parity": "NOT_TESTED"}
+
+    def identity_token(value):
+        return "".join(ch.upper() for ch in value if ch.isalnum())
+
+    counters = {}
+    for room in sorted(observed, key=lambda item: item.get("ordinal", 0)):
+        act_idx, room_type, native_id = (
+            room.get("act_index"), room.get("room_type"), room.get("room_model_id"))
+        if (type(act_idx) is not int or not 0 <= act_idx < 3
+            or not isinstance(native_id, str) or not native_id):
+            return {"status": "BLOCKED_NATIVE_ROOM_IDENTITY"}
+        act = acts[act_idx]
+        field = {"Monster": "normal_encounters",
+                 "Elite": "elite_encounters",
+                 "Boss": "boss_encounter"}[room_type]
+        count = counters.get((act_idx, room_type), 0)
+        counters[(act_idx, room_type)] = count + 1
+        if room_type == "Boss":
+            expected = (act.get("boss_encounter") if count == 0
+                        else act.get("second_boss_encounter"))
+            path = ("$.native_startup_rooms.acts["
+                    + str(act_idx) + "]."
+                    + ("boss_encounter" if count == 0 else "second_boss_encounter"))
+        else:
+            entries = act.get(field)
+            if not isinstance(entries, list) or count >= len(entries):
+                return {"status": "BLOCKED_SOURCE_ROOM_QUEUE_ENTRIES",
+                        "act": act_idx + 1, "room_type": room_type}
+            expected = entries[count]
+            path = ("$.native_startup_rooms.acts["
+                    + str(act_idx) + "]." + field + "[" + str(count) + "]")
+        if not isinstance(expected, str):
+            return {"status": "BLOCKED_SOURCE_ROOM_QUEUE_ENTRIES",
+                    "act": act_idx + 1, "room_type": room_type}
+        if identity_token(native_id) != identity_token(expected):
+            return {
+                "status": "SOURCE_ROOM_QUEUE_FIRST_DIFFERENCE",
+                "source_observed_prefix_length": sum(counters.values()),
+                "full_queue_identity_parity": "NOT_VERIFIED",
+                "source_evidence": "RunManager.RoomEntered",
+                "first_difference": {
+                    "path": path, "native": native_id,
+                    "emulator_source_queue": expected,
+                    "room_type": room_type, "act": act_idx + 1,
+                },
+            }
+    return {
+        "status": "SOURCE_ROOM_QUEUE_OBSERVED_PREFIX_MATCHED",
+        "source_observed_prefix_length": len(observed),
+        "full_queue_identity_parity": "NOT_VERIFIED",
+        "source_evidence": "RunManager.RoomEntered",
+        "first_difference": None,
+    }
+
+
+def _native_upfront_full_queue_diagnosis(source, emulator_snapshot):
+    """Compare whole generated native queues, if a new source capture has them."""
+    native = source.get("source_startup_room_queues")
+    if native is None:
+        return {"status": "SOURCE_FULL_ROOM_QUEUES_NOT_CAPTURED",
+                "full_queue_identity_parity": "NOT_TESTED"}
+    observed = native.get("acts") if isinstance(native, dict) else None
+    retained = emulator_snapshot.get("state", {}).get("native_startup_rooms")
+    predicted = retained.get("acts") if isinstance(retained, dict) else None
+    if not isinstance(observed, list) or len(observed) != 3:
+        return {"status": "BLOCKED_SOURCE_FULL_ROOM_QUEUES"}
+    if not isinstance(predicted, list) or len(predicted) != 3:
+        return {"status": "BLOCKED_EMULATOR_FULL_ROOM_QUEUES"}
+
+    def token(value):
+        return "".join(ch.upper() for ch in value if ch.isalnum())
+
+    for index, (a, b) in enumerate(zip(observed, predicted)):
+        if a.get("act_index") != index or b.get("act") != index + 1:
+            return {"status": "BLOCKED_FULL_ROOM_QUEUE_ACT_ORDER"}
+        for key in ("events", "normal_encounters", "elite_encounters",
+                    "boss_encounter", "second_boss_encounter", "ancient"):
+            left, right = a.get(key), b.get(key)
+            if key in ("events", "normal_encounters", "elite_encounters"):
+                if not isinstance(left, list) or not isinstance(right, list):
+                    return {"status": "BLOCKED_FULL_ROOM_QUEUE_ENTRIES"}
+                length = max(len(left), len(right))
+                pairs = [(left[i] if i < len(left) else None,
+                          right[i] if i < len(right) else None)
+                         for i in range(length)]
+            else:
+                pairs = [(left, right)]
+            for q_index, (native_id, emu_id) in enumerate(pairs):
+                if native_id is not None and not isinstance(native_id, str):
+                    return {"status": "BLOCKED_FULL_ROOM_QUEUE_ENTRIES"}
+                if emu_id is not None and not isinstance(emu_id, str):
+                    return {"status": "BLOCKED_FULL_ROOM_QUEUE_ENTRIES"}
+                if (token(native_id) if native_id is not None else None) != (
+                        token(emu_id) if emu_id is not None else None):
+                    return {
+                        "status": "SOURCE_FULL_ROOM_QUEUES_DIVERGED",
+                        "full_queue_identity_parity": "DIVERGED",
+                        "first_difference": {
+                            "path": "$.native_startup_rooms.acts[" + str(index)
+                                + "]." + key
+                                + (f"[{q_index}]" if key in
+                                   ("events", "normal_encounters",
+                                    "elite_encounters") else ""),
+                            "native": native_id, "emulator": emu_id,
+                        },
+                    }
+    return {"status": "SOURCE_FULL_ROOM_QUEUES_MATCHED",
+            "full_queue_identity_parity": "MATCHED",
+            "first_difference": None}
+
+
+def _native_first_combat_identity_diagnosis(native_room, emulator_snapshot,
+                                             node_id):
+    """Compare actual selected emulator combat to native RoomEntered identity.
+
+    This is independent of pre-generated UpFront source-queue predictions,
+    which are separately audited and may diverge while the actual combat
+    still agrees with the observed native room.
+    """
+    native_id = native_room.get("room_model_id")
+    if not isinstance(native_id, str) or not native_id:
+        return {"status": "BLOCKED_NATIVE_COMBAT_IDENTITY"}
+    trace = emulator_snapshot.get("state", {}).get("native_startup_queue_trace")
+    entries = trace.get("comparisons") if isinstance(trace, dict) else None
+    if not isinstance(entries, list) or len(entries) != 1:
+        return {"status": "BLOCKED_EMULATOR_COMBAT_IDENTITY_TRACE"}
+    item = entries[0]
+    if (not isinstance(item, dict) or item.get("map_node_id") != node_id
+        or item.get("act") != 1 or item.get("queue_index") != 0):
+        return {"status": "BLOCKED_EMULATOR_COMBAT_IDENTITY_TRACE"}
+    actual = item.get("actual_emulator_encounter_id")
+    predicted = item.get("source_encounter_id")
+    if not isinstance(actual, str) or ".encounter." not in actual:
+        return {"status": "BLOCKED_EMULATOR_COMBAT_IDENTITY_TRACE"}
+
+    def token(value):
+        return "".join(ch.upper() for ch in value if ch.isalnum())
+    actual_source = actual.split(".encounter.", 1)[1]
+    matched = token(native_id) == token(actual_source)
+    return {
+        "status": ("SOURCE_FIRST_COMBAT_IDENTITY_MATCHED" if matched
+                   else "SOURCE_FIRST_COMBAT_IDENTITY_DIVERGED"),
+        "native_observed_encounter": native_id,
+        "emulator_entered_encounter": actual,
+        "generated_source_queue_prediction": predicted,
+        "generated_source_queue_prediction_status": item.get("status"),
+        "actual_encounter_identity_parity": ("MATCHED" if matched
+                                             else "DIVERGED"),
+        "first_difference": (None if matched else {
+            "path": "$.first_combat.encounter_id",
+            "native": native_id, "emulator": actual}),
+    }
+
+
+def _direct_first_combat_route(source):
+    """Return (source combat RoomEntered, emulator map floor), or None.
+
+    The pinned native v111 run enters Neow at map row zero / native act
+    floor one, THEN the first traversed map room at row one / native
+    act floor two. The emulator's map node 1:1:column represents that
+    first *traversed* room. Synthetic legacy bootstraps have one
+    explicitly emulator-derived room and retain their old convention.
+    """
+    identity = source.get("run_identity") or {}
+    rooms = source.get("source_room_arrivals") or []
+    link = source.get("first_combat_link") or {}
+    choices = source.get("source_event_choice_requests") or []
+    returns = source.get("source_event_choice_returns") or []
+
+    def matches_link(room):
+        return (room.get("act_index") == link.get("act_index")
+                and room.get("map_column") == link.get("map_column")
+                and room.get("map_row") == link.get("map_row"))
+
+    if has_pinned_native_build(identity):
+        if len(rooms) != 2 or len(choices) != 1 or len(returns) != 1:
+            return None
+        neow, combat = rooms
+        if not (
+            neow.get("act_index") == 0
+            and neow.get("act_floor") == 1
+            and neow.get("total_floor") == 1
+            and neow.get("room_type") == "Event"
+            and neow.get("room_model_id") == "NEOW"
+            and neow.get("map_column") == 3
+            and neow.get("map_row") == 0
+            and neow.get("ordinal", -1) < choices[0].get("ordinal", -1)
+            and choices[0].get("ordinal", -1) <
+                returns[0].get("ordinal", -1)
+            and returns[0].get("ordinal", -1) <
+                combat.get("ordinal", -1)
+            and combat.get("act_index") == 0
+            and combat.get("act_floor") == 2
+            and combat.get("total_floor") == 2
+            and combat.get("room_type") == "Monster"
+            and type(combat.get("map_column")) is int
+            and 0 <= combat["map_column"] <= 6
+            and combat.get("map_row") == 1
+            and matches_link(combat)):
+            return None
+        # An observed native map-move request can support the destination
+        # identification, but its queue-return alone does not prove causation.
+        moves = [r for r in source.get("source_map_requests", [])
+                 if r.get("kind") == "map_move"]
+        if (not moves or any(
+                r.get("target_column") != combat["map_column"]
+                or r.get("target_row") != 1
+                or r.get("ordinal", -1) >= combat["ordinal"]
+                for r in moves)):
+            return None
+        return combat, 1
+
+    # Existing explicitly emulator-derived synthetic source fixtures.
+    if len(rooms) != 1:
+        return None
+    room = rooms[0]
+    if (room.get("act_index") == 0
+        and room.get("act_floor") == 1
+        and room.get("room_type") == "Monster"
+        and type(room.get("map_column")) is int
+        and room.get("map_row") == 0
+        and matches_link(room)):
+        return room, 1
+    return None
+
+
 def _source_preflight(source):
     if not isinstance(source, dict) or source.get("schema") != "native-run-prelude-audit-v1":
         return "BLOCKED_UNAUDITED_SOURCE", "Expected independent prelude auditor output"
@@ -135,19 +453,11 @@ def _source_preflight(source):
         return "BLOCKED_SOURCE_EVENT_SEQUENCE", "Neow source request/return mismatch"
     if not (choices[0].get("ordinal", -1) < returned[0].get("ordinal", -1)):
         return "BLOCKED_SOURCE_EVENT_SEQUENCE", "Neow request/return order invalid"
-    rooms = source.get("source_room_arrivals") or []
-    coords = [r for r in rooms if r.get("map_column") is not None]
-    matches = [r for r in coords if (
-        r.get("act_index") == linked.get("act_index")
-        and r.get("map_column") == linked.get("map_column")
-        and r.get("map_row") == linked.get("map_row"))]
-    if len(coords) != 1 or len(matches) != 1:
+    if _direct_first_combat_route(source) is None:
         return "BLOCKED_COMPLEX_PRECOMBAT_ROUTE", (
-            "First slice requires a single source-observed destination leading directly to combat")
-    if matches[0].get("act_index") != 0 or (
-            type(matches[0].get("act_floor")) is not int
-            or matches[0]["act_floor"] < 1):
-        return "BLOCKED_SOURCE_MAP_IDENTITY", "Unusable native room act/floor"
+            "Direct first combat requires a source-linked first map room; "
+            "pinned native v111 must show Neow row zero followed by one "
+            "monster at map row one/native act floor two")
     if not any(s.get("site") == "run_started" for s in
                source.get("source_run_rng_snapshots", [])):
         return "BLOCKED_SOURCE_RNG_CHECKPOINT", "Missing source run-start RNG checkpoint"
@@ -173,8 +483,7 @@ def run_bootstrap(source: dict, session):
         return _block(*blocked)
     ident = source["run_identity"]
     neow = source["source_event_choice_requests"][0]
-    room = next(r for r in source["source_room_arrivals"]
-                if r.get("map_column") is not None)
+    room, map_floor = _direct_first_combat_route(source)
     steps = []
     opening_profile = _emulator_opening_profile(ident)
     checks = {
@@ -182,6 +491,11 @@ def run_bootstrap(source: dict, session):
         "source_combat_room": {
             k: room.get(k) for k in ("act_index", "act_floor", "total_floor",
                                       "map_column", "map_row", "room_type")},
+        "emulator_first_map_floor": map_floor,
+        "native_neow_floor_offset": (
+            "NATIVE_NEOW_ACT_FLOOR_ONE_MAP_ROW_ZERO"
+            if has_pinned_native_build(ident)
+            else "EXPLICIT_EMULATOR_DERIVED_SYNTHETIC_SINGLE_ROOM"),
         "source_event_rng_counter": neow.get("event_rng", {}).get("counter"),
         "emulator_rng_provider": (
             "NATIVE_NEOW_AND_ACT1_MAP_LOCAL_ONLY"
@@ -227,8 +541,15 @@ def run_bootstrap(source: dict, session):
     if has_pinned_native_build(ident):
         try:
             probe = session.call("native_neow_rng_probe", seed=ident["seed"])
+            # source_offers are emulator *actions* (take_proto.native.neow.X);
+            # the pure native Neow probe reports *relic IDs*
+            # (proto.native.neow.X). Keep the action IDs for legal-menu
+            # matching, but compare the same relic identity namespace.
+            native_offer_ids = [
+                offer.removeprefix("take_") for offer in source_offers
+            ]
             comparison = compare_neow_rng(
-                source_offers, neow.get("event_rng"), probe)
+                native_offer_ids, neow.get("event_rng"), probe)
         except (RuntimeError, ValueError, TypeError) as exc:
             return _report("BLOCKED_NATIVE_NEOW_RNG_PROBE",
                            type(exc).__name__ + ": " + str(exc),
@@ -246,6 +567,11 @@ def run_bootstrap(source: dict, session):
     else:
         return _report("BLOCKED_UNRECOGNIZED_SOURCE_BUILD",
                        "Source build is neither pinned native-assembly format nor explicit synthetic",
+                       checks=checks)
+    if (has_pinned_native_build(ident)
+        and not source.get("source_initial_map_snapshot")):
+        return _report("BLOCKED_SOURCE_INITIAL_MAP_SNAPSHOT",
+                       "Missing native StandardActMap graph and map-local RNG cursor",
                        checks=checks)
     try:
         root = session.reset(ident["seed"], mode="v111", character="silent",
@@ -265,6 +591,27 @@ def run_bootstrap(source: dict, session):
                            checks=checks)
         state = root.step(initial[0]["actionId"])
         steps.append({"kind": "start_run", "action_id": initial[0]["actionId"]})
+        if has_pinned_native_build(ident):
+            opening_snapshot = json.loads(state.save_snapshot())
+            checks["native_upfront_startup"] = _native_upfront_diagnosis(
+                source, opening_snapshot)
+            checks["native_upfront_room_prefix"] = (
+                _native_upfront_room_prefix_diagnosis(source, opening_snapshot))
+            checks["native_upfront_full_queues"] = (
+                _native_upfront_full_queue_diagnosis(source, opening_snapshot))
+            map_check = compare_native_map(source, opening_snapshot)
+            checks["native_map_comparison"] = map_check
+            checks["native_map_rng_alignment"] = (
+                map_check["native_map_rng_alignment"])
+            checks["native_map_topology_parity"] = (
+                map_check["native_map_topology_parity"])
+            if map_check["status"] != "SOURCE_MAP_AND_RNG_MATCHED":
+                return _report(
+                    "SOURCE_NATIVE_MAP_DIFFERENCE",
+                    "The emulator opening map or local RNG cursor differs",
+                    first=map_check.get("first_difference") or {
+                        "reason": map_check["status"]},
+                    steps=steps, checks=checks)
         frame = state.observe()
         if frame.get("event_id") != "proto.native.event.neow" or (
                 not isinstance(frame.get("event"), dict)):
@@ -332,14 +679,10 @@ def run_bootstrap(source: dict, session):
             return _report("BLOCKED_NEOW_CONTINUATION",
                            "Source Neow effect requires further observed macro choices",
                            steps=steps, checks=checks)
-        if room["act_floor"] != 1:
-            return _report("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
-                           "Direct-first-combat adapter supports only first map floor",
-                           steps=steps, checks=checks)
-        candidate_node = f"1:{room['act_floor']}:{room['map_column']}"
+        candidate_node = f"1:{map_floor}:{room['map_column']}"
         nodes = [n for n in frame.get("map", []) if n.get("node_id") == candidate_node]
         if len(nodes) != 1 or nodes[0].get("act") != 1 or (
-                nodes[0].get("floor") != room["act_floor"]):
+                nodes[0].get("floor") != map_floor):
             return _report(
                 "SOURCE_MAP_NODE_DIFFERENCE",
                 "Native visited coordinate has no matching emulator map node",
@@ -371,6 +714,19 @@ def run_bootstrap(source: dict, session):
             return _report("SOURCE_COMBAT_MAP_ID_DIFFERENCE",
                            "Emulator first combat is not at selected node",
                            steps=steps, checks=checks)
+        if has_pinned_native_build(ident):
+            combat_snapshot = json.loads(state.save_snapshot())
+            checks["native_first_combat_identity"] = (
+                _native_first_combat_identity_diagnosis(
+                    room, combat_snapshot, candidate_node))
+            identity_comparison = checks["native_first_combat_identity"]
+            if identity_comparison["status"] != "SOURCE_FIRST_COMBAT_IDENTITY_MATCHED":
+                return _report(
+                    "SOURCE_COMBAT_IDENTITY_DIFFERENCE",
+                    "Native RoomEntered encounter identity and actual emulator encounter differ or cannot be verified",
+                    first=identity_comparison.get("first_difference") or {
+                        "reason": identity_comparison["status"]},
+                    steps=steps, checks=checks)
         checks["emulator_first_combat_hp"] = frame.get("hp")
         checks["emulator_first_combat_gold"] = frame.get("gold")
         checks["native_room_callback_hp"] = room.get("player_hp")

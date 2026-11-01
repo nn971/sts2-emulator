@@ -30,6 +30,46 @@ public sealed class NativeRunPreludeRecorderTests
     }
 
     [Fact]
+    public async Task SourceGeneratedRoomQueuesAreCapturedOnceWithoutRng()
+    {
+        static NativeStartupActRoomQueueView Act(int index) => new(
+            index, new[] { "OVERGROWTH", "HIVE", "GLORY" }[index],
+            ["SOURCE_EVENT", "ANOTHER_EVENT"],
+            Enumerable.Range(0, new[] { 15, 14, 13 }[index])
+                .Select(i => "SOURCE_NORMAL_" + i).ToArray(),
+            Enumerable.Range(0, 15)
+                .Select(i => "SOURCE_ELITE_" + i).ToArray(),
+            "SOURCE_BOSS", index == 2 ? "SECOND_BOSS" : null,
+            "SOURCE_ANCIENT", 0, 0, 0, 0);
+        var acts = Enumerable.Range(0, 3).Select(Act).ToArray();
+        var rows = await Record(recorder =>
+        {
+            recorder.StartupRoomQueues(acts);
+            Assert.True(recorder.HasStartupRoomQueues);
+            recorder.Finish("Read-only source projection");
+        });
+        var record = Assert.Single(rows, x =>
+            x.GetProperty("type").GetString() == "startup_room_queues");
+        var data = record.GetProperty("data");
+        Assert.Equal("ActModel._rooms after RunManager.GenerateRooms",
+            data.GetProperty("source").GetString());
+        Assert.False(data.GetProperty("source_rng_consumed_by_inspector")
+            .GetBoolean());
+        Assert.Equal("NOT_TESTED", data.GetProperty("native_queue_emulator_parity")
+            .GetString());
+        var projected = data.GetProperty("acts");
+        Assert.Equal(3, projected.GetArrayLength());
+        Assert.Equal(15, projected[0].GetProperty("normal_encounters")
+            .GetArrayLength());
+        Assert.Equal(15, projected[2].GetProperty("elite_encounters")
+            .GetArrayLength());
+        Assert.Equal("SECOND_BOSS", projected[2]
+            .GetProperty("second_boss_encounter").GetString());
+        Assert.True(rows[^1].GetProperty("data")
+            .GetProperty("startup_room_queues_recorded").GetBoolean());
+    }
+
+    [Fact]
     public async Task RunStartToMapMoveAndCombatLinkKeepsIndependentProvenance()
     {
         object move = new();
@@ -428,5 +468,76 @@ public sealed class NativeRunPreludeRecorderTests
             .GetProperty("visited_room_proves_this_request").GetBoolean());
         Assert.Equal("SOURCE_PRELUDE_OBSERVED",
             rows[^1].GetProperty("data").GetProperty("status").GetString());
+    }
+
+    private static NativeMapPointView[] LinearSourceMap() =>
+        Enumerable.Range(0, 17)
+            .Select(row => new NativeMapPointView(
+                3, row,
+                row == 0 ? "Ancient" : row == 16 ? "Boss"
+                    : row == 9 ? "Treasure" : row == 15 ? "RestSite"
+                    : "Monster",
+                row is not (0 or 16),
+                row == 16 ? [] : [new NativeMapCoordView(3, row + 1)]))
+            .ToArray();
+
+    [Fact]
+    public async Task FullNativeMapSnapshotRecordsProvenanceGraphAndRngOnce()
+    {
+        var points = LinearSourceMap();
+        var rng = new NativeMapRngView(53, ulong.MaxValue, 2, 3, 4);
+        var rows = await Record(recorder =>
+        {
+            recorder.InitialMapSnapshot(0, "OVERGROWTH", points, rng);
+            recorder.Finish("Source map probe");
+        });
+        var record = Assert.Single(rows, r =>
+            r.GetProperty("type").GetString() == "initial_map_snapshot");
+        var map = record.GetProperty("data");
+        Assert.Equal("StandardActMap", map.GetProperty("map_type").GetString());
+        Assert.Equal("RunState.Map (after RunManager.GenerateMap)",
+            map.GetProperty("source").GetString());
+        Assert.Equal("StandardActMap._rng.ToSerializable",
+            map.GetProperty("map_rng_source").GetString());
+        Assert.False(map.GetProperty("source_rng_consumed_by_inspector").GetBoolean());
+        Assert.False(map.GetProperty("source_map_mutation_history_complete").GetBoolean());
+        Assert.Equal("NOT_TESTED",
+            map.GetProperty("native_map_emulator_alignment").GetString());
+        Assert.Equal(17, map.GetProperty("points").GetArrayLength());
+        Assert.Equal("Ancient",
+            map.GetProperty("points")[0].GetProperty("point_type").GetString());
+        Assert.Equal(1,
+            map.GetProperty("points")[0].GetProperty("children")[0]
+                .GetProperty("row").GetInt32());
+        Assert.Equal(53, map.GetProperty("map_rng").GetProperty("counter").GetInt32());
+        Assert.Equal(ulong.MaxValue,
+            map.GetProperty("map_rng").GetProperty("s0").GetUInt64());
+        Assert.True(rows[^1].GetProperty("data")
+            .GetProperty("initial_map_snapshot_recorded").GetBoolean());
+    }
+
+    [Fact]
+    public async Task MalformedOrDuplicateSourceMapFailsClosed()
+    {
+        var good = LinearSourceMap();
+        var bad = LinearSourceMap();
+        bad[1] = bad[1] with
+        {
+            Children = [new NativeMapCoordView(3, 4)]
+        };
+        var rng = new NativeMapRngView(17, 1, 2, 3, 4);
+        var rows = await Record(recorder =>
+        {
+            recorder.InitialMapSnapshot(0, "OVERGROWTH", bad, rng);
+            recorder.InitialMapSnapshot(0, "OVERGROWTH", good, rng);
+            recorder.InitialMapSnapshot(0, "OVERGROWTH", good, rng);
+            recorder.Finish("Source map probe");
+        });
+        Assert.Single(rows, r =>
+            r.GetProperty("type").GetString() == "initial_map_snapshot");
+        Assert.Equal(2, rows.Count(r =>
+            r.GetProperty("type").GetString() == "observation_failure"));
+        Assert.Equal("INCOMPLETE_CAPTURE", rows[^1].GetProperty("data")
+            .GetProperty("status").GetString());
     }
 }

@@ -388,7 +388,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RngBundle? rng = null,
         RunWorldState? world = null,
         Func<long>? allocateCardId = null,
-        RngBundle? nativeRunRng = null)
+        RngBundle? nativeRunRng = null,
+        bool useNativeSilentPotionGeneration = false)
     {
         // RelicAcquired models RelicModel.AfterObtained on the newly
         // appended instance, not a broadcast to every owned relic with the
@@ -526,6 +527,31 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                             world,
                             trigger.RouteCondition)))
                 {
+                    continue;
+                }
+
+                if (eventKind == PrototypeRunEventKind.RelicAcquired
+                    && useNativeSilentPotionGeneration
+                    && relic.RelicId ==
+                        PrototypeNativeOvergrowthEvents.NeowRelicId("PhialHolster"))
+                {
+                    if (nativeRunRng is null)
+                        throw new InvalidDataException(
+                            "Native Phial Holster requires the run RNG owner.");
+                    // The source's one batch draws without replacement;
+                    // separate generic GainRandomPotion effects would
+                    // accidentally reset the candidate pool.
+                    if (!trigger.Effects.Select(effect => effect.Kind)
+                        .SequenceEqual(new[]
+                        {
+                            PrototypeRunEffectKind.GainPotionSlots,
+                            PrototypeRunEffectKind.GainRandomPotion,
+                            PrototypeRunEffectKind.GainRandomPotion
+                        }))
+                        throw new InvalidDataException(
+                            "Pinned Phial Holster source trigger shape changed.");
+                    player = NativeSilentPotionGenerationV111
+                        .ApplyPhialHolster(player, nativeRunRng);
                     continue;
                 }
 

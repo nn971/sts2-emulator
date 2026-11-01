@@ -131,12 +131,23 @@ public sealed class NativeShuffleStepReplayV111 : IDisposable
     /// a real Step, after checking the available engine card IDs match the
     /// independently supplied native-to-emulator mapping.
     /// </summary>
+    public static bool HasActiveReplay => Active.Value is not null;
+
     public static long[] ShuffleRecycle(
-        long[] engineEligibleInput, RngBundle engineRng)
+        long[] engineEligibleInput, RngBundle engineRng,
+        CombatState? combat = null)
     {
         var scope = Active.Value;
         if (scope is null)
         {
+            // Real native-standard-map runs independently reproduce source
+            // CardPileCmd.StableShuffle from their persisted run.shuffle state.
+            // Existing explicit scripted replay/eligibility probes keep
+            // precedence and their original isolated RNG behavior.
+            var native = combat is null ? null
+                : NativeSourceRecycleShuffleV111.TryRecycle(
+                    combat, engineEligibleInput);
+            if (native is not null) return native;
             var output = (long[])engineEligibleInput.Clone();
             PrototypeRng.Shuffle(engineRng, "combat", output);
             return output;

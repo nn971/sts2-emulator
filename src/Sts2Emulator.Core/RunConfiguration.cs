@@ -63,6 +63,10 @@ public sealed record RunConfiguration(
         || FidelityId == V111Build.NativeStandardMapOpeningFidelityId;
     public bool UsesNativeStandardActMap =>
         FidelityId == V111Build.NativeStandardMapOpeningFidelityId;
+    // The map+Neow source-replay profile also owns its initial combat
+    // formation/monster HP. Keep ordinary training profiles unchanged.
+    public bool UsesNativeActOneCombatEntry =>
+        UsesExperimentalNativeWeakCombatEntry || UsesNativeStandardActMap;
     public bool UsesExperimentalSilentThreeActRoute =>
         FidelityId == V111Build.ExperimentalSilentThreeActRouteFidelityId;
 
@@ -153,7 +157,19 @@ public sealed record RunConfiguration(
                         : PrototypeNativeUnderdocks.GenerationProfileId;
                 if (initialized.ActOneRegion != region || initialized.Map.GenerationProfileId != mapProfile
                     || (configuration.UsesNativeStandardActMap && state.NativeMapRng is null)
-                    || (!configuration.UsesNativeStandardActMap && state.NativeMapRng is not null))
+                    || (!configuration.UsesNativeStandardActMap && state.NativeMapRng is not null)
+                    || (configuration.UsesNativeStandardActMap
+                        && state.NativeStartupRelicBags is null)
+                    || (!configuration.UsesNativeStandardActMap
+                        && state.NativeStartupRelicBags is not null)
+                    || (configuration.UsesNativeStandardActMap
+                        && configuration.Acts[0] == ActIdentity.Overgrowth
+                        && (state.NativeStartupRooms is null
+                            || state.NativeStartupQueueTrace is null))
+                    || ((!configuration.UsesNativeStandardActMap
+                         || configuration.Acts[0] != ActIdentity.Overgrowth)
+                        && (state.NativeStartupRooms is not null
+                            || state.NativeStartupQueueTrace is not null)))
                     throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
             }
         }
@@ -255,13 +271,32 @@ public static class V111RunFactory
             || (config.UsesNativeStandardActMap && opening.NativeMapRng is null)
             || (!config.UsesNativeStandardActMap && opening.NativeMapRng is not null))
             throw new InvalidDataException("Native initial Neow event RNG/choices invariant failed.");
+        // Pinned fully-unlocked startup: relic grab bags, followed by
+        // RunManager.GenerateRooms for all three acts, in source order.
+        // Keep the source identity queues separate from the prototype
+        // world until source-driven room entry is verified.
+        var runStreams = input.NativeRunRng?.Fork()
+            ?? NativeRngV111.CreateBundle(input.RunSeed);
+        var sourceRelicBags = config.UsesNativeStandardActMap
+            ? NativeUpFrontRelicBagsV111.Populate(runStreams)
+            : null;
+        // Only the pinned Overgrowth -> Hive -> Glory native route has a
+        // source-ordered UpFront room catalogue. The experimental Underdocks
+        // map retains its relic-bag prefix until that distinct act is ported.
+        var sourceRooms = config.UsesNativeStandardActMap
+            && config.Acts[0] == ActIdentity.Overgrowth
+            ? NativeUpFrontRoomsV111.Generate(runStreams, config.Ascension)
+            : null;
         return opening with
         {
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,
             RunId = input.RunId, DecisionIndex = input.DecisionIndex,
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
-            NativeRunRng = input.NativeRunRng?.Fork()
-                ?? NativeRngV111.CreateBundle(input.RunSeed),
+            NativeRunRng = runStreams,
+            NativeStartupRelicBags = sourceRelicBags,
+            NativeStartupRooms = sourceRooms,
+            NativeStartupQueueTrace = sourceRooms is null
+                ? null : NativeStartupRoomQueueTraceV111.Empty(),
             World = opening.World! with
             {
                 RulesetId = config.RulesetId,

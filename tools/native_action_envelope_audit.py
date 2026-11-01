@@ -167,6 +167,50 @@ def observed_indicators(actions: list[dict], records: list[dict]) -> dict:
     return result
 
 
+def _unchanged_combat_end_checkpoint(records: list[dict], reset_ordinal: int) -> bool:
+    """Recognize the pinned v111 terminal callback sequence, fail-closed.
+
+    An after_action checkpoint, optionally followed by read-only frame polls,
+    precedes the history reset; a combat_end checkpoint follows it before
+    the terminal record. This only verifies equality of *observed* streams.
+    """
+    if reset_ordinal + 1 >= len(records):
+        return False
+    end_checkpoint, terminal = records[reset_ordinal:reset_ordinal + 2]
+    if (end_checkpoint.get("type") != "native_rng_stream_checkpoint"
+        or terminal.get("type") != "terminal"):
+        return False
+    end = end_checkpoint.get("data") or {}
+    if (end.get("phase") != "combat_end"
+        or end.get("source") != "native_rng_object_to_serializable"
+        or end.get("rng_draws_performed") != 0
+        or not isinstance(end.get("streams"), list)
+        or not end["streams"]):
+        return False
+
+    # reset_ordinal is 1-based, so the last record before the reset
+    # is records[reset_ordinal - 2]. Accept intervening frame polls only.
+    prior_index = reset_ordinal - 2
+    while prior_index >= 0 and records[prior_index].get("type") == "frame_state":
+        prior_index -= 1
+    if prior_index < 1:
+        return False
+    preceding = records[prior_index]
+    before = preceding.get("data") or {}
+    if (preceding.get("type") != "native_rng_stream_checkpoint"
+        or records[prior_index - 1].get("type") != "action_completed"
+        or before.get("phase") != "after_action"
+        or before.get("source") != end.get("source")
+        or before.get("rng_draws_performed") != 0
+        or before.get("scope") != end.get("scope")
+        or before.get("complete_native_rng_inventory")
+            != end.get("complete_native_rng_inventory")
+        or before.get("exact_rng_parity") != end.get("exact_rng_parity")
+        or before.get("streams") != end.get("streams")):
+        return False
+    return True
+
+
 def audit(records: list[dict], error: str | None = None) -> dict:
     report = {
         "schema": "native-action-envelope-audit-v1",
@@ -187,6 +231,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_ui_gate_hook_installed": False,
         "native_ui_hand_gates": [],
         "native_ui_play_begins": [],
+        "turn_boundary_candidates": [],
         "native_input_requests": [],
         "native_input_outcomes": [],
         "native_player_choices": [],
@@ -277,7 +322,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_player_choice", "native_run_identity",
         "native_hand_menu", "native_hand_menu_revision",
         "native_hand_menu_closed", "native_manual_play_result",
-        "native_ui_play_begin", "native_ui_hand_gate", "terminal",
+        "native_ui_play_begin", "native_ui_hand_gate",
+        "native_turn_checkpoint", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -293,6 +339,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     hand_menus_seen: set[int] = set()
     menus_by_choice: dict[tuple[int, int], dict] = {}
     menus_by_id: dict[int, dict] = {}
+    turn_checkpoint_ids: set[tuple[str, int]] = set()
     for ordinal, record in enumerate(records, 1):
         typ = record.get("type")
         if record.get("ordinal") != ordinal:
@@ -360,6 +407,60 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 "pre_state_present": isinstance(start.get("state"), dict),
                 "post_state_present": isinstance(record.get("state"), dict),
             }
+        elif typ == "native_turn_checkpoint":
+            data = record.get("data") or {}
+            kind, turn = data.get("kind"), data.get("turn")
+            player_start = kind == "PLAYER_TURN_START"
+            enemy_start = kind == "ENEMY_TURN_START"
+            key = (kind, turn)
+            snapshot = record.get("state")
+            combat = (snapshot or {}).get("combat") if isinstance(
+                snapshot, dict) else None
+            previous = records[ordinal - 2] if ordinal > 1 else None
+            native_type = (previous or {}).get("native_type") or ""
+            valid = (
+                (player_start or enemy_start)
+                and type(turn) is int and turn > 0
+                and key not in turn_checkpoint_ids
+                and isinstance(combat, dict)
+                and combat.get("turn") == turn
+                and data.get("observation_site") ==
+                    ("NativeV111PassiveBridge.OnFrame" if player_start
+                     else "ActionExecutor.BeforeActionExecuted")
+                and data.get("observation_basis") ==
+                    ("IDLE_PLAYABLE_PLAYER_FRAME_BEFORE_OBSERVED_INPUT"
+                     if player_start else
+                     "PRE_READY_TO_BEGIN_ENEMY_TURN_ACTION")
+                and isinstance(data.get("native_side"), str)
+                and isinstance(data.get("player_phase"), str)
+                and data.get("settlement_status") == "SETTLEMENT_UNVERIFIED"
+                and data.get("complete_native_queue_verified") is False
+                and data.get("native_phase_handoff_order_verified") is False
+                and data.get("original_native_legal_menu") == "NOT_VERIFIED"
+                and data.get("emulator_parity") == "NOT_TESTED"
+                and data.get("rng_draws_performed_by_inspector") == 0
+                and (player_start and not running
+                     and data["native_side"] == "Player"
+                     and data["player_phase"] == "Play"
+                     or enemy_start and previous is not None
+                     and previous.get("type") == "action_started"
+                     and native_type.endswith("ReadyToBeginEnemyTurnAction")
+                     and previous.get("state") == snapshot)
+            )
+            if not valid:
+                strict_failures.append(
+                    f"Invalid native turn-boundary candidate at {ordinal}")
+            else:
+                turn_checkpoint_ids.add(key)
+                report["turn_boundary_candidates"].append({
+                    "ordinal": ordinal, "kind": kind, "turn": turn,
+                    "observation_site": data["observation_site"],
+                    "observation_basis": data["observation_basis"],
+                    "native_side": data["native_side"],
+                    "player_phase": data["player_phase"],
+                    "settlement_status": "SETTLEMENT_UNVERIFIED",
+                    "emulator_parity": "NOT_TESTED",
+                })
         elif typ == "frame_state":
             info = record.get("data") or {}
             idx, state_hash = info.get("frame_index"), info.get("state_hash")
@@ -710,8 +811,16 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         elif typ == "native_ui_play_begin":
             data = record.get("data") or {}
             card_id = data.get("combat_card_id")
-            if (card_id is not None and
-                (type(card_id) is not int or card_id < 0)
+            ui_observation = data.get("ui_state_observation")
+            observed_state = record.get("state")
+            state_valid = (
+                (ui_observation is None and observed_state is None)
+                or (ui_observation == "UNOBSERVED" and observed_state is None)
+                or (ui_observation == "SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT"
+                    and isinstance(observed_state, dict)))
+            if (not state_valid
+                or card_id is not None
+                    and (type(card_id) is not int or card_id < 0)
                 or not isinstance(data.get("card_model_id"), str)
                 or not data.get("card_model_id")
                 or type(data.get("started_via_shortcut")) is not bool
@@ -727,6 +836,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             else:
                 report["native_ui_play_begins"].append({
                     "ordinal": ordinal,
+                    "source_ui_state_observation": (
+                        ui_observation or "UNOBSERVED_LEGACY"),
                     "combat_card_id": card_id,
                     "card_model_id": data["card_model_id"],
                     "started_via_shortcut": data["started_via_shortcut"],
@@ -941,10 +1052,14 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             history_index = -1
             details = record.get("data") or {}
             next_record = records[ordinal] if ordinal < len(records) else None
-            final_reason = ((next_record or {}).get("data") or {}).get("reason")
-            terminal_cleanup = (not running and next_record is not None
-                and next_record.get("type") == "terminal"
+            with_end_checkpoint = _unchanged_combat_end_checkpoint(records, ordinal)
+            terminal = (records[ordinal + 1] if with_end_checkpoint
+                        else next_record)
+            final_reason = ((terminal or {}).get("data") or {}).get("reason")
+            terminal_cleanup = (not running and terminal is not None
+                and terminal.get("type") == "terminal"
                 and final_reason == "Combat ended"
+                and (next_record is terminal or with_end_checkpoint)
                 and details.get("new_count") == 0
                 and type(details.get("previous_count")) is int
                 and details["previous_count"] > 0)

@@ -90,6 +90,64 @@ def source_capture():
 
 
 class NativeSourceJournalTests(unittest.TestCase):
+    def test_native_turn_candidates_remain_not_settled_or_compared(self):
+        rows = source_capture()
+        def candidate(kind, state, source, basis, side, phase):
+            return {"type": "native_turn_checkpoint",
+                    "state": copy.deepcopy(state),
+                    "data": {
+                        "kind": kind, "turn": 1,
+                        "observation_site": source,
+                        "observation_basis": basis,
+                        "native_side": side, "player_phase": phase,
+                        "settlement_status": "SETTLEMENT_UNVERIFIED",
+                        "complete_native_queue_verified": False,
+                        "native_phase_handoff_order_verified": False,
+                        "original_native_legal_menu": "NOT_VERIFIED",
+                        "emulator_parity": "NOT_TESTED",
+                        "rng_draws_performed_by_inspector": 0}}
+        player = candidate(
+            "PLAYER_TURN_START",
+            {"player": {"hp": 50}, "combat": {"turn": 1}},
+            "NativeV111PassiveBridge.OnFrame",
+            "IDLE_PLAYABLE_PLAYER_FRAME_BEFORE_OBSERVED_INPUT",
+            "Player", "Play")
+        rows.insert(2, player)
+        started = next(row for row in rows
+                       if row["type"] == "action_started")
+        started["state"]["combat"]["turn"] = 1
+        enemy = candidate(
+            "ENEMY_TURN_START", started["state"],
+            "ActionExecutor.BeforeActionExecuted",
+            "PRE_READY_TO_BEGIN_ENEMY_TURN_ACTION", "Player", "End")
+        # An automatic action can begin at an enemy-turn boundary;
+        # the original source capture still has to prove its semantics.
+        auto_start = {
+            "type": "action_started", "action_id": 2,
+            "native_type": "ReadyToBeginEnemyTurnAction",
+            "state": copy.deepcopy(started["state"])}
+        auto_end = {
+            "type": "action_completed", "action_id": 2,
+            "state": copy.deepcopy(started["state"])}
+        rows[-1:-1] = [auto_start, enemy, auto_end]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED",
+                         report["status"])
+        candidates = report["source_turn_checkpoint_candidates"]
+        self.assertEqual(2, len(candidates))
+        self.assertEqual(
+            ["PLAYER_TURN_START", "ENEMY_TURN_START"],
+            [c["kind"] for c in candidates])
+        self.assertEqual("NOT_TESTED", report["emulator_parity"])
+        for item in candidates:
+            self.assertEqual("SETTLEMENT_UNVERIFIED",
+                             item["settlement_status"])
+            self.assertEqual("NOT_VERIFIED",
+                             item["native_full_queue_settlement"])
+            self.assertFalse(item["emulator_applied"])
+
     def test_request_can_execute_before_queue_postfix_and_choice_is_bound(self):
         report = build(source_capture())
         self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", report["status"])
@@ -104,6 +162,30 @@ class NativeSourceJournalTests(unittest.TestCase):
         self.assertEqual(3, cmd["pre_request_state"]["combat"]["energy"])
         self.assertEqual(1, cmd["post_execution_state"]["combat"]["energy"])
         self.assertFalse(cmd["emulator_applied"])
+        self.assertEqual("SOURCE_OBSERVED_DIFFERENT",
+                         cmd["request_to_execution_state_agreement"])
+        self.assertIsNone(cmd["last_native_completion_before_request"])
+        self.assertEqual("UNOBSERVED",
+                         cmd["last_native_completion_to_request_state_agreement"])
+        self.assertEqual("NATIVE_CALLBACKS_NOT_FULL_LEGAL_MENU",
+                         cmd["source_boundary"])
+        observed = report["source_executor_observed_transitions"]
+        self.assertEqual(1, len(observed))
+        self.assertEqual(1, observed[0]["executor_action_id"])
+        self.assertEqual({"player": {"hp": 50}, "combat": {"energy": 2}},
+                         observed[0]["pre_execution_state"])
+        self.assertEqual({"player": {"hp": 50}, "combat": {"energy": 1}},
+                         observed[0]["post_execution_state"])
+        self.assertEqual("NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED",
+                         observed[0]["source_boundary"])
+        self.assertEqual({"energy": {"before": 2, "after": 1}},
+                         observed[0]["source_executor_observed_delta"])
+        self.assertIsNone(observed[0]["preceding_completed_executor_action_id"])
+        self.assertEqual("UNOBSERVED",
+                         observed[0]["preceding_completion_to_start_state_agreement"])
+        self.assertEqual([], observed[0]["active_prior_executor_action_ids"])
+        self.assertEqual("NATIVE_CALLBACK_PROJECTIONS_ONLY",
+                         observed[0]["source_comparison"])
         self.assertEqual("SOURCE_OBSERVED",
                          cmd["native_executor_object_identity"])
         self.assertEqual("UNVERIFIED", cmd["originating_human_input"])
@@ -157,6 +239,326 @@ class NativeSourceJournalTests(unittest.TestCase):
         self.assertEqual("NATIVE_SOURCE_REQUEST_LINK_MISSING",
                          report["source_unlinked_canonical_executor_actions"][0][
                              "reason"])
+
+    def test_automatic_executor_transition_is_preserved_without_human_command(self):
+        rows = source_capture()
+        state = {"player": {"hp": 50}, "combat": {"energy": 1}}
+        rows[-1:-1] = [
+            {"type": "action_started", "action_id": 2,
+             "native_type": "ReadyToBeginEnemyTurnAction",
+             "canonical_action": None, "state": state},
+            {"type": "action_completed", "action_id": 2, "state": state},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED",
+                         report["status"])
+        self.assertEqual(1, len(report["source_linked_commands"]))
+        self.assertEqual(2, len(report[
+            "source_executor_observed_transitions"]))
+        auto = report["source_executor_observed_transitions"][1]
+        self.assertEqual(2, auto["executor_action_id"])
+        self.assertIsNone(auto["canonical_action_candidate"])
+        self.assertFalse(auto["emulator_applied"])
+        self.assertEqual("NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED",
+                         auto["source_boundary"])
+        self.assertEqual(1, auto["preceding_completed_executor_action_id"])
+        self.assertEqual("SOURCE_OBSERVED_EQUAL",
+                         auto["preceding_completion_to_start_state_agreement"])
+        self.assertEqual({}, auto["preceding_completion_to_start_observed_delta"])
+        self.assertEqual([], auto["active_prior_executor_action_ids"])
+
+    def test_noncanonical_source_request_is_linked_as_native_executor(self):
+        rows = source_capture()
+        state = {"player": {"hp": 50}, "combat": {"energy": 1}}
+        automatic_type = "ReadyToBeginEnemyTurnAction"
+        rows[-1:-1] = [
+            {"type": "native_input_request",
+             "native_type": automatic_type, "canonical_action": None,
+             "state": state,
+             "data": {"input_request_id": 2,
+                      "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                      "native_acceptance": "UNVERIFIED",
+                      "human_origin": "UNVERIFIED",
+                      "input_injected": False}},
+            {"type": "action_started", "action_id": 2,
+             "native_type": automatic_type, "canonical_action": None,
+             "state": state,
+             "data": {"input_request_id": 2,
+                      "request_execution_link": "SAME_NATIVE_ACTION_OBJECT",
+                      "human_origin": "UNVERIFIED"}},
+            {"type": "native_input_outcome", "native_type": automatic_type,
+             "data": {"input_request_id": 2, "native_action_id": 8,
+                      "native_action_state": "Executing",
+                      "queue_result":
+                          "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+                      "source": "ActionQueueSynchronizer.RequestEnqueue.postfix",
+                      "human_origin": "UNVERIFIED",
+                      "legal_menu_verified": False}},
+            {"type": "action_completed", "action_id": 2, "state": state},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", report["status"])
+        self.assertEqual([], report["errors"])
+        self.assertEqual(1, len(report["source_linked_commands"]))
+        self.assertEqual([], report["source_requests_without_executor_start"])
+        self.assertEqual(2, len(report["source_executor_observed_transitions"]))
+        linked = report["source_linked_noncanonical_executor_actions"]
+        self.assertEqual(1, len(linked))
+        self.assertEqual(2, linked[0]["executor_action_id"])
+        self.assertEqual(2, linked[0]["input_request_id"])
+        self.assertIsNone(linked[0]["canonical_action"])
+        self.assertEqual(automatic_type, linked[0]["native_type"])
+        self.assertFalse(linked[0]["emulator_applied"])
+
+    def test_ui_input_window_during_previous_executor_is_not_a_strict_decision(self):
+        rows = source_capture()
+        card = {"kind": "play_card",
+                "payload": {"card_instance_id": 8, "target_id": None}}
+        state = {"player": {"hp": 50}, "combat": {"energy": 1}}
+        gates = [
+            {"type": "native_ui_hand_gate",
+             "data": {"gate": gate, "returned_allowed": True,
+                      "native_hand_mode": "Play",
+                      "existing_card_play_active": False,
+                      "source": "NPlayerHand." + gate + ".postfix",
+                      "result_basis": "ORIGINAL_NATIVE_RETURN_VALUE",
+                      "source_evaluation_only": True,
+                      "human_origin": "UNVERIFIED",
+                      "full_legal_menu": "NOT_TESTED",
+                      "emulator_parity": "NOT_TESTED"}}
+            for gate in ("AreCardActionsAllowed", "CanPlayCards")
+        ]
+        ui = {"type": "native_ui_play_begin",
+              "data": {"combat_card_id": 8,
+                       "card_model_id": "DEFEND_SILENT",
+                       "started_via_shortcut": False,
+                       "source": "NPlayerHand.StartCardPlay.prefix",
+                       "native_ui_gate": "SOURCE_CALLSITE_PASSED",
+                       "manual_play_accepted": "NOT_TESTED",
+                       "queue_acceptance": "NOT_TESTED",
+                       "human_origin": "UNVERIFIED",
+                       "full_legal_menu": "NOT_TESTED",
+                       "emulator_parity": "NOT_TESTED"}}
+        rows[8:8] = [*gates, ui]
+        rows[-1:-1] = [
+            {"type": "native_input_request",
+             "native_type": "PlayCardAction", "canonical_action": card,
+             "state": state,
+             "data": {"input_request_id": 2,
+                      "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                      "native_acceptance": "UNVERIFIED",
+                      "human_origin": "UNVERIFIED",
+                      "input_injected": False}},
+            {"type": "action_started", "action_id": 2,
+             "native_type": "PlayCardAction", "canonical_action": card,
+             "state": state,
+             "data": {"input_request_id": 2,
+                      "request_execution_link": "SAME_NATIVE_ACTION_OBJECT",
+                      "human_origin": "UNVERIFIED"}},
+            {"type": "strict_input_gap", "action_id": 2,
+             "data": {"reason":
+                          "executor_action_without_unique_strict_decision",
+                      "last_reported_gate":
+                          "WAITING_FOR_DECISION:CARD_PLAY_ANIMATION",
+                      "decision_generation": 1,
+                      "last_captured_generation": 0,
+                      "human_input_origin_verified": False,
+                      "legal_menu_reconstructed": False}},
+            {"type": "native_input_outcome", "native_type": "PlayCardAction",
+             "data": {"input_request_id": 2,
+                      "native_action_state": "Executing",
+                      "native_action_id": 8,
+                      "queue_result":
+                          "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+                      "source": "ActionQueueSynchronizer.RequestEnqueue.postfix",
+                      "human_origin": "UNVERIFIED",
+                      "legal_menu_verified": False}},
+            {"type": "action_completed", "action_id": 2, "state": state},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", report["status"])
+        self.assertEqual([], report["errors"])
+        window = report["source_ui_request_windows"][1]
+        self.assertEqual("SINGLE_TEMPORAL_CARD_ID_MATCH",
+                         window["matching_status"])
+        self.assertTrue(window["original_native_hand_guards_returned_true"])
+        self.assertEqual([1], window["active_executor_action_ids_at_ui_begin"])
+        self.assertEqual([1], window[
+            "completed_executor_action_ids_between_ui_and_request"])
+        self.assertEqual(2, window["linked_executor_action_id"])
+        self.assertIsNotNone(window["strict_input_gap_ordinal"])
+        self.assertEqual("NOT_VERIFIED", window["strict_decision"])
+        self.assertEqual("NOT_VERIFIED", window["full_legal_menu"])
+        self.assertEqual("UNVERIFIED", window["human_input_origin"])
+        self.assertEqual("UNOBSERVED_LEGACY",
+                         window["ui_begin_state_observation"])
+        self.assertEqual("UNOBSERVED",
+                         window["ui_begin_to_request_state_agreement"])
+        # A future native UI-begin snapshot gives an exact comparison to
+        # the later source request even if the previous executor is active.
+        ui = next(row for row in rows
+                  if row["type"] == "native_ui_play_begin")
+        ui["state"] = copy.deepcopy(state)
+        ui["data"]["ui_state_observation"] = (
+            "SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT")
+        with_state = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED",
+                         with_state["status"])
+        window = with_state["source_ui_request_windows"][1]
+        self.assertEqual("SOURCE_OBSERVED_EQUAL",
+                         window["ui_begin_to_request_state_agreement"])
+
+    def test_duplicate_ui_begins_remain_ambiguous(self):
+        rows = source_capture()
+        begins = [
+            {"type": "native_ui_play_begin",
+             "data": {"combat_card_id": 7,
+                      "card_model_id": "STRIKE_SILENT",
+                      "started_via_shortcut": False,
+                      "source": "NPlayerHand.StartCardPlay.prefix",
+                      "native_ui_gate": "SOURCE_CALLSITE_PASSED",
+                      "manual_play_accepted": "NOT_TESTED",
+                      "queue_acceptance": "NOT_TESTED",
+                      "human_origin": "UNVERIFIED",
+                      "full_legal_menu": "NOT_TESTED",
+                      "emulator_parity": "NOT_TESTED"}}
+            for _ in range(2)
+        ]
+        rows[2:2] = begins
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", report["status"])
+        window = report["source_ui_request_windows"][0]
+        self.assertEqual("AMBIGUOUS_UI_BEGINS", window["matching_status"])
+        self.assertEqual(2, len(window["candidate_ui_begin_ordinals"]))
+        self.assertIsNone(window["source_ui_begin_ordinal"])
+        self.assertIsNone(window["original_native_hand_guards_returned_true"])
+        self.assertEqual("NOT_VERIFIED", window["strict_decision"])
+
+    def test_inter_executor_state_change_is_observed_without_claiming_an_action(self):
+        rows = source_capture()
+        # Native callbacks may have effects *between* executor envelopes.
+        # A source-only comparison must record them separately from the
+        # next executor's own delta, even with no player decision available.
+        rows[-1:-1] = [
+            {"type": "action_started", "action_id": 2,
+             "native_type": "ReadyToBeginEnemyTurnAction",
+             "canonical_action": None,
+             "state": {"player": {"hp": 48}, "combat": {"energy": 0}}},
+            {"type": "action_completed", "action_id": 2,
+             "state": {"player": {"hp": 48}, "combat": {"energy": 0}}},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", result["status"])
+        current = result["source_executor_observed_transitions"][1]
+        self.assertEqual(1, current["preceding_completed_executor_action_id"])
+        self.assertEqual("SOURCE_OBSERVED_DIFFERENT",
+                         current["preceding_completion_to_start_state_agreement"])
+        self.assertEqual({
+            "player_hp": {"before": 50, "after": 48},
+            "energy": {"before": 1, "after": 0},
+        }, current["preceding_completion_to_start_observed_delta"])
+        self.assertEqual({}, current["source_executor_observed_delta"])
+        self.assertEqual("NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED",
+                         current["source_boundary"])
+        self.assertFalse(current["emulator_applied"])
+        self.assertEqual("NOT_TESTED", result["emulator_parity"])
+
+    def test_nested_executor_start_tracks_active_owner_not_last_completion(self):
+        rows = source_capture()
+        completed = next(i for i, row in enumerate(rows)
+                         if row["type"] == "action_completed"
+                         and row.get("action_id") == 1)
+        # Nested source executor action starts and completes while action 1
+        # is still active. This is not the UI overlap at decision 9.
+        rows[completed:completed] = [
+            {"type": "action_started", "action_id": 2,
+             "parent_action_id": 1,
+             "native_type": "ReadyToBeginEnemyTurnAction",
+             "canonical_action": None,
+             "state": {"player": {"hp": 50}, "combat": {"energy": 2}}},
+            {"type": "action_completed", "action_id": 2,
+             "state": {"player": {"hp": 50}, "combat": {"energy": 2}}},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", result["status"])
+        nested = result["source_executor_observed_transitions"][1]
+        self.assertEqual([1], nested["active_prior_executor_action_ids"])
+        self.assertIsNone(nested["preceding_completed_executor_action_id"])
+        self.assertEqual("UNOBSERVED",
+                         nested["preceding_completion_to_start_state_agreement"])
+        self.assertEqual("NATIVE_CALLBACK_PROJECTIONS_ONLY",
+                         nested["source_comparison"])
+
+    def test_history_reset_preserves_source_only_callbacks_but_not_strict_gate(self):
+        from native_action_envelope_audit import audit as strict_audit
+
+        rows = source_capture()
+        rows[-1]["data"]["reason"] = "Combat ended"
+        # Extra frame after the native reset: the strict audit intentionally
+        # refuses to treat the reset as directly adjacent to terminal.
+        rows[-1:-1] = [
+            {"type": "history_reset",
+             "data": {"previous_count": 5, "new_count": 0}},
+            {"type": "frame_state",
+             "state": {"combat": {"energy": 1}},
+             "data": {"frame_index": 10, "state_hash": "synthetic-1"}},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        self.assertEqual("INCOMPLETE_CAPTURE", strict_audit(rows)["status"])
+        report = build(rows)
+        self.assertEqual(
+            "SOURCE_ACTION_CHRONOLOGY_HISTORY_RESET_UNRESOLVED",
+            report["status"])
+        self.assertEqual("INCOMPLETE_CAPTURE", report["source_audit"])
+        self.assertEqual([{"ordinal": len(rows) - 2,
+                           "previous_count": 5, "new_count": 0}],
+                         report["source_history_resets"])
+        self.assertEqual("SOURCE_HISTORY_RESET_UNRESOLVED_CALLBACKS_ONLY",
+                         report["source_history_continuity"])
+        self.assertEqual(1, len(report["source_executor_observed_transitions"]))
+        self.assertEqual(1, len(report["source_linked_commands"]))
+        self.assertEqual("NOT_EXECUTED", report["emulator_replay"])
+        self.assertEqual("NOT_TESTED", report["emulator_parity"])
+        self.assertEqual("NOT_VERIFIED", report["native_legal_menu"])
+
+    def test_history_reset_during_active_executor_is_never_qualified(self):
+        rows = source_capture()
+        completed = next(i for i, row in enumerate(rows)
+                         if row["type"] == "action_completed")
+        rows.insert(completed, {
+            "type": "history_reset",
+            "data": {"previous_count": 5, "new_count": 0}})
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = build(rows)
+        self.assertEqual("INVALID_SOURCE_CAPTURE", result["status"])
+        self.assertEqual([], result["source_executor_observed_transitions"])
+
+    def test_history_reset_with_invalid_counts_is_never_qualified(self):
+        rows = source_capture()
+        rows[-1:-1] = [
+            {"type": "history_reset",
+             "data": {"previous_count": 5, "new_count": 6}},
+            {"type": "frame_state", "state": {"combat": {"energy": 1}},
+             "data": {"frame_index": 10, "state_hash": "synthetic-1"}},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = build(rows)
+        self.assertEqual("INVALID_SOURCE_CAPTURE", result["status"])
 
     def test_missing_true_run_identity_remains_explicit(self):
         rows = [r for r in source_capture() if r["type"] != "native_run_identity"]

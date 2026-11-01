@@ -52,11 +52,37 @@ def main():
         match = compare(chosen["offeredRelicIds"], source_rng, result)
         assert match["source_rng_recomputation"] == "MATCHED", match
         assert match["emulator_event_rng_alignment"] == "NOT_TESTED"
+        # Recorded source preselection Neow state from pinned v111
+        # Silent A10 run 6JK8MD0VQQTA (run-prelude 2026-11-01).
+        # This verifies source-local Neow reconstruction on a real seed
+        # independently of emulator run/Neow action state transitions.
+        captured_seed = "6JK8MD0VQQTA"
+        captured_ids = [
+            "proto.native.neow.phialholster",
+            "proto.native.neow.lostcoffer",
+            "proto.native.neow.silvercrucible",
+        ]
+        captured_cursor = {
+            "counter": 19,
+            "s0": 7953574168331048626,
+            "s1": 3395371163224860218,
+            "s2": 16899011179517407643,
+            "s3": 6951990959699619831,
+        }
+        replayed = verify_neow_event_rng(captured_seed, captured_cursor)
+        assert replayed["status"] == "SOURCE_EVENT_RNG_RECONSTRUCTED", replayed
+        pinned = session.call("native_neow_rng_probe", seed=captured_seed)
+        captured_comparison = compare(captured_ids, captured_cursor, pinned)
+        assert captured_comparison["status"] == (
+            "SOURCE_NEOW_EVENT_RNG_AND_OFFERS_RECOMPUTED"), (
+                "Pinned native preselection Neow offer/cursor hypothesis "
+                "differs: " + json.dumps(captured_comparison, sort_keys=True))
         print(json.dumps({
             "status": "NATIVE_NEOW_RNG_SOURCE_PROBE_SMOKE_PASS",
             "real_emulator_jsonl_process": True,
             "source_data": "C_SHARP_PREDICTION_VERIFIED_BY_INDEPENDENT_PYTHON_CODEC",
-            "native_game_parity": "NOT_TESTED"
+            "native_game_parity": "NOT_TESTED",
+            "pinned_source_neow_offer_and_rng": "SOURCE_MATCHED_OFFLINE"
         }, sort_keys=True))
 
 

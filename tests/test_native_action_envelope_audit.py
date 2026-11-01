@@ -42,6 +42,71 @@ def sample():
 
 
 class EnvelopeAuditTests(unittest.TestCase):
+    def test_turn_start_candidates_are_provisional_and_source_ordered(self):
+        records = sample()
+        player_state = {"combat": {"turn": 1}, "player": {"hp": 50}}
+        enemy_state = {"combat": {"turn": 1}, "player": {"hp": 50}}
+        def checkpoint(kind, state, site, basis, side, phase):
+            return {"type": "native_turn_checkpoint",
+                    "state": copy.deepcopy(state),
+                    "data": {
+                        "kind": kind, "turn": 1,
+                        "observation_site": site,
+                        "observation_basis": basis,
+                        "native_side": side, "player_phase": phase,
+                        "settlement_status": "SETTLEMENT_UNVERIFIED",
+                        "complete_native_queue_verified": False,
+                        "native_phase_handoff_order_verified": False,
+                        "original_native_legal_menu": "NOT_VERIFIED",
+                        "emulator_parity": "NOT_TESTED",
+                        "rng_draws_performed_by_inspector": 0}}
+        player = checkpoint(
+            "PLAYER_TURN_START", player_state,
+            "NativeV111PassiveBridge.OnFrame",
+            "IDLE_PLAYABLE_PLAYER_FRAME_BEFORE_OBSERVED_INPUT",
+            "Player", "Play")
+        enemy = checkpoint(
+            "ENEMY_TURN_START", enemy_state,
+            "ActionExecutor.BeforeActionExecuted",
+            "PRE_READY_TO_BEGIN_ENEMY_TURN_ACTION", "Player", "End")
+        records[-1:-1] = [
+            player,
+            {"type": "action_started", "action_id": 3,
+             "native_type":
+                 "MegaCrit.Sts2.Core.GameActions.ReadyToBeginEnemyTurnAction",
+             "state": copy.deepcopy(enemy_state)},
+            enemy,
+            {"type": "action_completed", "action_id": 3,
+             "state": copy.deepcopy(enemy_state)},
+        ]
+        def run(rows):
+            for i, row in enumerate(rows, 1):
+                row["ordinal"] = i
+            return audit(rows)
+        report = run(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(["PLAYER_TURN_START", "ENEMY_TURN_START"],
+                         [item["kind"] for item in
+                          report["turn_boundary_candidates"]])
+        self.assertTrue(all(item["settlement_status"] ==
+                            "SETTLEMENT_UNVERIFIED"
+                            for item in report["turn_boundary_candidates"]))
+        forged = copy.deepcopy(records)
+        forged[8]["data"]["settlement_status"] = "SETTLEMENT_VERIFIED"
+        self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
+        forged = copy.deepcopy(records)
+        forged[10]["state"]["player"]["hp"] = 49
+        self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
+        forged = copy.deepcopy(records)
+        forged[10]["data"]["observation_basis"] = "AFTER_ENEMY_ACTION"
+        self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
+        forged = copy.deepcopy(records)
+        forged.insert(-1, copy.deepcopy(player))
+        self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
+        forged = copy.deepcopy(records)
+        forged[8]["data"]["complete_native_queue_verified"] = True
+        self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
+
     def test_disabled_and_installed_rng_hooks_remain_distinct(self):
         default = audit(sample())
         self.assertFalse(default["native_rng_hook_installed"])
@@ -280,6 +345,26 @@ class EnvelopeAuditTests(unittest.TestCase):
         forged = copy.deepcopy(rows)
         forged[3]["data"]["full_legal_menu"] = "VERIFIED"
         self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+        # New captures record callback-time state explicitly. Legacy
+        # observations without a snapshot remain acceptable but unverified.
+        self.assertEqual("UNOBSERVED_LEGACY",
+                         result["native_ui_play_begins"][0][
+                             "source_ui_state_observation"])
+        observed = copy.deepcopy(rows)
+        observed[3]["state"] = {"player": {"hp": 50}}
+        observed[3]["data"]["ui_state_observation"] = (
+            "SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT")
+        verified = audit(observed)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", verified["status"])
+        self.assertEqual("SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT",
+                         verified["native_ui_play_begins"][0][
+                             "source_ui_state_observation"])
+        mismatched = copy.deepcopy(observed)
+        mismatched[3]["state"] = None
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(mismatched)["status"])
+        mismatched = copy.deepcopy(observed)
+        mismatched[3]["data"]["ui_state_observation"] = "UNOBSERVED"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(mismatched)["status"])
 
     def test_source_reserved_hand_choice_id_links_initial_menu_to_selection(self):
         rows = sample()
@@ -529,6 +614,59 @@ class EnvelopeAuditTests(unittest.TestCase):
         self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
         self.assertEqual(1, result["action_resumptions"])
         self.assertEqual(1, result["terminal_history_clears"])
+
+    def test_terminal_history_clear_with_unchanged_rng_checkpoint(self):
+        rows = sample()
+        rows[-1]["data"]["reason"] = "Combat ended"
+        streams = [{"stream_id": "run.shuffle", "owner_id": "run",
+                    "cursor": {"Counter": 22, "State0": 1, "State1": 2,
+                               "State2": 3, "State3": 4}}]
+        def checkpoint(phase):
+            return {"type": "native_rng_stream_checkpoint",
+                    "data": {"phase": phase,
+                             "source": "native_rng_object_to_serializable",
+                             "rng_draws_performed": 0,
+                             "scope": "15_persistent_streams_in_observed_combat",
+                             "streams": copy.deepcopy(streams),
+                             "complete_native_rng_inventory": False,
+                             "exact_rng_parity": "NOT_TESTED"}}
+        rows[-1:-1] = [
+            checkpoint("after_action"),
+            {"type": "frame_state", "state": {"combat": {"energy": 2}},
+             "data": {"frame_index": 7, "state_hash": "terminal-frame"}},
+            {"type": "history_reset",
+             "data": {"previous_count": 5, "new_count": 0}},
+            checkpoint("combat_end"),
+        ]
+        def check(records):
+            for i, row in enumerate(records, 1):
+                row["ordinal"] = i
+            return audit(records)
+        report = check(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(1, report["terminal_history_clears"])
+        self.assertEqual(2, report["native_rng_stream_checkpoint_count"])
+        self.assertEqual([], report["incomplete_observations"])
+
+        # A terminal checkpoint with changed RNG is a separate event,
+        # not proven read-only terminal cleanup.
+        changed = copy.deepcopy(rows)
+        changed[-2]["data"]["streams"][0]["cursor"]["State3"] += 1
+        self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
+        changed = copy.deepcopy(rows)
+        changed[-2]["data"]["phase"] = "after_action"
+        self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
+        changed = copy.deepcopy(rows)
+        changed[-2]["data"]["rng_draws_performed"] = 1
+        self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
+        changed = copy.deepcopy(rows)
+        changed.pop(-5)  # Missing prior after_action checkpoint.
+        self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
+        changed = copy.deepcopy(rows)
+        changed.insert(-3, {"type": "history_entry",
+                            "data": {"history_index": 4,
+                                     "missing_fields": []}})
+        self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
 
     def test_legacy_choice_resume_is_qualified_not_rewritten(self):
         records = sample()

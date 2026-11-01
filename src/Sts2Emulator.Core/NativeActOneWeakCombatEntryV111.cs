@@ -33,7 +33,7 @@ public static class NativeActOneWeakCombatEntryV111
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(encounter);
-        if (state.Configuration?.UsesExperimentalNativeWeakCombatEntry != true)
+        if (state.Configuration?.UsesNativeActOneCombatEntry != true)
             throw new InvalidOperationException(
                 "Live native encounter RNG requires the experimental fidelity opt-in.");
         if (world.Act != 1 || world.ActiveRoom != PrototypeRoomType.Combat
@@ -51,10 +51,12 @@ public static class NativeActOneWeakCombatEntryV111
             or "proto.encounter.corpse_slugs_weak"
                 ? PrototypeActOneRegion.Underdocks
                 : PrototypeActOneRegion.Overgrowth;
-        var expectedMapProfile = expectedRegion
-            == PrototypeActOneRegion.Underdocks
-                ? PrototypeNativeUnderdocks.GenerationProfileId
-                : PrototypeNativeOvergrowthMap.GenerationProfileId;
+        var expectedMapProfile =
+            state.Configuration?.UsesNativeStandardActMap == true
+                ? NativeStandardActMapV111.ProfileId
+                : expectedRegion == PrototypeActOneRegion.Underdocks
+                    ? PrototypeNativeUnderdocks.GenerationProfileId
+                    : PrototypeNativeOvergrowthMap.GenerationProfileId;
         if (world.ActOneRegion != expectedRegion
             || world.Map.GenerationProfileId != expectedMapProfile)
             throw new NotSupportedException(

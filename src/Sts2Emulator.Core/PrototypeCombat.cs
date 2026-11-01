@@ -114,6 +114,25 @@ public sealed partial class PrototypeGameEngine
 
         }
 
+        // Source-generated UpFront room queues are kept as an independent
+        // shadow prediction. Preserve the existing encounter selection and
+        // every RNG provider; mismatches are diagnostic evidence only.
+        if (state.Configuration?.UsesNativeStandardActMap == true
+            && state.NativeStartupRooms is { } sourceRooms
+            && state.NativeStartupQueueTrace is { } queueTrace
+            && world.Map.CurrentNodeId is { Length: > 0 } nodeId
+            && world.ActiveRoom == roomType
+            && roomType is (PrototypeRoomType.Combat
+                or PrototypeRoomType.Elite or PrototypeRoomType.Boss))
+        {
+            state = state with
+            {
+                NativeStartupQueueTrace = NativeStartupRoomQueueTraceV111.Observe(
+                    queueTrace, sourceRooms, world.Act, roomType, nodeId,
+                    encounter.Id)
+            };
+        }
+
         state = ApplyBeforeCombatStartRelics(state);
         state = state with
         {
@@ -165,7 +184,7 @@ public sealed partial class PrototypeGameEngine
         // encounter RNG. Unsupported entries must never fall back
         // to the prototype combat RNG.
         var nativeFormation =
-            state.Configuration?.UsesExperimentalNativeWeakCombatEntry == true
+            state.Configuration?.UsesNativeActOneCombatEntry == true
                 ? NativeActOneEliteBossCombatEntryV111.IsSupported(encounter.Id)
                     ? NativeActOneEliteBossCombatEntryV111.Prepare(
                         state, world, encounter)
@@ -351,7 +370,30 @@ public sealed partial class PrototypeGameEngine
             .Where(card => !IsInnate(card))
             .Select(card => card.InstanceId)
             .ToArray();
-        PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
+        if (state.Configuration?.UsesNativeStandardActMap == true)
+        {
+            // Native Player.PopulateCombatState copies Deck in persistent
+            // order, then CardPile.RandomizeOrderInternal performs an
+            // *unstable* Fisher-Yates shuffle on run.shuffle. This is the
+            // first combat's run-owned shuffle, independent of act-map and
+            // Neow event-local streams.
+            if (innateCards.Length != 0)
+                throw new NotSupportedException(
+                    "Source initial-shuffle hooks for innate cards require a dedicated v111 parity gate.");
+            var native = state.NativeRunRng?.Fork()
+                ?? throw new InvalidDataException(
+                    "Native opening shuffle requires persistent run RNG ownership.");
+            NativeRngV111.Shuffle(native, "run.shuffle", drawPile);
+            // Native CardPile draws from its FRONT. The prototype stores
+            // the next card at the LAST index, so reverse the source's
+            // final order instead of changing the global draw convention.
+            Array.Reverse(drawPile);
+            state = state with { NativeRunRng = native };
+        }
+        else
+        {
+            PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
+        }
         var teaOfDiscourtesy = ApplyTeaOfDiscourtesyBeforeCombat(
             state.Player,
             combatCards,
@@ -939,6 +981,17 @@ public sealed partial class PrototypeGameEngine
         var combat = RequireWorld(state).Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
 
+        // Only the opt-in v111 source-shaped map/combat profile uses the
+        // independently reconstructed native run.shuffle stream for
+        // discard recycling. Scripted diagnostic scopes take precedence.
+        // Ordinary prototype/training profiles keep their existing RNG.
+        using var nativeRecycle = state.Configuration?.UsesNativeStandardActMap == true
+            && !NativeShuffleStepReplayV111.HasActiveReplay
+            ? NativeSourceRecycleShuffleV111.Begin(
+                state.NativeRunRng ?? throw new InvalidDataException(
+                    "Native combat recycle requires the run-owned RNG bundle."))
+            : null;
+
         var next = combat.PendingKnowledgeDemonChoice is not null
             ? ResolveKnowledgeDemonChoice(state, action)
             : combat.PendingChoice is not null
@@ -957,6 +1010,56 @@ public sealed partial class PrototypeGameEngine
                 _ => throw new InvalidOperationException(
                     $"Unknown combat action '{action.Kind}'.")
             };
+
+        if (nativeRecycle is { Recycles: > 0 })
+        {
+            // The native source-shuffle scope advances only run.shuffle.
+            // Preserve all other named native streams from the returned
+            // immutable state and refuse a conflicting shuffle owner.
+            var before = state.NativeRunRng!.Streams.Single(
+                stream => stream.StreamId == "run.shuffle");
+            // The combat-owned bundle may already have advanced other
+            // streams during this Step. Retain those cursors and replace
+            // *only* run.shuffle, so no enemy-intent or other source RNG
+            // operation can be rolled back by this handoff.
+            var persisted = (next.World?.Combat?.NativeRng?.RunStreams
+                    ?? next.NativeRunRng)?.Fork()
+                ?? throw new InvalidDataException(
+                    "Native combat lost its source RNG bundle.");
+            var index = Array.FindIndex(persisted.Streams,
+                stream => stream.StreamId == "run.shuffle");
+            if (index < 0 ||
+                NativeRngV111.ToSnapshot(persisted.Streams[index])
+                    != NativeRngV111.ToSnapshot(before))
+                throw new InvalidDataException(
+                    "Native run.shuffle owner changed during source recycle.");
+            persisted.Streams[index] = nativeRecycle.SourceShuffleStream.Fork();
+            if (next.World?.Combat?.NativeRng is { } combatOwner)
+            {
+                // ReconcileAfterStep correctly considers combat-owned streams
+                // authoritative. Advance that owner at the same boundary,
+                // otherwise reconciliation would restore the old shuffle
+                // cursor despite having computed the right shuffled cards.
+                var syncedCombat = next.World.Combat with
+                {
+                    NativeRng = combatOwner with { RunStreams = persisted.Fork() }
+                };
+                next = NativeRunRngV111.ReplaceCombat(next, syncedCombat);
+            }
+            else if (state.World?.Combat?.NativeRng is not null)
+            {
+                // A terminal native combat would otherwise reconcile from
+                // the old (now detached) combat-owned RNG. Until source
+                // terminal-shuffle semantics are audited, fail closed.
+                throw new NotSupportedException(
+                    "Native source recycle on the final combat transition " +
+                    "requires an explicit run/combat RNG release boundary.");
+            }
+            else
+            {
+                next = next with { NativeRunRng = persisted };
+            }
+        }
 
         if (next.Phase != RunPhase.Combat
             || next.Player.Hp > 0)
@@ -6677,7 +6780,7 @@ public sealed partial class PrototypeGameEngine
                         {
                             var shuffled =
                                 NativeShuffleStepReplayV111.ShuffleRecycle(
-                                    discard.ToArray(), rng);
+                                    discard.ToArray(), rng, combat);
                             draw.AddRange(NativeShuffleStepReplayV111.CheckPostHook(
                                 ApplyPerfectFitShuffleOrder(
                                     combat, shuffled)));
@@ -13245,7 +13348,7 @@ public sealed partial class PrototypeGameEngine
                 }
 
                 var recycled = NativeShuffleStepReplayV111.ShuffleRecycle(
-                    discard.ToArray(), rng);
+                    discard.ToArray(), rng, combat);
                 discard.Clear();
                 draw.AddRange(NativeShuffleStepReplayV111.CheckPostHook(
                     ApplyPerfectFitShuffleOrder(

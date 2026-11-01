@@ -904,3 +904,642 @@ RNG state/counter at a certified source boundary, postprocessing node
 coordinates, and the first accepted map choice. A matching first visited
 node alone is insufficient. This update does not complete L1, claim
 original-game parity, or require a new game launch.
+
+### Full source-map capture and comparison
+
+The passive reference mod records an initial_map_snapshot containing the finalized native StandardActMap graph (starting ancient, boss, all grid points, types and edges) and the read-only map-local RNG cursor. Capturing the cursor uses ToSerializable and does not advance the generator.
+
+The run-prelude auditor checks provenance and structural consistency. The native_map_fidelity Python comparator checks all nodes, edges, entry choices and map RNG words against an independently generated emulator start_run snapshot. The native prelude bootstrap runs this comparison before replaying any observed Neow or map choice.
+
+The original game and emulator map are not yet proven equal: a fresh v111 source capture and local STS2_NATIVE build are outstanding. Synthetic test data provides regression coverage only.
+
+## Original-game v111 pinned-seed acceptance evidence (2026-11-01)
+
+A single staged reference-mod run against the pinned native v0.111.0
+`sts2.dll` (SHA-256 `0861bfa1df347538d932f22d580e75420f08082792eb914e53b4882764acdbe9`)
+produced a complete first-combat run prelude and two combat trace/sidecar
+pairs. The minimum public, mechanics-only expectations are retained as
+`NativeObservedMapV111Tests`; no user IDs or raw logs are committed.
+
+**Independently matched:**
+
+- Silent A10 seed `6JK8MD0VQQTA`, Overgrowth, exact first
+  `StandardActMap`: 74 source nodes including Ancient and Boss,
+  73 emulator map nodes (Ancient is represented as entry IDs),
+  all room types, coordinates, links and entry nodes.
+- Source map-local `act_1_map` cursor **272**, with **all four
+  xoshiro words equal** to the independently generated emulator map RNG.
+- Neow offered `PHIAL_HOLSTER`, `LOST_COFFER`,
+  `SILVER_CRUCIBLE` in that order; independently reconstructed
+  event-local `NEOW` RNG cursor **19** and all four words.
+  The matching availability profile permits Kaleidoscope and Scroll Boxes.
+- First map visit (row 1, col 0) and weak combat identity
+  `FUZZY_WURM_CRAWLER_WEAK`; first combat player HP **56**,
+  gold **99**, single Fuzzy Wurm Crawler HP **59/59**.
+
+**First combat's native opening shuffle/HP are now reproduced.**
+
+The pinned source's `Player.PopulateCombatState` calls
+`CardPile.RandomizeOrderInternal`, which performs
+`UnstableShuffle(run.Shuffle)` across the entire ordered 13-card
+Silent A10 starting deck (including Ascender's Bane). The native
+draw pile exposes its next card at the **front**, whereas the
+emulator's existing engine draws from its **last** internal index.
+The explicit native-map fidelity profile now runs the independent
+native xoshiro stream's Fisher–Yates and reverses only its stored
+post-shuffle array. The ordinary/training profile is untouched.
+
+The source-observed first hand now matches exactly, in order:
+`Strike, Neutralize, Ascender's Bane, Defend, Strike, Defend, Strike`.
+The remaining six-card draw pile also matches in top-first order.
+Additionally, native encounter formation is now enabled for this
+profile, so Fuzzy Wurm Crawler's **59/59 HP** is sampled from
+`run.niche` instead of the prototype combat stream. Persistent
+`run.shuffle` counter **12** and `run.niche` counter **1**,
+including all four state words of each, match the native source
+capture in `NativeObservedMapV111Tests`.
+
+**Full-unlock Phial Holster RNG and source-ordered UpFront startup reconstruction.**
+
+- `run.combat_potion_generation`: native first combat **4** and
+  emulator first combat **4**, including **all four identical
+  xoshiro state words**. The source's `PhialHolster.AfterObtained`
+  uses `PotionFactory.CreateRandomPotionsOutOfCombat` on the three
+  `Silent4Epoch` models followed by the 45 shared potion models.
+  The newly implemented source-ordered 48-model selection makes a
+  rarity float roll and one bounded choice per potion, then removes
+  that potion before the next selection. On this seed the predicted
+  rarities are Uncommon and Common, and the resulting potions are
+  **Fortifier** and **Vulnerable Potion**. The native passive trace
+  did not record potion IDs: **the cursor is source-observed parity,
+  while those two identities are source-derived predictions**.
+- `run.up_front`: Native `RunStarted` at **412**. The source
+  uses different relic-bag overloads: shared `Populate(IEnumerable)`
+  retains all **118** source relic models across six rarity buckets,
+  including one Event relic and two Ancient relics. Shuffling the
+  two-Ancient bucket consumes **one** extra draw (the Event singleton
+  consumes zero). Player `Populate(Player)` excludes Event/Ancient
+  rarities, leaving 122 eligible relics in four buckets. The native
+  relic shuffles therefore consume **112 + 118 = 230** UpFront draws,
+  correcting the previous erroneous 111 + 118 = 229 model.
+- For seed `6JK8MD0VQQTA`, corrected source-ordered checkpoints are
+  **230** after relic bags, **232** after allocating shared Ancients,
+  **262** after Act 1 event shuffle, **295** after Act 1,
+  **355** after Act 2, and **412** after Act 3. The final
+  182 calls include five rejected grab-bag candidates (1, 2, 2).
+  The final four xoshiro words remain
+  `[14133024965363381498, 3052595882297166200,
+  14908445774459425184, 16826779579573568376]`.
+- On **2026-11-01 10:37 UTC**, an independently observed native
+  `startup_room_queues` record captured every event, normal encounter,
+  elite, boss, second boss and Ancient identity for all three acts at
+  `RunManager.RunStarted` (17-record run prelude). The corrected
+  C# reconstruction matches **every native queue identity and position**
+  in a sanitized golden regression. The omitted shared-bag draw had
+  shifted Act 1 events/encounters, but an extra rejection later
+  cancelled that shift at the end-of-act counter. It also placed the
+  shared Ancient Darv in Hive instead of Glory, predicting Nonupeipe
+  rather than the native-observed Glory Ancient **Tanx**.
+  With the fix, Act 1's first three weak encounters are
+  Fuzzy Wurm Crawler, Slimes and Nibbits, and Darv belongs to Glory.
+  Neither earlier matching final UpFront words nor a matched boss
+  could independently establish this queue identity agreement.
+- Native map combat entry now records a forkable, diagnostic-only
+  `native_startup_queue_trace`: source queue index, source encounter ID,
+  uniquely crosswalked prototype encounter ID, actual entered encounter ID,
+  and a match/difference status. This leaves encounter selection, training
+  profiles and all RNG streams unchanged. Crosswalking supports both
+  `proto.encounter.*` and region-qualified `proto.native.<region>.encounter.*`,
+  with fail-closed act/room/uniqueness checks. The corrected first
+  source queue predicts `FuzzyWurmCrawlerWeak`, matching the native
+  observation. Actual prototype combat selection remains independent
+  of this diagnostic trace.
+- Native prelude replay now separately checks the **actual** emulator
+  encounter identity against the original game's `RoomEntered.room_model_id`
+  after entering combat; a different or missing identity blocks that
+  comparison even if RNG/HP/gold happened to agree.
+- `native_run_bootstrap.py` separately compares the observed
+  encounter prefix and all three native `ActModel._rooms` queues
+  against source-generated predictions when captured. The 2026-11-01
+  prelude is complete and supplies all three arrays; source queues
+  remain **diagnostic-only** and do not change prototype combat
+  selection. The full source-replay route is Overgrowth -> Hive ->
+  Glory. Experimental Underdocks retains the corrected 230-draw
+  relic-bag prefix until its source room generator is implemented.
+- The first combat HP, map, Neow, encounter, opening hand/draw pile,
+  `run.shuffle`, `run.niche`, and Phial Holster's native potion
+  RNG are verified against original-game observations. Native potion
+  identities, broader per-action combat transitions and postcombat
+  rewards remain separate acceptance gates. Selected early combat
+  actions and startup room/Ancient identities now have independently
+  checked native visible projections for this one pinned seed.
+
+**Capture limitations and later trace coverage:**
+
+- Run prelude: 16 ordered records, one complete source map snapshot,
+  Neow choice, first map vote/move outcomes and combat link. It still
+  declares `source_macro_choices_complete=false`; queue acceptance
+  and human-origin provenance are not fully certified.
+- First combat: 16 complete strict decision/action/transition
+  lifecycles; the strict trace safely stops at Survivor's nested card
+  choice. The action sidecar continues through 26 executor actions.
+- Second combat: two strict decisions, of which the second is
+  incomplete due to `executor_action_without_unique_strict_decision`
+  during a card-play animation. Its sidecar observes 21 executor
+  actions. It is not evidence of strict lockstep success.
+- Hook installation, map observation and first-combat capture are
+  confirmed by original-game logs. These do not establish that every
+  source draw or mechanical operation has been reproduced by the
+  emulator.
+
+### 2026-11-01 independent combat action-prefix replay (native observations)
+
+A new C# regression, `NativeObservedFirstCombatActionsV111Tests`,
+reconstructs Silent A10 seed `6JK8MD0VQQTA` independently using the
+source-shaped Neow choice (Phial Holster) and first map node `1:1:0`.
+It builds an explicit, identity-checked native-to-emulator card map from
+the source-observed initial hand and top-first draw pile; the game and
+emulator have distinct card instance numbers.
+
+The test replays six original native player card actions and two
+`end_turn` commands through the **actual `PrototypeGameEngine.Step`**.
+It compares executor-callback HP, energy, block, enemy HP and visible
+hand/discard sequences for Neutralize, Defend, Strike, Strike (turn 1)
+and Strike, Strike (turn 2). It separately checks stable turn-2 and
+turn-3 decisions, enemy Weak and Strength(7), draw/discard order, and
+the source `run.shuffle` cursor. The second end-turn is a source
+`CardPileCmd.Shuffle` recycle: the pin has ten fresh RNG selections,
+so the state advances from 12 to **22** calls on `run.shuffle`,
+independently of initial-shuffle setup.
+
+This exposed a real source-shuffle difference: the ordinary prototype
+combat `ShuffleRecycle` uses its synthetic stream and unsorted discard
+order; pinned v111 `CardPileCmd.Shuffle` uses
+`StableShuffle` (source model/upgrade order, then `run.shuffle`).
+`NativeSourceRecycleShuffleV111` now reconstructs the source-shuffle
+order and stores the reversed top-first pile within the **native-map
+fidelity profile only**. Its RNG advances are applied at the
+combat-owned RNG boundary, so `NativeRunRngV111.ReconcileAfterStep`
+retains the advanced stream rather than restoring the prior cursor.
+Other combat-owned streams are preserved. The existing explicit
+scripted shuffle replay takes precedence, and ordinary training runs
+retain the existing shuffle implementation. The source RNG is forked
+only when recycling occurs.
+
+**Evidence level:** these are independently simulated *visible
+mechanics matches at selected observed callback/decision boundaries*
+for one seed and one first combat. Source executor callbacks are not
+certified settled decision boundaries. Full legal menus, queued or
+overlapping inputs, nested choices, downstream combat completion and
+other seeds remain unverified. The strict decision-9 gap remains a
+separate inspector capture issue.
+
+### 2026-11-01 strict decision-gap retrospective (source-only)
+
+The newly captured Silent A10 first-combat run for seed
+`6JK8MD0VQQTA` has a **complete 17-record run prelude**,
+**9 strict decisions** (8 complete transitions, decision 9 incomplete)
+and a **909-record native action sidecar**. The sidecar observes
+26 source executor start/completion pairs across six native turns,
+including automatic `ReadyToBeginEnemyTurnAction` entries.
+These are source observations, not emulator lockstep evidence.
+
+The **first strict input gap is action-sidecar ordinal 459**,
+executor action ID 12 (`PlayCardAction`, Defend). Its source timeline is:
+
+| Native ordinal | Observed event |
+| --- | --- |
+| 414 | Strict stable decision 9, starting turn 3 |
+| 417–419 | UI begins Neutralize and native executor action 11 starts |
+| 445–446 | Original native UI card-action gates return allowed |
+| 447 | Native UI begins Defend while action 11 is still running |
+| 453 | Native action 11 completes |
+| 456–457 | Defend's native enqueue request and executor start |
+| 459 | `strict_input_gap`, cached gate `WAITING_FOR_DECISION:CARD_PLAY_ANIMATION` |
+
+The UI-start/predecessor-completion/enqueue order demonstrates a
+**native UI play beginning during the preceding executor action**.
+It explains why a frame-only strict recorder can miss the next fresh
+decision boundary. The game subsequently observed the Defend request,
+execution and manual-play return. This does **not** establish a
+new full legal menu or human-origin proof.
+
+`tools/native_decision_gap_audit.py` now separately reports this
+source-observed overlap, the request-to-executor identity correlation,
+the cached strict frame gate, and observed state-snapshot agreement,
+while keeping the primary gap status
+`FIRST_UNCAPTURED_EXECUTOR_ACTION_FOUND` and
+`legal_menu_reconstruction=NOT_PERFORMED`. Missing or contradictory
+timing evidence is classified `TEMPORAL_CAUSE_UNVERIFIED`.
+`tools/native_lockstep_source_journal.py` now retains **all native
+executor start/complete observations**, including automatic actions,
+with explicit `NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED` provenance.
+It labels request/execute and prior-completion/request state agreement
+without manufacturing an executable decision boundary or asserting
+emulator mechanics parity.
+
+#### Verified terminal history-clear checkpoint (2026-11-01)
+
+The 909-record original v111 sidecar ends with: action #26 completion
+(904), `after_action` RNG checkpoint (905), a read-only frame observation
+(906), `history_reset` 123→0 (907), `combat_end` RNG checkpoint (908),
+and terminal `Combat ended / OBSERVED` (909). All 15 source-observed
+RNG stream snapshots match exactly between the two checkpoints.
+
+The strict action-envelope auditor now recognizes this **specific**
+terminal-cleanup ordering when no action remains active, all between-checkpoint
+observations are frame polls, the preceding RNG checkpoint directly
+follows an action completion, and the two checkpoints expose identical
+stream snapshots and read-only provenance. This accepts the original
+capture without changing any raw records or manufacturing a strict
+decision after decision 9. Other history resets remain fail-closed;
+the native RNG inventory is still explicitly incomplete.
+
+```fish
+python tools/native_action_envelope_audit.py /path/to/existing/actions.jsonl --out /tmp/native-envelope-audit.json
+python tools/native_lockstep_source_journal.py --sidecar /path/to/existing/actions.jsonl --out /tmp/native-source-action-journal.json
+```
+
+#### Source executor callback comparison after decision 9
+
+The source journal now compares each of the 26 observed executor
+start/complete pairs as **source-only callback projections**. It records
+measured changes during the executor interval separately from measured
+changes between the closest earlier completed executor and the next start.
+The comparison also reports the earlier completion ID, callback snapshot
+agreement, any still-active executor IDs, and observed intervening record
+types. This handles nested executor intervals without confusing them with
+the distinct *UI began during previous execution* chronology at the
+strict decision-9 gap.
+
+Using the **existing** native action sidecar (no original-game launch):
+
+```fish
+python tools/native_lockstep_source_journal.py --sidecar /path/to/existing/action-sidecar.jsonl --out /tmp/native-source-action-journal.json
+```
+
+Inspect `source_executor_observed_transitions` by `start_ordinal`; decision 9
+was observed at sidecar ordinal 414, followed by the first strict gap at
+executor #12 / ordinal 459. The new fields
+`source_executor_observed_delta` and
+`preceding_completion_to_start_observed_delta` measure only fields
+present in both snapshots. `active_prior_executor_action_ids` distinguishes
+a genuinely overlapping executor from an earlier UI event that overlaps
+a completed executor but queues later. An empty delta is evidence only
+for the measured projection; a missing snapshot is reported as null.
+
+The journal also separates canonical player-command candidates from
+noncanonical native executor callbacks. The pinned capture has **21**
+canonical play/end-turn commands and **5** linked
+`ReadyToBeginEnemyTurnAction` executor requests. They are reported in
+`source_linked_commands` and `source_linked_noncanonical_executor_actions`,
+respectively; neither category is permitted to invent a strict decision
+boundary. `source_requests_without_executor_start` represents genuinely
+unmatched requests and is empty on the pinned native capture.
+
+The strict decision recorder and its fail-closed legal-menu requirements
+are unchanged. This journal can isolate the first observed mechanics gap
+and guide a later mapped emulator replay; source callback agreement
+alone cannot certify native state settlement, RNG parity, or human input.
+
+**Source UI-input window analysis (existing capture):** the original
+sidecar has 16 play-card executor requests but 17 `native_ui_play_begin`
+observations. The source journal's `source_ui_request_windows` associates
+15 requests with a single temporally matching native UI-begin card ID.
+The initial Neutralize input has *two* UI-begin observations (ordinals
+50 and 53), so its precise UI-to-request association stays ambiguous.
+Every uniquely matched attempt is immediately preceded by both original
+native UI guard callbacks returning `true`.
+
+At decision 9, both native guards return `true` at 445–446,
+Defend #11 UI begins at **447** while Neutralize executor #11 is
+active, Neutralize completes at **453**, Defend request #12 arrives
+at **456**, its executor starts at **457**, and the strict gap is emitted
+at **459**. The last frame poll preceding the UI interaction was stale:
+Neutralize is added to the discard pile before the source request.
+This is a real overlapping *UI-input window*, with sequential executor
+intervals. The source UI/request correlation is qualified as a temporal
+card-instance match; it never certifies an entire legal menu, original
+human input, or a settled native decision.
+
+**Prepared future native UI evidence:** `native_ui_play_begin` now stores
+an optional canonical state projection from the original
+`NPlayerHand.StartCardPlay.prefix` callback, labelled
+`ui_state_observation=SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT` (or
+`UNOBSERVED` when unavailable). The envelope auditor checks marker/state
+consistency, while the journal compares that callback-time snapshot with
+the later source request. Previous captures remain valid and explicitly
+unobserved in this field. This extra snapshot is read-only and requires
+a *future* original-game capture; none is needed for current offline work.
+
+**History-reset issue resolved:** the v111 strict source auditor now
+accepts the observed terminal sequence with the unchanged read-only
+`combat_end` RNG checkpoint between the 123→0 history reset and the
+`Combat ended` terminal event. The uploaded sidecar now reports
+`CALLBACK_TIMELINE_CONSISTENT`; the source journal reports
+`SOURCE_ACTION_CHRONOLOGY_OBSERVED`. The raw data is unchanged.
+
+**Current first-combat result (2026-11-01):** the independent typed
+emulator golden regression now extends through the original 26-executor
+first combat. It replays all source-observed card plays, five end-turn
+transitions (including automatic enemy-turn setup), and Survivor's selected
+nested discard. Measured HP/block/energy, enemy HP and powers, card-zone
+ordering, and run.shuffle at both the 22-draw and 31-draw checkpoints
+match through lethal on turn 6. The emulator enters Reward afterwards.
+This establishes the tested source-observable projection, not full
+native-state or legal-decision parity.
+
+**Next acceptance gate — default turn-boundary parity:** there are
+**two default checkpoints in every complete combat round**:
+
+1. `PLAYER_TURN_START`: after the previous enemy turn, all
+   start-of-player-turn mechanics and card draws have resolved, with
+   the player entering the playable phase.
+2. `ENEMY_TURN_START`: after player end-of-turn cleanup and effects
+   have resolved, **before the first enemy action/effect is applied**.
+
+Both must be emitted from a source-observed phase/settlement boundary,
+not inferred merely from `combat.turn`, a UI frame, an `EndPlayerTurnAction`
+request/completion, or a `ReadyToBeginEnemyTurnAction` callback.
+A checkpoint requires evidence that the phase's previous automatic effects
+are complete; there is no queued/running/suspended action to be resolved
+*before* the boundary; relevant pending card animations, targeting, choices,
+or overlays have ended; and the native phase and state were captured
+consistently. In the enemy-start case, an atomic source hook at the
+handoff to enemy processing may be necessary because the executor
+could be continuously busy across the phase change. Such a hook
+must capture the pre-enemy state before the first enemy effect and
+should not be replaced by a later idle frame.
+
+Until that hook/settlement evidence exists, emit
+`SETTLEMENT_UNVERIFIED` and retain only diagnostic source snapshots.
+A missing checkpoint is acceptable; an invented checkpoint or a
+post-enemy-action observation labelled `ENEMY_TURN_START` is not.
+
+**Implementation status (2026-11-01):** the reference mod now emits
+`native_turn_checkpoint` **candidate** records:
+`PLAYER_TURN_START` at the first source-observed idle playable frame
+of a turn before any observed player action in that turn, and
+`ENEMY_TURN_START` immediately before the native
+`ReadyToBeginEnemyTurnAction` executor callback. Both continue after
+strict player-input capture stops. Each carries the native state projection,
+turn, phase, and source observation site. The envelope auditor checks
+uniqueness, the native phase/turn fields, and the exact callback ordering
+for the enemy candidate; the source journal exposes these under
+`source_turn_checkpoint_candidates`.
+
+Every current candidate is labelled `SETTLEMENT_UNVERIFIED`,
+`complete_native_queue_verified=false`, and
+`native_phase_handoff_order_verified=false`. These are recorded
+input points for a later source-verified settlement barrier, **not**
+actual emulator state parity results. In particular, source
+`ReadyToBeginEnemyTurnAction` must be verified to occur after all
+player-end effects and before the first enemy effect in the installed
+v111 build before `ENEMY_TURN_START` is eligible for strict comparison.
+If a player acts before the first idle rendered frame of a turn, no
+player-start candidate is fabricated. The old pinned native capture has
+no such records and remains valid. No game launch was required to add
+the hook or offline auditor.
+
+Use executor starts/completions, UI-play-begins, request callbacks and
+RNG checkpoints for **diagnostics**, including locating the first
+mechanical difference after a turn-boundary mismatch; these asynchronous
+observations are not parity checkpoints. If source evidence of quiescence
+is incomplete, report `SETTLEMENT_UNVERIFIED` and defer the parity
+comparison rather than interpreting a transient animation state as a
+divergence. The strict player-decision trace remains fail-closed at its
+source-specific gap (decision 9 in the older capture, decision 2 in the
+newer capture); independent turn checkpoints can resume after that gap
+without claiming the missing intermediate decisions or a complete legal
+menu. The pinned first-combat golden replay still tests its source-observed
+mechanical projections independently of this future native settlement
+contract. No original-game launch is required for the present offline work.
+
+### Installed v111 turn checkpoint capture and independent replay (2026-11-01)
+
+The second captured Silent A10 fight, on the original seed
+`6JK8MD0VQQTA` but using a **different sequence of card plays**, confirms
+that the **installed native reference mod** emitted all expected provisional
+checkpoints over a complete six-turn combat:
+
+- `PLAYER_TURN_START` ordinals **47, 224, 404, 561, 750, 835**:
+  all six canonical state projections exactly equal the next native
+  player-command request projection of the same turn.
+- `ENEMY_TURN_START` ordinals **181, 297, 522, 652, 791**:
+  all five projections exactly equal the adjacent native
+  `ReadyToBeginEnemyTurnAction` pre-executor snapshot. All follow
+  a completed `EndPlayerTurnAction`. The turn-one hand/exhaust
+  projection differs from that earlier end-turn completion because
+  Ascender's Bane is exhausted in the intervening interval.
+- The action envelope is `CALLBACK_TIMELINE_CONSISTENT` and the
+  source journal is `SOURCE_ACTION_CHRONOLOGY_OBSERVED`:
+  26 completed native executor actions, all 26 input requests linked,
+  21 canonical play/end-turn commands and five automatic enemy-setup
+  requests; no unmatched requests or journal errors. The linked run
+  prelude completed `SOURCE_PRELUDE_OBSERVED` with startup room queues.
+- The separate strict player-decision trace reaches only **two**
+  stable decisions in this capture, then reports a genuine strict
+  input gap at native ordinal **111** during card animation.
+  The earlier native capture reached decision 9 before a similar gap.
+  These strict traces remain incomplete; source executor chronology
+  and candidate checkpoints continue independently.
+
+Added `NativeObservedTurnCheckpointsV111Tests`, which bootstraps the
+typed emulator independently from the source seed, maps native card
+identities through the matching source hand/draw piles, then replays
+the second native action sequence including Survivor's nested discard
+(Defend instance 10). The test matches **all six** observed player-start
+projections (HP, block, energy, enemy HP/Strength, ordered hand/draw/
+discard/exhaust piles) and completes the lethal combat into Reward.
+It validates persistent native-run RNG ownership and the observed
+`run.shuffle` counter-31 xoshiro state. This is **source-pinned offline
+emulator mechanics agreement** for two action sequences on one seed,
+not native in-process lockstep or parity over unobserved continuation
+fields. The five enemy-start source states are independent diagnostics;
+the current emulator `end_turn` API consumes the intervening enemy turn
+before presenting the next player-start state.
+
+Each new native checkpoint remains labelled
+`SETTLEMENT_UNVERIFIED`. In the installed game the enemy-start site
+still reports `native_side=Player`, `player_phase=End`, as expected
+for a pre-enemy-setup callback; it has **not yet** been proven to be an
+atomic pre-first-enemy-effect semantic handoff. The source
+state also marks complete RNG streams, pending effects, creature move
+history, relic/potion mutable state and other continuation fields
+unsupported. To certify full turn-boundary parity, establish native
+settlement, align both engines' RNG and complete state there, and
+test diverse encounters/seeds.
+
+### Neow source probe action/relic namespace correction (2026-11-02)
+
+The first rerun after fixing native floor normalization reached the Neow
+event-local RNG probe but reported
+`INVALID_NATIVE_NEOW_RNG_PROBE`, with zero emulator steps. The source
+probe itself was rejected by the adapter's input schema: the source
+choice helper `_neow_native_id` returns the **emulator action choice ID**
+(`take_proto.native.neow.phialholster`), whereas
+`native_neow_rng_probe_audit.compare` requires an unprefixed **relic
+model ID** (`proto.native.neow.phialholster`). The adapter now removes
+`take_` solely for comparison with the pure Neow offer/RNG probe.
+Full action IDs are retained for later matching against emulator Neow
+legal options. Independent seed/counter and exact RNG-word equality
+remain enforced.
+
+Added a focused ID-namespace regression and a real JSONL probe smoke
+using the observed v111 source seed `6JK8MD0VQQTA`, the three captured
+relic offers Phial Holster / Lost Coffer / Silver Crucible, and the
+captured event RNG counter/words. This source-pinned check tests native
+Neow offer reconstruction without changing the original game or
+claiming complete run/combat parity. A subsequent complete checkpoint
+replay is still necessary to establish whether independent emulator
+combat initialization succeeds.
+
+### Native Neow room-entry versus first navigable map row (2026-11-02)
+
+The first real execution of `native_turn_checkpoint_replay.py` against
+the new source prelude initially returned:
+
+```text
+BLOCKED_EMULATOR_BOOTSTRAP:
+  BLOCKED_COMPLEX_PRECOMBAT_ROUTE
+emulator_canonical_actions_stepped: 0
+player_checkpoints: []
+```
+
+This was a bootstrap **source-coordinate classification error**, not an
+emulator combat-state divergence. The pinned native prelude has two
+`RunManager.RoomEntered` records: Neow, an `Event` on act floor 1,
+map row 0, column 3 (ordinal 5); then the first `Monster`,
+`FUZZY_WURM_CRAWLER_WEAK`, on act floor 2, map row 1, column 0
+(ordinal 13). The observed Neow selection occurs between them and the
+map-move request targets native row 1, column 0. The emulator maps the
+first navigable native row 1 to map node `1:1:0` (emulator floor 1).
+
+`_direct_first_combat_route` now recognizes that **exact direct route**
+for SHA-pinned native source captures, selecting the second
+`RoomEntered` as the source combat identity and mapping its native
+floor 2 to emulator floor 1. Extra rooms, mismatched source links or
+map-move destinations, and incorrect Neow/monster ordinal/floor
+relationships still block before any emulator step. Legacy explicitly
+emulator-derived synthetic bootstraps retain their original single-room
+format. This repair only advances the offline precombat bootstrap;
+native/emulator combat checkpoint parity remains untested until the
+replay reaches and compares the checkpoints.
+
+### Persistent JSONL emulator comparison at native player-turn starts
+
+`tools/native_turn_checkpoint_replay.py` independently bootstraps combat
+from the audited native run prelude, then advances a persistent emulator
+JSONL state with the native source commands. Initial native/emulator card
+identities are paired by the complete ordered hand/draw/discard/exhaust
+piles and card models, and enemy identities by model/HP and position.
+Nested CombatCard selections are resolved by the native selected card IDs.
+At each `PLAYER_TURN_START`, it compares HP, block, gold, energy,
+turn, enemy HP/block/Strength and ordered card zones, stopping with
+the field path at the first difference.
+
+```fish
+cd ~/projects/sts2-emulator
+dotnet build Sts2Emulator.sln -c Release
+set trace /mnt/d/SteamLibrary/sts2-inspector-traces
+set sidecar "$trace/passive-20261101-160143200-2f31471031db497ea665c7c717fb7bfa.actions.jsonl"
+set prelude "$trace/run-prelude-20261101-160138676-ba0f5b2258a046b483717098ff872f10.jsonl"
+python tools/native_lockstep_source_journal.py --sidecar "$sidecar" --out /tmp/native-source-action-journal.json > /dev/null
+python tools/native_turn_checkpoint_replay.py --sidecar "$sidecar" --journal /tmp/native-source-action-journal.json --prelude "$prelude" --out /tmp/native-turn-checkpoint-emulator-replay.json
+```
+
+The runner cross-validates the supplied source journal against its audited
+sidecar and requires a matching independent emulator combat bootstrap.
+`--snapshot` can instead supply a separately generated emulator exact
+combat snapshot. The native combat projection is never imported into
+the emulator. All `ENEMY_TURN_START` records remain explicitly deferred:
+the current emulator's `end_turn` executes the entire enemy turn atomically.
+
+With `--sidecar`, source RNG state is bracketed by preceding/following
+15-stream snapshots. Only unchanged source brackets can be compared
+to emulator xoshiro states; a changed bracket is reported as uncertain.
+For this capture, nine of the eleven turn candidates have stable source
+RNG brackets; player starts 3 and 5 have changed brackets due to shuffle.
+All observed checkpoints remain `SETTLEMENT_UNVERIFIED`. A matching report
+shows projected mechanics agreement, not certified native/emulator parity.
+The JSONL process smoke uses emulator-derived synthetic data exclusively.
+### Historical native turn-boundary candidate diagnostics (no game launch)
+
+For an existing `.actions.jsonl` capture, use:
+
+```fish
+python tools/native_turn_boundary_diagnostics.py \
+    --sidecar "$sidecar" \
+    --out /tmp/native-turn-boundary-diagnostics.json
+```
+
+The diagnostic requires a consistent native action-envelope audit and reports
+the *last observed changed frame* before each turn's first player-command
+request, plus the native executor-start snapshot for each
+`ReadyToBeginEnemyTurnAction` that immediately follows a completed
+`EndPlayerTurnAction`. It checks callback/turn chronology, whether an
+executor is active at the observed frame, and whether the frame projection
+matches the subsequent request. This is useful for validating candidate
+locations against older native captures that predate the dedicated
+`native_turn_checkpoint` events; it does not retroactively create such
+native source hooks.
+
+For the original 909-record Silent A10 fight, all **6** observed player-start
+candidate frames are idle and agree exactly with their first input-request
+snapshots; all **5** enemy-start candidates follow an end-turn completion.
+The first enemy-start candidate changes the state between the end-turn
+completion and automatic enemy-setup start; the other four preserve the
+observed projection. These are **11 source-observed candidates**, **zero
+settlement-certified checkpoints**, and **zero independently checked parity
+checkpoints**. No phase/queue settlement is claimed.
+
+The offline native assembly preflight now also verifies that the installed
+pinned v111 `sts2.dll` defines the source members required by the new
+turn-boundary hooks: combat-state/manager access, executor before/after events,
+and `EndPlayerTurnAction`/`ReadyToBeginEnemyTurnAction` types.
+The validator rejects a metadata probe response that omits these checks.
+Passing this static API contract does not prove runtime callback ordering.
+Run the existing `native_map_build_preflight.py --metadata-only` and then
+its normal isolated build/staging flow against the installed game DLL
+before requesting another original-game launch.
+
+### Offline installed-assembly API check (no game launch)
+
+The v111 preflight now performs **read-only PE metadata inspection**
+of the installed, SHA-pinned `sts2.dll` before compiling the native
+reference mod. Its required-member contract covers `ActModel._rooms`,
+the `RoomSet` queues, counters, boss/Ancient properties,
+`StandardActMap._rng`, `RunManager.RunStarted`/`RoomEntered`,
+and the `RunState` properties used by the new native prelude capture.
+The tool is `tools/NativeV111MetadataProbe`; it uses .NET's
+`System.Reflection.Metadata` and **does not load game dependencies or
+execute native game code**. An absent member blocks staging.
+
+With the installed game root in a fish variable `$game_root`, run:
+
+```fish
+python tools/native_map_build_preflight.py --game-root "$game_root" --stage /tmp/sts2-inspector-stage --metadata-only
+```
+
+For the full compile-and-stage validation (also without launching or
+modifying the game):
+
+```fish
+python tools/native_map_build_preflight.py --game-root "$game_root" --stage /tmp/sts2-inspector-stage
+```
+
+Both commands refuse a different native DLL SHA. The second command
+emits `/tmp/sts2-inspector-stage/native-map-build-preflight.json`,
+which now includes the checked member list and DLL fingerprint.
+A successful metadata check proves member *presence*; the native
+assembly build proves public API compatibility; actual reflection
+behavior, hooks, queue identities and gameplay parity remain pending
+original-game validation.
+
+**Next gate:** the native three-act room-queue identities are now
+verified for `6JK8MD0VQQTA`. Before another original-game launch,
+analyze the already captured passive combat trace and action sidecar,
+and extend native-to-emulator first-combat and action-boundary checks.
+A separate seed will eventually be useful for generalization, but is
+not required to resolve the original startup queue discrepancy.
+Exact potion inventory remains a separate unobserved native output.

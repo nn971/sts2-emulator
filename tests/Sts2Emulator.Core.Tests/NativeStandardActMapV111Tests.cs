@@ -106,15 +106,110 @@ public sealed class NativeStandardActMapV111Tests
         Assert.Equal(0UL, started.Rng.Streams.Single(s => s.StreamId == "event").CallCount);
         Assert.Equal(NativeNeowOfferV111.Predict(seed, true, true).EventRng,
             NativeRngV111.ToSnapshot(Assert.Single(started.NativeEventRng!.Streams)));
-        Assert.Equal(NativeRngV111.CreateBundle(seed).Streams
+        var sourceStartupStream = NativeRngV111.CreateBundle(seed);
+        var expectedBags = NativeUpFrontRelicBagsV111.Populate(
+            sourceStartupStream);
+        Assert.NotNull(started.NativeStartupRelicBags);
+        Assert.Equal(expectedBags.AfterPlayerBag,
+            started.NativeStartupRelicBags!.AfterPlayerBag);
+        if (region == ActIdentity.Overgrowth)
+        {
+            var expectedRooms = NativeUpFrontRoomsV111.Generate(sourceStartupStream, 10);
+            Assert.NotNull(started.NativeStartupRooms);
+            Assert.NotNull(started.NativeStartupQueueTrace);
+            Assert.Empty(started.NativeStartupQueueTrace!.Comparisons);
+            Assert.Equal(expectedRooms.FinalRng, started.NativeStartupRooms!.FinalRng);
+            Assert.Equal((ulong)expectedRooms.FinalRng.Counter,
+                started.NativeRunRng!.Streams.Single(
+                    stream => stream.StreamId == "run.up_front").CallCount);
+        }
+        else
+        {
+            // Underdocks has a distinct source room catalogue and retains
+            // the relic bag prefix until its own translation is implemented.
+            Assert.Null(started.NativeStartupRooms);
+            Assert.Null(started.NativeStartupQueueTrace);
+            Assert.Equal(230UL, started.NativeRunRng!.Streams.Single(
+                stream => stream.StreamId == "run.up_front").CallCount);
+        }
+        Assert.Equal(sourceStartupStream.Streams
             .Select(NativeRngV111.ToSnapshot),
-            started.NativeRunRng!.Streams.Select(NativeRngV111.ToSnapshot));
+            started.NativeRunRng.Streams.Select(NativeRngV111.ToSnapshot));
 
         var snapshot = RunSnapshot.Load(RunSnapshot.Save(started));
         Assert.Equal(CanonicalJson.Sha256(started), CanonicalJson.Sha256(snapshot));
         Assert.NotSame(started.NativeMapRng, snapshot.NativeMapRng);
         Assert.NotSame(started.NativeMapRng, started.Fork().NativeMapRng);
+        Assert.NotSame(started.NativeStartupRelicBags,
+            snapshot.NativeStartupRelicBags);
+        Assert.NotSame(started.NativeStartupRelicBags!.SharedBag.Common,
+            snapshot.NativeStartupRelicBags!.SharedBag.Common);
+        Assert.NotSame(started.NativeStartupRelicBags,
+            started.Fork().NativeStartupRelicBags);
+        if (region == ActIdentity.Overgrowth)
+        {
+            Assert.NotSame(started.NativeStartupRooms, snapshot.NativeStartupRooms);
+            Assert.NotSame(started.NativeStartupRooms!.Acts[0].Events,
+                snapshot.NativeStartupRooms!.Acts[0].Events);
+            Assert.NotSame(started.NativeStartupRooms,
+                started.Fork().NativeStartupRooms);
+            Assert.NotSame(started.NativeStartupQueueTrace,
+                snapshot.NativeStartupQueueTrace);
+            Assert.NotSame(started.NativeStartupQueueTrace!.NormalVisits,
+                snapshot.NativeStartupQueueTrace!.NormalVisits);
+            Assert.NotSame(started.NativeStartupQueueTrace,
+                started.Fork().NativeStartupQueueTrace);
+        }
+        else
+        {
+            Assert.Null(snapshot.NativeStartupRooms);
+            Assert.Null(snapshot.NativeStartupQueueTrace);
+        }
         RunConfiguration.ValidateState(snapshot);
+    }
+
+    [Fact]
+    public void NativeMapRoomEntryRecordsSourceQueuePredictionWithoutOverridingCombat()
+    {
+        const string seed = "6JK8MD0VQQTA";
+        var configuration = RunConfiguration.Create("silent", 10) with
+        {
+            FidelityId = V111Build.NativeStandardMapOpeningFidelityId
+        };
+        var engine = new PrototypeGameEngine();
+        var root = V111RunFactory.Create(seed, configuration);
+        var started = engine.Step(root, GameAction.Empty("start_run")).State;
+        var upfront = NativeRngV111.ToSnapshot(
+            started.NativeRunRng!.Streams.Single(x => x.StreamId == "run.up_front"));
+        var atMap = started;
+        for (var i = 0;
+            i < 30 && atMap.Phase is RunPhase.Event or RunPhase.Reward;
+            i++)
+            atMap = engine.Step(atMap, engine.GetLegalActions(atMap)[0]).State;
+        Assert.Equal(RunPhase.MapChoice, atMap.Phase);
+        var move = engine.GetLegalActions(atMap)
+            .First(a => a.Kind == "choose_map_node");
+        var entered = engine.Step(atMap, move).State;
+        Assert.Equal(RunPhase.Combat, entered.Phase);
+        Assert.NotNull(entered.NativeStartupQueueTrace);
+        var trace = entered.NativeStartupQueueTrace!;
+        var comparison = Assert.Single(trace.Comparisons);
+        Assert.Equal(1, comparison.Act);
+        Assert.Equal(PrototypeRoomType.Combat, comparison.RoomType);
+        Assert.Equal(0, comparison.QueueIndex);
+        Assert.Equal("FuzzyWurmCrawlerWeak", comparison.SourceEncounterId);
+        Assert.Equal(entered.World!.EncounterIds.Last(),
+            comparison.ActualEmulatorEncounterId);
+        Assert.Equal(comparison.ActualEmulatorEncounterId ==
+            comparison.ExpectedEmulatorEncounterId
+                ? "MATCHED_SOURCE_PREDICTION"
+                : "DIFFERS_FROM_SOURCE_PREDICTION", comparison.Status);
+        Assert.Equal(upfront, NativeRngV111.ToSnapshot(
+            entered.NativeRunRng!.Streams.Single(x => x.StreamId == "run.up_front")));
+        var restored = RunSnapshot.Load(RunSnapshot.Save(entered));
+        Assert.Equal(CanonicalJson.Sha256(entered),
+            CanonicalJson.Sha256(restored));
+        Assert.NotSame(trace, restored.NativeStartupQueueTrace);
     }
 
     [Fact]

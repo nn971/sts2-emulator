@@ -3,8 +3,10 @@
 Synthetic source is explicitly constructed from emulator choices; never
 interpreted as parity evidence from the installed game.
 """
+import base64
 import copy
 import json
+import struct
 import sys
 import unittest
 from pathlib import Path
@@ -12,7 +14,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_run_bootstrap import (
     _neow_native_id, _source_preflight, _emulator_opening_profile,
-    run_bootstrap, SCHEMA,
+    run_bootstrap, _direct_first_combat_route, _native_upfront_diagnosis,
+    _native_upfront_room_prefix_diagnosis,
+    _native_upfront_full_queue_diagnosis,
+    _native_first_combat_identity_diagnosis, SCHEMA,
 )
 from native_neow_rng_verify import neow_event_rng, verify_neow_event_rng, xxhash64
 
@@ -52,6 +57,173 @@ def fixture(seed="synthetic-bootstrap", choice="take_proto.native.neow.heftytabl
              "player_hp": 56, "player_gold": 99}],
         "first_combat_link": {"act_index": 0, "map_column": 3, "map_row": 0},
     }
+
+
+class NativeUpFrontBoundaryTests(unittest.TestCase):
+    def test_real_source_run_started_counter_is_reported_as_first_rng_gap(self):
+        source = {"source_run_rng_snapshots": [{
+            "site": "run_started", "streams": [{
+                "scope": "run", "stream_id": "UpFront",
+                "counter": 412, "s0": 10, "s1": 20, "s2": 30, "s3": 40,
+            }]}]}
+        snapshot = {"state": {"native_run_rng": {"streams": [{
+            "stream_id": "run.up_front", "call_count": 229,
+            "state_bytes": base64.b64encode(struct.pack(
+                "<QQQQ", 11, 21, 31, 41)).decode(),
+        }]}}}
+        result = _native_upfront_diagnosis(source, snapshot)
+        self.assertEqual("SOURCE_UPFRONT_DIVERGED", result["status"])
+        self.assertEqual(412, result["source_counter"])
+        self.assertEqual(229, result["emulator_counter"])
+        self.assertEqual(183, result["remaining_source_draws"])
+        self.assertEqual("$.native_run_rng.run.up_front.counter",
+                         result["first_difference"]["path"])
+        self.assertFalse(result["source_cursor_words_match"])
+
+    def test_source_cursor_requires_exact_words_and_encoding(self):
+        sample = {"source_run_rng_snapshots": [{
+            "site": "run_started", "streams": [{
+                "scope": "run", "stream_id": "UpFront",
+                "counter": 229, "s0": 11, "s1": 21, "s2": 31, "s3": 41,
+            }]}]}
+        snap = {"state": {"native_run_rng": {"streams": [{
+            "stream_id": "run.up_front", "call_count": 229,
+            "state_bytes": base64.b64encode(struct.pack(
+                "<QQQQ", 11, 21, 31, 41)).decode(),
+        }]}}}
+        self.assertEqual("SOURCE_UPFRONT_MATCHED",
+                         _native_upfront_diagnosis(sample, snap)["status"])
+        self.assertFalse(_native_upfront_diagnosis(sample, snap)[
+            "source_upfront_all_phases_reconstructed"])
+        snap["state"]["native_startup_rooms"] = {"acts": [
+            {"act": index, "events": ["Event"],
+             "normal_encounters": ["Weak"], "elite_encounters": ["Elite"],
+             "boss_encounter": "Boss", "ancient": "Ancient"}
+            for index in (1, 2, 3)]}
+        self.assertTrue(_native_upfront_diagnosis(sample, snap)[
+            "source_upfront_all_phases_reconstructed"])
+        self.assertEqual("OBSERVED_PREFIX_COMPARED_SEPARATELY",
+            _native_upfront_diagnosis(sample, snap)[
+                "source_upfront_room_identity_parity"])
+        snap["state"]["native_run_rng"]["streams"][0]["state_bytes"] = "bogus"
+        self.assertEqual("BLOCKED_UPFRONT_CURSOR_ENCODING",
+                         _native_upfront_diagnosis(sample, snap)["status"])
+
+
+    def test_native_rng_parity_does_not_hide_source_room_queue_mismatch(self):
+        # Observed native first combat: FUZZY_WURM_CRAWLER_WEAK.
+        # Independently reconstructed UpFront source queue currently starts
+        # with SlimesWeak, even though its 412-call RNG cursor is identical.
+        source = {"source_room_arrivals": [{
+            "ordinal": 12, "act_index": 0, "room_type": "Monster",
+            "room_model_id": "FUZZY_WURM_CRAWLER_WEAK"}]}
+        snapshot = {"state": {"native_startup_rooms": {"acts": [
+            {"act": 1, "normal_encounters":
+                ["SlimesWeak", "FuzzyWurmCrawlerWeak"],
+             "elite_encounters": ["ByrdonisElite"], "boss_encounter": "TheKinBoss"},
+            {"act": 2, "normal_encounters": ["BowlbugsWeak"],
+             "elite_encounters": [], "boss_encounter": "KaiserCrabBoss"},
+            {"act": 3, "normal_encounters": ["TurretOperatorWeak"],
+             "elite_encounters": [], "boss_encounter": "TestSubjectBoss"}]}}}
+        result = _native_upfront_room_prefix_diagnosis(source, snapshot)
+        self.assertEqual("SOURCE_ROOM_QUEUE_FIRST_DIFFERENCE", result["status"])
+        self.assertEqual("FUZZY_WURM_CRAWLER_WEAK",
+                         result["first_difference"]["native"])
+        self.assertEqual("SlimesWeak",
+                         result["first_difference"]["emulator_source_queue"])
+        self.assertEqual("$.native_startup_rooms.acts[0].normal_encounters[0]",
+                         result["first_difference"]["path"])
+        self.assertEqual("NOT_VERIFIED", result["full_queue_identity_parity"])
+
+        # A matching observed prefix is still not proof of the unobserved
+        # remainder of the source-generated queues.
+        snapshot["state"]["native_startup_rooms"]["acts"][0][
+            "normal_encounters"] = ["FuzzyWurmCrawlerWeak", "SlimesWeak"]
+        source["source_room_arrivals"].append({
+            "ordinal": 21, "act_index": 0, "room_type": "Monster",
+            "room_model_id": "SLIMES_WEAK"})
+        matched = _native_upfront_room_prefix_diagnosis(source, snapshot)
+        self.assertEqual("SOURCE_ROOM_QUEUE_OBSERVED_PREFIX_MATCHED",
+                         matched["status"])
+        self.assertEqual(2, matched["source_observed_prefix_length"])
+        self.assertEqual("NOT_VERIFIED", matched["full_queue_identity_parity"])
+
+        source["source_room_arrivals"][0]["room_model_id"] = ""
+        self.assertEqual("BLOCKED_NATIVE_ROOM_IDENTITY",
+            _native_upfront_room_prefix_diagnosis(source, snapshot)["status"])
+
+
+    def test_complete_native_startup_queue_comparison_is_separate(self):
+        acts = []
+        for i in range(3):
+            acts.append({
+                "act_index": i, "events": ["A", "B"],
+                "normal_encounters": ["FuzzyWurmCrawlerWeak"],
+                "elite_encounters": ["ByrdonisElite"],
+                "boss_encounter": "TheKinBoss",
+                "second_boss_encounter": None,
+                "ancient": "Neow"})
+        native = {"source_startup_room_queues": {"acts": acts}}
+        snap = {"state": {"native_startup_rooms": {"acts": [
+            {"act": i + 1, "events": ["A", "B"],
+             "normal_encounters": ["SlimesWeak"],
+             "elite_encounters": ["ByrdonisElite"],
+             "boss_encounter": "TheKinBoss",
+             "second_boss_encounter": None,
+             "ancient": "Neow"}
+            for i in range(3)]}}}
+        result = _native_upfront_full_queue_diagnosis(native, snap)
+        self.assertEqual("SOURCE_FULL_ROOM_QUEUES_DIVERGED", result["status"])
+        self.assertEqual(
+            "$.native_startup_rooms.acts[0].normal_encounters[0]",
+            result["first_difference"]["path"])
+        snap["state"]["native_startup_rooms"]["acts"][0][
+            "normal_encounters"] = ["FuzzyWurmCrawlerWeak"]
+        for act in snap["state"]["native_startup_rooms"]["acts"][1:]:
+            act["normal_encounters"] = ["FuzzyWurmCrawlerWeak"]
+        self.assertEqual("SOURCE_FULL_ROOM_QUEUES_MATCHED",
+                         _native_upfront_full_queue_diagnosis(native, snap)["status"])
+        self.assertEqual("SOURCE_FULL_ROOM_QUEUES_NOT_CAPTURED",
+                         _native_upfront_full_queue_diagnosis({}, snap)["status"])
+
+
+    def test_actual_combat_identity_is_a_separate_native_gate(self):
+        observed = {"room_model_id": "FUZZY_WURM_CRAWLER_WEAK"}
+        snapshot = {"state": {"native_startup_queue_trace": {
+            "comparisons": [{
+                "act": 1, "map_node_id": "1:1:0", "queue_index": 0,
+                "source_encounter_id": "SlimesWeak",
+                "actual_emulator_encounter_id":
+                    "proto.encounter.fuzzy_wurm_crawler_weak",
+                "status": "DIFFERS_FROM_SOURCE_PREDICTION",
+            }]}}}
+        matched = _native_first_combat_identity_diagnosis(
+            observed, snapshot, "1:1:0")
+        self.assertEqual("SOURCE_FIRST_COMBAT_IDENTITY_MATCHED",
+                         matched["status"])
+        self.assertEqual("MATCHED",
+                         matched["actual_encounter_identity_parity"])
+        self.assertEqual("SlimesWeak",
+                         matched["generated_source_queue_prediction"])
+        self.assertEqual("DIFFERS_FROM_SOURCE_PREDICTION",
+                         matched["generated_source_queue_prediction_status"])
+
+        snapshot["state"]["native_startup_queue_trace"]["comparisons"][0][
+            "actual_emulator_encounter_id"] = "proto.encounter.slimes_weak"
+        different = _native_first_combat_identity_diagnosis(
+            observed, snapshot, "1:1:0")
+        self.assertEqual("SOURCE_FIRST_COMBAT_IDENTITY_DIVERGED",
+                         different["status"])
+        self.assertEqual("$.first_combat.encounter_id",
+                         different["first_difference"]["path"])
+
+        del snapshot["state"]["native_startup_queue_trace"]
+        self.assertEqual("BLOCKED_EMULATOR_COMBAT_IDENTITY_TRACE",
+                         _native_first_combat_identity_diagnosis(
+                             observed, snapshot, "1:1:0")["status"])
+        self.assertEqual("BLOCKED_NATIVE_COMBAT_IDENTITY",
+                         _native_first_combat_identity_diagnosis(
+                             {}, snapshot, "1:1:0")["status"])
 
 
 class FakeState:
@@ -229,6 +401,71 @@ class BootstrapTests(unittest.TestCase):
         result, _ = run_bootstrap(source, session)
         self.assertEqual("BLOCKED_OPAQUE_PRECOMBAT_ACTIONS", result["status"])
         self.assertEqual(0, session.reset_count)
+
+    def test_pinned_native_neow_and_first_monster_route_is_first_map_floor(self):
+        # Historical original v111 run: RoomEntered Neow at act floor 1,
+        # then first Monster on map row 1/native floor 2. The emulator's
+        # map node remains 1:1:0 (first navigable map row).
+        source = fixture()
+        source["run_identity"]["game_build"] = (
+            "assembly=0.1.0.0;mvid=73b63ee06c0a47bbb0d1b21f6d94222e;"
+            "sha256=0861bfa1df347538d932f22d580e75420f08082792eb914e53b4882764acdbe9")
+        source["source_event_choice_requests"][0]["ordinal"] = 7
+        source["source_event_choice_returns"][0]["ordinal"] = 8
+        source["source_room_arrivals"] = [
+            {"ordinal": 5, "act_index": 0, "act_floor": 1,
+             "total_floor": 1, "map_column": 3, "map_row": 0,
+             "room_type": "Event", "room_model_id": "NEOW"},
+            {"ordinal": 13, "act_index": 0, "act_floor": 2,
+             "total_floor": 2, "map_column": 0, "map_row": 1,
+             "room_type": "Monster",
+             "room_model_id": "FUZZY_WURM_CRAWLER_WEAK",
+             "player_hp": 56, "player_gold": 99},
+        ]
+        source["first_combat_link"] = {
+            "act_index": 0, "map_column": 0, "map_row": 1}
+        source["source_map_requests"] = [
+            {"ordinal": 9, "kind": "map_vote",
+             "target_column": 0, "target_row": 1},
+            {"ordinal": 10, "kind": "map_move",
+             "target_column": 0, "target_row": 1},
+        ]
+        self.assertIsNone(_source_preflight(source))
+        room, floor = _direct_first_combat_route(source)
+        self.assertEqual(13, room["ordinal"])
+        self.assertEqual(2, room["act_floor"])
+        self.assertEqual(1, floor)
+        self.assertEqual("1:1:0", f"1:{floor}:{room['map_column']}")
+
+        # Retaining an extra intervening room would require a multi-room
+        # transcript; that remains explicitly unsupported.
+        extra = copy.deepcopy(source)
+        extra["source_room_arrivals"].insert(1, dict(
+            extra["source_room_arrivals"][0],
+            ordinal=6, room_model_id="OTHER"))
+        self.assertEqual("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
+                         _source_preflight(extra)[0])
+        # A source map request to a different destination cannot silently
+        # be translated into the first-combat node.
+        wrong = copy.deepcopy(source)
+        wrong["source_map_requests"][-1]["target_column"] = 4
+        self.assertEqual("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
+                         _source_preflight(wrong)[0])
+        # Neow's room must precede the observed option selection.
+        wrong = copy.deepcopy(source)
+        wrong["source_room_arrivals"][0]["ordinal"] = 9
+        self.assertEqual("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
+                         _source_preflight(wrong)[0])
+        # Native floor/row mapping is source constrained.
+        wrong = copy.deepcopy(source)
+        wrong["source_room_arrivals"][1]["act_floor"] = 3
+        self.assertEqual("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
+                         _source_preflight(wrong)[0])
+        # The source-combat link binds the navigated destination.
+        wrong = copy.deepcopy(source)
+        wrong["first_combat_link"]["map_column"] = 2
+        self.assertEqual("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
+                         _source_preflight(wrong)[0])
 
     def test_unobserved_extra_room_blocks_complex_routes(self):
         source = fixture()

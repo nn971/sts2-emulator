@@ -12,10 +12,12 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Rooms;
 using Sts2Emulator.Core;
 using Sts2Emulator.Trace;
 using Sts2ReferenceMod.Capture;
@@ -51,10 +53,25 @@ internal static class NativeV111PassiveBridge
     // Its first-combat link is retained even before a combat sidecar exists.
     private static NativeRunPreludeRecorder? _runPrelude;
     private static MegaCrit.Sts2.Core.Runs.RunState? _preludeRunState;
+    // Generated ActModel queues are read after RunManager.GenerateRooms;
+    // reflection is read-only and never asks a bag to generate or pull.
+    private static readonly FieldInfo? NativeActRoomSetField =
+        typeof(ActModel).GetField("_rooms",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly FieldInfo? NativeStandardMapRngField =
+        typeof(StandardActMap).GetField("_rng",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+    private static bool _initialMapProjectionAttempted;
+    private static bool _missingMapAtFirstInputReported;
     private static NativeCombatAdapter? _adapter;
     private static int _decisionGeneration;
     private static int _lastCapturedGeneration = -1;
     private static bool _awaitingSettlement;
+    // Independent turn-start candidates continue even after strict input
+    // capture reaches its decision-9 gap. No candidate is a parity certificate.
+    private static readonly HashSet<int> ObservedPlayerInputTurns = [];
+    private static readonly HashSet<int> ObservedPlayerStartTurns = [];
+    private static readonly HashSet<int> ObservedEnemyStartTurns = [];
     private static bool _choiceInterrupted;
     private static int _historyIndex;
     private static bool _handlingFrame;
@@ -114,7 +131,19 @@ internal static class NativeV111PassiveBridge
     {
         if (_combat is null && _runPrelude is not null)
         {
-            try { ObservePrecombatMapRequest(action); }
+            try
+            {
+                TryCaptureInitialNativeMap();
+                if ((action is MoveToMapCoordAction or VoteForMapCoordAction)
+                    && !_runPrelude.HasInitialMapSnapshot
+                    && !_missingMapAtFirstInputReported)
+                {
+                    _missingMapAtFirstInputReported = true;
+                    _runPrelude.ObservationFailure("initial_map_snapshot",
+                        "MAP_UNAVAILABLE_BEFORE_FIRST_MAP_REQUEST");
+                }
+                ObservePrecombatMapRequest(action);
+            }
             catch (Exception error)
             {
                 _runPrelude.ObservationFailure("precombat_map_request",
@@ -183,9 +212,17 @@ internal static class NativeV111PassiveBridge
 
     /// <summary>Original native UI card interaction before drag/targeting.</summary>
     internal static void NativeUiPlayBegin(
-        long? combatCardId, string cardModelId, bool viaShortcut) =>
-        _actionEnvelopes?.NativeUiPlayBegin(
-            combatCardId, cardModelId, viaShortcut);
+        long? combatCardId, string cardModelId, bool viaShortcut)
+    {
+        // Hooked at original NPlayerHand.StartCardPlay.prefix. Capture here
+        // before the game processes targeting and queueing; the preceding
+        // frame can be stale while the prior card executor remains active.
+        // No native legal-menu predicates or RNG are evaluated by this hook.
+        if (_actionEnvelopes is null) return;
+        _actionEnvelopes.NativeUiPlayBegin(
+            combatCardId, cardModelId, viaShortcut,
+            TryOptionalUiBeginSnapshot());
+    }
 
     /// <summary>Result of native CanPlayTargeting/manual action request.</summary>
     internal static void NativeManualPlayReturn(
@@ -295,6 +332,8 @@ internal static class NativeV111PassiveBridge
                 _choiceSync = null;
             }
             _preludeRunState = state;
+            _initialMapProjectionAttempted = false;
+            _missingMapAtFirstInputReported = false;
             if (state.Players.Count != 1) return;
             string seed = state.Rng.StringSeed;
             if (string.IsNullOrWhiteSpace(seed)) return;
@@ -312,6 +351,7 @@ internal static class NativeV111PassiveBridge
                 state.Players[0].Character.Id.Entry, state.Act.Id.Entry,
                 state.Players.Count);
             CapturePreludeRng("run_started", state);
+            CapturePreludeRoomQueues(state);
             // Launch() raises RunStarted after synchronizer construction in
             // pinned v111. Subscribe now to capture Neow-triggered nested
             // card/deck choices before the first combat observer exists.
@@ -332,12 +372,46 @@ internal static class NativeV111PassiveBridge
         }
     }
 
+    private static void CapturePreludeRoomQueues(
+        MegaCrit.Sts2.Core.Runs.RunState state)
+    {
+        if (_runPrelude is null) return;
+        try
+        {
+            if (NativeActRoomSetField is null)
+                throw new MissingFieldException("ActModel._rooms");
+            var queued = state.Acts.Select((act, index) =>
+            {
+                if (NativeActRoomSetField.GetValue(act) is not RoomSet rooms)
+                    throw new InvalidDataException(
+                        "Native ActModel has no generated RoomSet.");
+                return new NativeStartupActRoomQueueView(
+                    index, act.Id.Entry,
+                    rooms.events.Select(e => e.Id.Entry).ToArray(),
+                    rooms.normalEncounters.Select(e => e.Id.Entry).ToArray(),
+                    rooms.eliteEncounters.Select(e => e.Id.Entry).ToArray(),
+                    rooms.Boss.Id.Entry,
+                    rooms.SecondBoss?.Id.Entry,
+                    rooms.Ancient.Id.Entry,
+                    rooms.eventsVisited, rooms.normalEncountersVisited,
+                    rooms.eliteEncountersVisited, rooms.bossEncountersVisited);
+            }).ToArray();
+            _runPrelude.StartupRoomQueues(queued);
+        }
+        catch (Exception error)
+        {
+            _runPrelude.ObservationFailure("startup_room_queues",
+                error.GetType().Name);
+        }
+    }
+
     private static void OnRunRoomEntered()
     {
         if (_runPrelude is null || _preludeRunState is not { } state
             || state.Players.Count != 1) return;
         try
         {
+            TryCaptureInitialNativeMap();
             var coord = state.CurrentMapCoord;
             var room = state.CurrentRoom;
             _runPrelude.RoomEntered(
@@ -392,6 +466,64 @@ internal static class NativeV111PassiveBridge
         }
     }
 
+    /// <summary>
+    /// RunManager.GenerateMap installs the finalized ActMap after native
+    /// post-generation hooks. Its StandardActMap._rng is an independent,
+    /// content-local generator; ToSerializable only copies its cursor.
+    /// A one-shot projection avoids sampling the map every rendered frame.
+    /// </summary>
+    private static void TryCaptureInitialNativeMap()
+    {
+        var recorder = _runPrelude;
+        var state = _preludeRunState;
+        if (recorder is null || recorder.HasInitialMapSnapshot
+            || _initialMapProjectionAttempted || state is null
+            || state.Players.Count != 1 || state.CurrentActIndex != 0
+            || state.Map is not StandardActMap map)
+            return;
+        _initialMapProjectionAttempted = true;
+        try
+        {
+            if (NativeStandardMapRngField?.GetValue(map)
+                    is not MegaCrit.Sts2.Core.Random.Rng mapRng)
+                throw new InvalidOperationException("SOURCE_STANDARD_MAP_RNG_UNAVAILABLE");
+            // Begin with precisely the finalized native objects. The
+            // starting ancient and boss are outside ActMap.Grid and must
+            // be included explicitly for a complete topology comparison.
+            var nativePoints = map.GetAllMapPoints()
+                .Append(map.StartingMapPoint)
+                .Append(map.BossMapPoint)
+                .Concat(map.SecondBossMapPoint is { } second
+                    ? new[] { second } : Array.Empty<MapPoint>())
+                .OrderBy(p => p.coord.row).ThenBy(p => p.coord.col)
+                .Select(p => new NativeMapPointView(
+                    p.coord.col, p.coord.row, p.PointType.ToString(),
+                    p.CanBeModified,
+                    p.Children.OrderBy(c => c.coord.row)
+                        .ThenBy(c => c.coord.col)
+                        .Select(c => new NativeMapCoordView(
+                            c.coord.col, c.coord.row))
+                        .ToArray()))
+                .ToArray();
+            var snapshot = mapRng.ToSerializable();
+            recorder.InitialMapSnapshot(
+                state.CurrentActIndex, state.Act.Id.Entry,
+                nativePoints,
+                new NativeMapRngView(snapshot.counter, snapshot.state0,
+                    snapshot.state1, snapshot.state2, snapshot.state3));
+            if (recorder.HasInitialMapSnapshot)
+                GD.Print("[Sts2ReferenceMod] NATIVE_MAP_STATUS=SOURCE_CAPTURED;" +
+                    " nodes=" + nativePoints.Length +
+                    "; rng_counter=" + snapshot.counter +
+                    "; emulator_parity=NOT_TESTED");
+        }
+        catch (Exception error)
+        {
+            recorder.ObservationFailure("initial_map_snapshot",
+                error.GetType().Name);
+        }
+    }
+
     private static void CapturePreludeRng(
         string site, MegaCrit.Sts2.Core.Runs.RunState state)
     {
@@ -428,6 +560,10 @@ internal static class NativeV111PassiveBridge
         if (prelude is null
             || !prelude.HasLinkedCombatRoomAndSettledMapRequests)
             return;
+        TryCaptureInitialNativeMap();
+        if (!prelude.HasInitialMapSnapshot)
+            prelude.ObservationFailure("initial_map_snapshot",
+                "MISSING_INITIAL_NATIVE_MAP_AT_COMBAT");
         prelude.Finish("Linked first combat room and map returns observed");
         _runPrelude = null;
         _preludeRunState = null;
@@ -502,6 +638,7 @@ internal static class NativeV111PassiveBridge
             if (f8Down && !_f8WasDown) _panel?.Toggle();
             _f8WasDown = f8Down;
             _panel?.Tick();
+            TryCaptureInitialNativeMap();
 
             var manager = CombatManager.Instance;
             if (!manager.IsInProgress)
@@ -535,13 +672,34 @@ internal static class NativeV111PassiveBridge
             // Executor callbacks must stay attached even when the stricter
             // decision trace has stopped due to an unsupported player prompt.
             AttachActionExecutor();
+            JsonElement? frameState = null;
             if (_actionEnvelopes is not null && _adapter is not null)
             {
-                // Changed-state frame samples continue after the strict player
-                // decision trace reaches an unsupported nested UI choice.
-                var frameState = TryActionSnapshot("frame_state");
+                // Reuse the single source frame snapshot for a provisional
+                // player-turn candidate, keeping its chronology and cost
+                // identical to the existing diagnostic frame observation.
+                frameState = TryActionSnapshot("frame_state");
                 if (frameState.HasValue)
                     _actionEnvelopes.ObserveFrame(frameState.Value);
+            }
+            // First idle playable frame in a turn, before any observed
+            // player action. This is a candidate, not a certified queue
+            // settlement: future native source hooks must prove that all
+            // automatic/queued effects have finished.
+            if (_actionEnvelopes is not null && _adapter is not null
+                && combat.CurrentSide == CombatSide.Player
+                && combat.Players[0].PlayerCombatState is { } playerState
+                && playerState.TurnNumber > 0
+                && !ObservedPlayerInputTurns.Contains(playerState.TurnNumber)
+                && !ObservedPlayerStartTurns.Contains(playerState.TurnNumber)
+                && frameState.HasValue
+                && StableDecisionBlocker(combat) is null)
+            {
+                _actionEnvelopes.TurnBoundaryCandidate(
+                    "PLAYER_TURN_START", playerState.TurnNumber,
+                    frameState.Value, combat.CurrentSide.ToString(),
+                    playerState.Phase.ToString());
+                ObservedPlayerStartTurns.Add(playerState.TurnNumber);
             }
             if (_recording is null || _adapter is null || _choiceInterrupted) return;
             string? blocker = StableDecisionBlocker(combat);
@@ -623,6 +781,9 @@ internal static class NativeV111PassiveBridge
     {
         _combat = combat;
         _decisionGeneration = 0;
+        ObservedPlayerInputTurns.Clear();
+        ObservedPlayerStartTurns.Clear();
+        ObservedEnemyStartTurns.Clear();
         _lastCapturedGeneration = -1;
         _awaitingSettlement = false;
         _choiceInterrupted = false;
@@ -756,6 +917,20 @@ internal static class NativeV111PassiveBridge
         }
     }
 
+    // UI-begin state is supplementary evidence. Failure to take this
+    // extra snapshot is explicitly encoded as UNOBSERVED in the sidecar;
+    // all existing strict executor and decision checks remain authoritative.
+    private static JsonElement? TryOptionalUiBeginSnapshot()
+    {
+        try { return _adapter?.CaptureCanonicalState().Clone(); }
+        catch (Exception error)
+        {
+            Godot.GD.PrintErr("[Sts2ReferenceMod] UI_BEGIN_STATE=UNOBSERVED; " +
+                              "reason=" + error.GetType().Name);
+            return null;
+        }
+    }
+
     private static void BeforeAction(NativeGameAction action)
     {
         try { ObserveBeforeAction(action); }
@@ -777,6 +952,28 @@ internal static class NativeV111PassiveBridge
         _actionEnvelopes?.Start(
             action, action.GetType().FullName ?? action.GetType().Name,
             snapshot, chosen);
+
+        // Native automatic enemy-turn setup follows player cleanup in
+        // observed source traces. Capture its pre-execution state without
+        // claiming that this hook is an atomically settled enemy-side gate.
+        if (action is ReadyToBeginEnemyTurnAction
+            && _combat is { Players.Count: 1 } observedCombat
+            && observedCombat.Players[0].PlayerCombatState is { } pcs
+            && pcs.TurnNumber > 0
+            && snapshot.HasValue
+            && ObservedEnemyStartTurns.Add(pcs.TurnNumber))
+        {
+            _actionEnvelopes?.TurnBoundaryCandidate(
+                "ENEMY_TURN_START", pcs.TurnNumber, snapshot.Value,
+                observedCombat.CurrentSide.ToString(), pcs.Phase.ToString());
+        }
+        if (chosen is not null
+            && _combat is { Players.Count: 1 } sourceCombat
+            && sourceCombat.Players[0].PlayerCombatState is { } current
+            && current.TurnNumber > 0)
+        {
+            ObservedPlayerInputTurns.Add(current.TurnNumber);
+        }
         NativeV111RngHook.CaptureStreamCheckpoint("before_action");
 
         if (_recording is null || _choiceInterrupted || chosen is null) return;

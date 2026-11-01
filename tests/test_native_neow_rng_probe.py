@@ -129,6 +129,42 @@ class NativeNeowProbeTests(unittest.TestCase):
         self.assertIsNone(snap)
         self.assertEqual("native_neow_rng_probe", s.last_call[0])
 
+    def test_native_offer_probe_receives_relic_ids_not_take_actions(self):
+        native = fixture()
+        native["run_identity"]["game_build"] = (
+            "assembly=0.1.0.0;mvid=73b63ee06c0a47bbb0d1b21f6d94222e;"
+            "sha256=0861bfa1df347538d932f22d580e75420f08082792eb914e53b4882764acdbe9")
+        observed = {}
+        class Stub(FakeSession):
+            def call(self, operation, **kwargs):
+                observed["operation"] = operation
+                return probe()
+        def compare_ids(ids, rng, wire_probe):
+            observed["ids"] = ids
+            observed["event_rng"] = rng
+            observed["probe"] = wire_probe
+            return {"status": "SOURCE_NEOW_OFFER_DIFFERENCE_AT_SAME_RNG_CURSOR",
+                    "first_difference": {"path": "$.neow.options[0]"}}
+        with patch("native_run_bootstrap._source_preflight", return_value=None), \
+             patch("native_run_bootstrap._direct_first_combat_route",
+                   return_value=(native["source_room_arrivals"][0], 1)), \
+             patch("native_run_bootstrap.verify_run_streams",
+                   return_value={"status": "SOURCE_RNG_CHECKPOINTS_RECONSTRUCTED",
+                                 "first_difference": None}), \
+             patch("native_run_bootstrap.verify_neow_event_rng",
+                   return_value={"status": "SOURCE_EVENT_RNG_RECONSTRUCTED"}), \
+             patch("native_run_bootstrap.compare_neow_rng",
+                   side_effect=compare_ids):
+            session = Stub()
+            report, snapshot = run_bootstrap(native, session)
+        self.assertEqual("native_neow_rng_probe", observed["operation"])
+        self.assertEqual(_IDS, observed["ids"])
+        self.assertEqual([], [x for x in observed["ids"] if x.startswith("take_")])
+        self.assertEqual(4, len(observed["probe"]["predictions"]))
+        self.assertEqual(0, session.reset_count)
+        self.assertEqual("SOURCE_NEOW_NATIVE_RNG_DIVERGENCE", report["status"])
+        self.assertIsNone(snapshot)
+
     def test_pinned_native_build_requires_real_named_streams_first(self):
         native = fixture()
         native["run_identity"]["game_build"] = (
