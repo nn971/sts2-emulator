@@ -90,9 +90,9 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
             "STRIKE_SILENT"
         };
         var cards = initial.Cards.ToDictionary(card => card.InstanceId);
-        Assert.Equal(nativeHand,
+        Assert.Equal(nativeHand.Select(Token),
             initial.Hand.Select(id =>
-                NativeCardToken(cards[id].CardId)).ToArray());
+                NativeCardToken(cards[id].CardId)));
         var nativeToEmulatorCard = initial.Hand
             .Select((id, index) => (NativeId: index, EmulatorId: id))
             .ToDictionary(item => item.NativeId, item => item.EmulatorId);
