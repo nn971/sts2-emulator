@@ -63,6 +63,10 @@ public sealed record RunConfiguration(
         || FidelityId == V111Build.NativeStandardMapOpeningFidelityId;
     public bool UsesNativeStandardActMap =>
         FidelityId == V111Build.NativeStandardMapOpeningFidelityId;
+    // The map+Neow source-replay profile also owns its initial combat
+    // formation/monster HP. Keep ordinary training profiles unchanged.
+    public bool UsesNativeActOneCombatEntry =>
+        UsesExperimentalNativeWeakCombatEntry || UsesNativeStandardActMap;
     public bool UsesExperimentalSilentThreeActRoute =>
         FidelityId == V111Build.ExperimentalSilentThreeActRouteFidelityId;
 
