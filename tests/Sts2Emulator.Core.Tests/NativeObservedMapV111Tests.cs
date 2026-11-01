@@ -194,10 +194,14 @@ public sealed class NativeObservedMapV111Tests
             "update this negative regression to assert actual native parity. " +
             "source=" + string.Join(",", nativeHand) +
             "; emulator=" + string.Join(",", actualHand) + "; " + report);
-        // Preserve independently captured draw-pile evidence for the later
-        // exact-shuffle gate. Order/orientation comparison must be explicit.
-        Assert.Equal(6, nativeDraw.Length);
-        Assert.True(actualDraw.Length > 0);
+        // Compare multiset only: the source projection's draw-pile order
+        // may have different top-of-pile orientation from the emulator.
+        // The composition already diverges (native has Survivor in draw;
+        // emulator currently has it in hand), independent of orientation.
+        Assert.False(actualDraw.Order(StringComparer.Ordinal).SequenceEqual(
+            nativeDraw.Select(HandToken).Order(StringComparer.Ordinal)),
+            "Known native remaining draw-pile composition mismatch " +
+            "unexpectedly disappeared; revisit exact-shuffle parity gate.");
     }
 
 }
