@@ -152,6 +152,10 @@ def _source_preflight(source):
     if not any(s.get("site") == "run_started" for s in
                source.get("source_run_rng_snapshots", [])):
         return "BLOCKED_SOURCE_RNG_CHECKPOINT", "Missing source run-start RNG checkpoint"
+    if (has_pinned_native_build(ident)
+        and not source.get("source_initial_map_snapshot")):
+        return ("BLOCKED_SOURCE_INITIAL_MAP_SNAPSHOT",
+                "Missing original StandardActMap graph and map-local RNG cursor")
     return None
 
 
