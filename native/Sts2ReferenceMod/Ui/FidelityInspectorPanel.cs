@@ -22,6 +22,7 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
     private long _lastEventSeq = -1;
     private PanelContainer? _panel;
     private Label? _status;
+    private Label? _liveDiagnostic;
     private Label? _decision;
     private TextEdit? _content;
     private Button? _back;
@@ -29,7 +30,6 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
     private string _sourceStatus = "RNG source hook: UNKNOWN";
     private string _agentStatus = "Agent spectator: DISABLED";
     private string _liveFidelityStatus = "External emulator: NOT_CONNECTED";
-    private long _lastFidelityCursor = -1;
 
     public override void _Ready()
     {
@@ -51,6 +51,8 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
         column.AddChild(title);
         _status = new Label { Text = "Native-only; parity comparison pending." };
         column.AddChild(_status);
+        _liveDiagnostic = new Label { Text = _liveFidelityStatus };
+        column.AddChild(_liveDiagnostic);
 
         var buttons = new HBoxContainer();
         column.AddChild(buttons);
@@ -120,7 +122,8 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
                         : " · first diff " + result.FirstDifferencePath);
         if (next == _liveFidelityStatus) return;
         _liveFidelityStatus = next;
-        _lastFidelityCursor = result?.ThroughSequence ?? -1;
+        if (_liveDiagnostic is not null)
+            _liveDiagnostic.Text = next;
         if (Visible) Refresh();
     }
 
@@ -153,8 +156,9 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
         _forward.Disabled = count == 0 || _cursor == count - 1;
         _status.Text = (_session?.IsIncomplete == true ? "INCOMPLETE_CAPTURE" : "Native-only capture")
             + " · " + _sourceStatus + " · " + _agentStatus
-            + " · " + _liveFidelityStatus
-            + " · complete native parity NOT_CERTIFIED";
+            + " · native parity NOT_CERTIFIED";
+        if (_liveDiagnostic is not null)
+            _liveDiagnostic.Text = _liveFidelityStatus;
         if (count == 0)
         {
             _decision.Text = "Awaiting first stable native combat decision";
