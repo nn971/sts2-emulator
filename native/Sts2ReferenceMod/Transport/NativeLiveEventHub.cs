@@ -79,7 +79,19 @@ public sealed class NativeLiveEventHub : IAsyncDisposable
                 if (result.ThroughSequence < prior.ThroughSequence)
                     return "STALE_FIDELITY_RESULT";
                 if (result.ThroughSequence == prior.ThroughSequence)
-                    return result == prior ? null : "CONFLICTING_FIDELITY_RESULT";
+                {
+                    if (result == prior) return null;
+                    // A stream gap or corrupt event has no acknowledged
+                    // successor cursor. Permit an irreversible fail-closed
+                    // diagnostic at the last *verified* source sequence.
+                    if (!NativeLiveFidelityResult.IsTerminalFailure(prior.Status)
+                        && NativeLiveFidelityResult.IsTerminalFailure(result.Status))
+                    {
+                        _latestFidelityResult = result;
+                        return null;
+                    }
+                    return "CONFLICTING_FIDELITY_RESULT";
+                }
             }
             _latestFidelityResult = result;
             return null;
@@ -229,6 +241,12 @@ public sealed record NativeLiveFidelityResult(
     string? FirstDifferencePath = null, string? FirstDifferenceReason = null)
 {
     public const string SchemaId = "sts2-native-fidelity-result-v1";
+
+    public static bool IsTerminalFailure(string status) =>
+        status.StartsWith("BLOCKED_", StringComparison.Ordinal)
+        || status is "INCOMPLETE_CAPTURE"
+            or "EMULATOR_COORDINATOR_ERROR"
+            or "SOURCE_PLAYER_CHECKPOINT_DIFFERENCE_UNCERTIFIED";
 
     public static readonly IReadOnlySet<string> AllowedStatuses =
         new HashSet<string>(StringComparer.Ordinal)
