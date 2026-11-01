@@ -1314,6 +1314,46 @@ menu. The pinned first-combat golden replay still tests its source-observed
 mechanical projections independently of this future native settlement
 contract. No original-game launch is required for the present offline work.
 
+### Historical native turn-boundary candidate diagnostics (no game launch)
+
+For an existing `.actions.jsonl` capture, use:
+
+```fish
+python tools/native_turn_boundary_diagnostics.py \
+    --sidecar "$sidecar" \
+    --out /tmp/native-turn-boundary-diagnostics.json
+```
+
+The diagnostic requires a consistent native action-envelope audit and reports
+the *last observed changed frame* before each turn's first player-command
+request, plus the native executor-start snapshot for each
+`ReadyToBeginEnemyTurnAction` that immediately follows a completed
+`EndPlayerTurnAction`. It checks callback/turn chronology, whether an
+executor is active at the observed frame, and whether the frame projection
+matches the subsequent request. This is useful for validating candidate
+locations against older native captures that predate the dedicated
+`native_turn_checkpoint` events; it does not retroactively create such
+native source hooks.
+
+For the original 909-record Silent A10 fight, all **6** observed player-start
+candidate frames are idle and agree exactly with their first input-request
+snapshots; all **5** enemy-start candidates follow an end-turn completion.
+The first enemy-start candidate changes the state between the end-turn
+completion and automatic enemy-setup start; the other four preserve the
+observed projection. These are **11 source-observed candidates**, **zero
+settlement-certified checkpoints**, and **zero independently checked parity
+checkpoints**. No phase/queue settlement is claimed.
+
+The offline native assembly preflight now also verifies that the installed
+pinned v111 `sts2.dll` defines the source members required by the new
+turn-boundary hooks: combat-state/manager access, executor before/after events,
+and `EndPlayerTurnAction`/`ReadyToBeginEnemyTurnAction` types.
+The validator rejects a metadata probe response that omits these checks.
+Passing this static API contract does not prove runtime callback ordering.
+Run the existing `native_map_build_preflight.py --metadata-only` and then
+its normal isolated build/staging flow against the installed game DLL
+before requesting another original-game launch.
+
 ### Offline installed-assembly API check (no game launch)
 
 The v111 preflight now performs **read-only PE metadata inspection**
