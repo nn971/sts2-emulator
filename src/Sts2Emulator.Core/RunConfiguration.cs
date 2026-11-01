@@ -161,7 +161,11 @@ public sealed record RunConfiguration(
                     || (configuration.UsesNativeStandardActMap
                         && state.NativeStartupRelicBags is null)
                     || (!configuration.UsesNativeStandardActMap
-                        && state.NativeStartupRelicBags is not null))
+                        && state.NativeStartupRelicBags is not null)
+                    || (configuration.UsesNativeStandardActMap
+                        && state.NativeStartupRooms is null)
+                    || (!configuration.UsesNativeStandardActMap
+                        && state.NativeStartupRooms is not null))
                     throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
             }
         }
@@ -263,15 +267,17 @@ public static class V111RunFactory
             || (config.UsesNativeStandardActMap && opening.NativeMapRng is null)
             || (!config.UsesNativeStandardActMap && opening.NativeMapRng is not null))
             throw new InvalidDataException("Native initial Neow event RNG/choices invariant failed.");
-        // The native fully-unlocked run first populates shared/player
-        // relic grab bags in source order on run.up_front. Persist both
-        // results and the advanced source cursor; GenerateRooms still
-        // follows, so this does NOT yet reproduce the native RunStarted
-        // UpFront cursor (412 for the pinned Silent A10 capture).
+        // Pinned fully-unlocked startup: relic grab bags, followed by
+        // RunManager.GenerateRooms for all three acts, in source order.
+        // Keep the source identity queues separate from the prototype
+        // world until source-driven room entry is verified.
         var runStreams = input.NativeRunRng?.Fork()
             ?? NativeRngV111.CreateBundle(input.RunSeed);
         var sourceRelicBags = config.UsesNativeStandardActMap
             ? NativeUpFrontRelicBagsV111.Populate(runStreams)
+            : null;
+        var sourceRooms = config.UsesNativeStandardActMap
+            ? NativeUpFrontRoomsV111.Generate(runStreams, config.Ascension)
             : null;
         return opening with
         {
@@ -280,6 +286,7 @@ public static class V111RunFactory
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
             NativeRunRng = runStreams,
             NativeStartupRelicBags = sourceRelicBags,
+            NativeStartupRooms = sourceRooms,
             World = opening.World! with
             {
                 RulesetId = config.RulesetId,
