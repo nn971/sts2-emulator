@@ -211,6 +211,51 @@ class NativeSourceJournalTests(unittest.TestCase):
         self.assertEqual({}, auto["preceding_completion_to_start_observed_delta"])
         self.assertEqual([], auto["active_prior_executor_action_ids"])
 
+    def test_noncanonical_source_request_is_linked_as_native_executor(self):
+        rows = source_capture()
+        state = {"player": {"hp": 50}, "combat": {"energy": 1}}
+        automatic_type = "ReadyToBeginEnemyTurnAction"
+        rows[-1:-1] = [
+            {"type": "native_input_request",
+             "native_type": automatic_type, "canonical_action": None,
+             "state": state,
+             "data": {"input_request_id": 2,
+                      "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                      "native_acceptance": "UNVERIFIED",
+                      "human_origin": "UNVERIFIED",
+                      "input_injected": False}},
+            {"type": "action_started", "action_id": 2,
+             "native_type": automatic_type, "canonical_action": None,
+             "state": state,
+             "data": {"input_request_id": 2,
+                      "request_execution_link": "SAME_NATIVE_ACTION_OBJECT",
+                      "human_origin": "UNVERIFIED"}},
+            {"type": "native_input_outcome", "native_type": automatic_type,
+             "data": {"input_request_id": 2, "native_action_id": 8,
+                      "native_action_state": "Executing",
+                      "queue_result":
+                          "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+                      "source": "ActionQueueSynchronizer.RequestEnqueue.postfix",
+                      "human_origin": "UNVERIFIED",
+                      "legal_menu_verified": False}},
+            {"type": "action_completed", "action_id": 2, "state": state},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", report["status"])
+        self.assertEqual([], report["errors"])
+        self.assertEqual(1, len(report["source_linked_commands"]))
+        self.assertEqual([], report["source_requests_without_executor_start"])
+        self.assertEqual(2, len(report["source_executor_observed_transitions"]))
+        linked = report["source_linked_noncanonical_executor_actions"]
+        self.assertEqual(1, len(linked))
+        self.assertEqual(2, linked[0]["executor_action_id"])
+        self.assertEqual(2, linked[0]["input_request_id"])
+        self.assertIsNone(linked[0]["canonical_action"])
+        self.assertEqual(automatic_type, linked[0]["native_type"])
+        self.assertFalse(linked[0]["emulator_applied"])
+
     def test_inter_executor_state_change_is_observed_without_claiming_an_action(self):
         rows = source_capture()
         # Native callbacks may have effects *between* executor envelopes.
