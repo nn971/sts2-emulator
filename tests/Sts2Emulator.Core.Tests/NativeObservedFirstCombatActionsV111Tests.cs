@@ -303,5 +303,22 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
         Assert.Equal(new long[] { 1, 11, 12, 0, 6 }.Select(id =>
             nativeToEmulatorCard[checked((int)id)]), turnFour.DiscardPile);
         NativeRunRngV111.Validate(state);
+
+        // Source executor #17: Strike on turn 4, completed at ordinal 603.
+        var turnFourStrike = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId ==
+                nativeToEmulatorCard[8]
+            && action.ReadPayload<PlayCardPayload>().TargetEnemyId ==
+                enemy.InstanceId);
+        state = engine.Step(state, turnFourStrike).State;
+        var afterSeventeen = Assert.IsType<CombatState>(state.World!.Combat);
+        Assert.Equal(2, afterSeventeen.Energy);
+        Assert.Equal(17, Assert.Single(afterSeventeen.Enemies).Hp);
+        Assert.Equal(new long[] { 10, 4, 3, 9 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), afterSeventeen.Hand);
+        Assert.Equal(new long[] { 1, 11, 12, 0, 6, 8 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), afterSeventeen.DiscardPile);
+        NativeRunRngV111.Validate(state);
     }
 }
