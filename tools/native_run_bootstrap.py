@@ -14,6 +14,7 @@ import re
 from pathlib import Path
 
 from native_run_prelude_audit import audit, load
+from native_neow_rng_verify import verify_neow_event_rng
 from native_neow_rng_probe_audit import compare as compare_neow_rng, has_pinned_native_build
 
 SCHEMA = "native-first-combat-bootstrap-v1"
@@ -171,6 +172,15 @@ def run_bootstrap(source: dict, session):
         "emulator_rng_provider": "PROTOTYPE_NOT_NATIVE_VERIFIED",
         "map_destination_basis": "NATIVE_ROOM_ENTERED_NOT_MAP_VOTE",
     }
+    # This verifies the source event-local RNG independently of Neow's
+    # choices and without taking a single emulator or native RNG draw.
+    neow_rng = verify_neow_event_rng(ident["seed"], neow.get("event_rng"))
+    checks["native_neow_rng_verification"] = neow_rng
+    if neow_rng["status"] != "SOURCE_EVENT_RNG_RECONSTRUCTED":
+        return _report(
+            "BLOCKED_NATIVE_NEOW_RNG_RECONSTRUCTION",
+            "Source event RNG checkpoint disagrees with pinned native seed/algorithm",
+            first=neow_rng["first_difference"], checks=checks)
     try:
         source_offers = [_neow_native_id(o) for o in neow["options"]]
     except (KeyError, TypeError, ValueError) as exc:

@@ -728,3 +728,25 @@ click is a distinct UI path, not recorded in the source event-choice
 prelude. Nested deck/card/potion selection and any nonunique terminal
 menu still fail closed. This extra transport step retains the
 `CANDIDATE_*_UNCERTIFIED` status.
+
+### Independent native Neow local-RNG reconstruction
+
+`tools/native_neow_rng_verify.py` reconstructs Neow's **native** RNG
+from the original `RunState.Rng.StringSeed`, using the pinned
+`RunRngSet(string)` xxHash64 seed, `EventModel.BeginEvent`'s
+singleplayer Neow ID/slot mix, `MegaRandom.Splitmix64` and
+`xoshiro256**` state updates. Each native Neow `NextInt` or
+`NextBool` consumes one 64-bit draw; the recorded preselection
+`event_rng.counter` therefore determines the four words without
+replaying offers or inspecting the hidden game state.
+
+The bootstrap now checks this counter/word reconstruction **before
+starting its emulator session** and blocks on the first mismatching
+word as `BLOCKED_NATIVE_NEOW_RNG_RECONSTRUCTION`. This separates
+native source capture/seed errors from the emulator's independent
+`PrototypeRng` offer generation. The independent native state
+reconstruction is source-algorithm consistency, **not** native-vs-emulator
+RNG or offer parity. The current verifier deliberately blocks legacy
+`old...` seed hashing, excessive counters, and unknown event IDs.
+Testing includes standard xxHash64 vectors and deliberately perturbed
+source words, with no installed-game launch.

@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_run_bootstrap import (
     _neow_native_id, _source_preflight, run_bootstrap, SCHEMA,
 )
+from native_neow_rng_verify import neow_event_rng, verify_neow_event_rng, xxhash64
 
 
 def fixture(seed="synthetic-bootstrap", choice="take_proto.native.neow.heftytablet"):
@@ -41,7 +42,7 @@ def fixture(seed="synthetic-bootstrap", choice="take_proto.native.neow.heftytabl
         "source_event_choice_requests": [{
             "ordinal": 3, "request_id": 1, "event_model_id": "NEOW",
             "selected_index": 2, "options": opts,
-            "event_rng": {"counter": 8}}],
+            "event_rng": neow_event_rng(seed, 8)}],
         "source_event_choice_returns": [{"ordinal": 4, "request_id": 1}],
         "source_room_arrivals": [
             {"ordinal": 5, "act_index": 0, "act_floor": 1,
@@ -150,6 +151,36 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual("PRODUCED_UNCERTIFIED", result["candidate_emulator_snapshot"])
         self.assertEqual("NOT_TESTED", result["native_rng_alignment"])
         self.assertFalse(result["ready_for_native_lockstep"])
+
+    def test_native_seed_hash_and_event_checkpoint(self):
+        self.assertEqual(0xef46db3751d8e999, xxhash64(b""))
+        self.assertEqual(0xd24ec4f1a98c6e5b, xxhash64(b"a"))
+        self.assertEqual(0x44bc2cf5ad770999, xxhash64(b"abc"))
+        state = neow_event_rng("native-checkpoint-seed", 10)
+        self.assertEqual("SOURCE_EVENT_RNG_RECONSTRUCTED",
+                         verify_neow_event_rng("native-checkpoint-seed", state)["status"])
+        changed = dict(state, s3=state["s3"] ^ 1)
+        report = verify_neow_event_rng("native-checkpoint-seed", changed)
+        self.assertEqual("SOURCE_EVENT_RNG_DIFFERENCE", report["status"])
+        self.assertEqual("$.event_rng.s3", report["first_difference"]["path"])
+
+    def test_inconsistent_native_event_rng_blocks_before_emulator_reset(self):
+        source = fixture()
+        source["source_event_choice_requests"][0]["event_rng"]["s0"] ^= 1
+        session = FakeSession()
+        report, candidate = run_bootstrap(source, session)
+        self.assertEqual("BLOCKED_NATIVE_NEOW_RNG_RECONSTRUCTION", report["status"])
+        self.assertEqual("$.event_rng.s0",
+                         report["first_difference_or_blocker"]["path"])
+        self.assertIsNone(candidate)
+        self.assertEqual(0, session.reset_count)
+
+    def test_missing_legacy_source_rng_is_explicit_blocker(self):
+        source = fixture(seed="oldlegacy")
+        session = FakeSession()
+        report, _ = run_bootstrap(source, session)
+        self.assertEqual("BLOCKED_NATIVE_NEOW_RNG_RECONSTRUCTION", report["status"])
+        self.assertEqual(0, session.reset_count)
 
     def test_first_neow_offer_difference_stops_before_macro_action(self):
         session = FakeSession(offers=[

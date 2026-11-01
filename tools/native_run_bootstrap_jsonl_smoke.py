@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "bindings" / "python"))
 from sts2_emulator import Session
 from native_run_bootstrap import _RELIC_TO_EMULATOR, run_bootstrap
 from native_run_prelude_audit import audit
+from native_neow_rng_verify import neow_event_rng
 
 
 def synthetic_prelude(seed, offers, selected, node, final):
@@ -67,9 +68,7 @@ def synthetic_prelude(seed, offers, selected, node, final):
         "request_id": 1, "event_model_id": "NEOW",
         "owner_id": 9, "selected_index": selected,
         "selected_text_key": options[selected]["text_key"],
-        "options": options, "event_rng": {
-            "counter": 6, "s0": 10, "s1": 11, "s2": 12, "s3": 13
-        },
+        "options": options, "event_rng": neow_event_rng(seed, 6),
         "event_rng_source": "EventModel.Rng.ToSerializable",
         "source_event_rng_consumed": False,
         "event_rng_alignment": "NOT_TESTED",
