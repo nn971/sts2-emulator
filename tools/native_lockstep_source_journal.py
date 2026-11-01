@@ -32,11 +32,51 @@ def _observed_delta(left, right) -> dict | None:
     return diff_scalars(left, right)
 
 
+def _qualified_history_reset(records: list[dict], audit: dict) -> list[dict] | None:
+    """Allow *inspection* of callbacks across one uncertain history epoch.
+
+    The strict sidecar audit remains INCOMPLETE_CAPTURE. Only its single
+    out-of-terminal reset diagnostic is eligible: reject active actions,
+    malformed counts, missing terminal or any unrelated audit failure.
+    This never makes the journal eligible for emulator shadow replay.
+    """
+    if (audit.get("status") != "INCOMPLETE_CAPTURE"
+        or audit.get("raw_terminal_status") != "OBSERVED"
+        or audit.get("incomplete_observations") != [
+            "Native history reset outside terminal cleanup"]):
+        return None
+    active: set[int] = set()
+    resets = []
+    for row in records:
+        kind, aid = row.get("type"), row.get("action_id")
+        if kind == "action_started":
+            if type(aid) is not int or aid in active:
+                return None
+            active.add(aid)
+        elif kind == "action_completed":
+            if aid not in active:
+                return None
+            active.remove(aid)
+        elif kind == "history_reset":
+            d = row.get("data") or {}
+            old, new = d.get("previous_count"), d.get("new_count")
+            if (active or type(old) is not int or type(new) is not int
+                or old <= new or new < 0):
+                return None
+            resets.append({"ordinal": row["ordinal"],
+                           "previous_count": old, "new_count": new})
+    if active or len(resets) != 1:
+        return None
+    return resets
+
+
 def build(records: list[dict], error: str | None = None) -> dict:
     result: dict = {
         "schema": "native-source-action-journal-v1",
         "status": "INVALID_SOURCE_CAPTURE",
         "source_audit": None,
+        "source_history_resets": [],
+        "source_history_continuity": "NOT_EVALUATED",
         "game_build": None,
         "run_id": None,
         "run_seed": None,
@@ -57,9 +97,17 @@ def build(records: list[dict], error: str | None = None) -> dict:
     }
     source = audit_sidecar(records, error)
     result["source_audit"] = source["status"]
-    if source["status"] != "CALLBACK_TIMELINE_CONSISTENT":
+    qualified_resets = _qualified_history_reset(records, source)
+    if (source["status"] != "CALLBACK_TIMELINE_CONSISTENT"
+        and qualified_resets is None):
         result["errors"].append(source.get("reason") or "Source sidecar audit failed")
         return result
+    if qualified_resets is not None:
+        result["source_history_resets"] = qualified_resets
+        result["source_history_continuity"] = (
+            "SOURCE_HISTORY_RESET_UNRESOLVED_CALLBACKS_ONLY")
+    else:
+        result["source_history_continuity"] = "SOURCE_AUDIT_CONSISTENT"
 
     header = records[0].get("data") or {}
     result["game_build"] = header.get("game_build")
@@ -266,6 +314,8 @@ def build(records: list[dict], error: str | None = None) -> dict:
         result["status"] = "SOURCE_IDENTITY_MISSING"
     elif result["source_unlinked_canonical_executor_actions"]:
         result["status"] = "SOURCE_INPUT_COVERAGE_PARTIAL"
+    elif qualified_resets is not None:
+        result["status"] = "SOURCE_ACTION_CHRONOLOGY_HISTORY_RESET_UNRESOLVED"
     else:
         result["status"] = "SOURCE_ACTION_CHRONOLOGY_OBSERVED"
     return result
@@ -283,7 +333,9 @@ def main() -> int:
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(rendered, encoding="utf-8")
-    return 0 if result["status"] == "SOURCE_ACTION_CHRONOLOGY_OBSERVED" else 2
+    return 0 if result["status"] in (
+        "SOURCE_ACTION_CHRONOLOGY_OBSERVED",
+        "SOURCE_ACTION_CHRONOLOGY_HISTORY_RESET_UNRESOLVED") else 2
 
 
 if __name__ == "__main__":
