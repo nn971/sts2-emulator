@@ -209,5 +209,33 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
             Assert.Equal(step.DiscardNativeIds.Select(id =>
                 nativeToEmulatorCard[checked((int)id)]), current.DiscardPile);
         }
+
+        // Native stable decision 9 (ordinal 414): the second end-turn
+        // resolves Fuzzy Wurm's Inhale, applying Strength(7), and produces
+        // a reshuffled five-card hand. This tests a second enemy turn and
+        // the previously reconstructed source shuffle stream.
+        state = engine.Step(state, engine.GetLegalActions(state)
+            .Single(action => action.Kind == "end_turn")).State;
+        var turnThree = Assert.IsType<CombatState>(state.World!.Combat);
+        var turnThreeEnemy = Assert.Single(turnThree.Enemies);
+        Assert.True(state.Player.Hp == 56 && turnThree.Turn == 3
+            && turnThree.Energy == 3 && turnThree.PlayerBlock == 0
+            && turnThreeEnemy.Hp == 32 && turnThreeEnemy.Block == 0,
+            $"Native decision 9 at ordinal 414 differs: " +
+            $"hp={state.Player.Hp}, turn={turnThree.Turn}, " +
+            $"energy={turnThree.Energy}, block={turnThree.PlayerBlock}, " +
+            $"enemy_hp={turnThreeEnemy.Hp}, enemy_block={turnThreeEnemy.Block}");
+        Assert.True(turnThreeEnemy.Powers?.Any(power =>
+                Token(power.PowerId) == "STRENGTH"
+                && power.Stacks == 7) == true,
+            $"Native Fuzzy Wurm Strength(7) differs; emulator powers=" +
+            string.Join(",", turnThreeEnemy.Powers?.Select(power =>
+                power.PowerId + ":" + power.Stacks) ?? []));
+        Assert.Equal(new long[] { 12, 0, 1, 6, 11 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), turnThree.Hand);
+        Assert.Equal(new long[] { 8, 10, 4, 3, 9, 7, 5 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]),
+            turnThree.DrawPile.Reverse());
+        Assert.Empty(turnThree.DiscardPile);
     }
 }
