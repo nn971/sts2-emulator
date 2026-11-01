@@ -80,6 +80,9 @@ class NativeMapBuildPreflightTests(unittest.TestCase):
                 "checks": [
                     {"type": "MegaCrit.Sts2.Core.Models.ActModel",
                      "kind": "field", "member": "_rooms", "present": True},
+                    *({"type": t, "kind": k, "member": m, "present": True}
+                      for t, k, m in sorted(
+                          preflight.TURN_CHECKPOINT_METADATA_MEMBERS)),
                 ],
             }
             class Success:
@@ -100,6 +103,15 @@ class NativeMapBuildPreflightTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "mismatched contract"):
                     preflight.probe_native_metadata(data)
             observed["managed_assembly_sha256"] = digest
+            # A stale metadata probe could return success but omit the new
+            # source turn-boundary contract: this must fail closed.
+            missing = observed["checks"].pop()
+            Success.stdout = json.dumps(observed)
+            with patch.object(preflight.subprocess, "run",
+                              return_value=Success()):
+                with self.assertRaisesRegex(RuntimeError, "mismatched contract"):
+                    preflight.probe_native_metadata(data)
+            observed["checks"].append(missing)
             observed["checks"][0]["present"] = False
             Success.stdout = json.dumps(observed)
             with patch.object(preflight.subprocess, "run",
