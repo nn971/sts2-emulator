@@ -96,6 +96,19 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
         var nativeToEmulatorCard = initial.Hand
             .Select((id, index) => (NativeId: index, EmulatorId: id))
             .ToDictionary(item => item.NativeId, item => item.EmulatorId);
+        // Native draw_pile is top-first; the emulator stores bottom-first.
+        // Positional pairing is grounded in independently matching both
+        // source-observed card model sequences (no assumed matching IDs).
+        var nativeDraw = new[]
+        {
+            "STRIKE_SILENT", "STRIKE_SILENT", "SURVIVOR",
+            "DEFEND_SILENT", "DEFEND_SILENT", "DEFEND_SILENT"
+        };
+        var emulatorDrawTopFirst = initial.DrawPile.Reverse().ToArray();
+        Assert.Equal(nativeDraw.Select(Token), emulatorDrawTopFirst
+            .Select(id => NativeCardToken(cards[id].CardId)));
+        for (var index = 0; index < emulatorDrawTopFirst.Length; index++)
+            nativeToEmulatorCard.Add(index + 7, emulatorDrawTopFirst[index]);
 
         foreach (var observed in Observed)
         {
@@ -135,6 +148,66 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
                 $"at source ordinal {observed.SourceCompleteOrdinal}; " +
                 $"emulator statuses={string.Join(",", currentEnemy.Statuses.Select(
                     pair => pair.Key + ":" + pair.Value))}");
+        }
+
+        // Original-game stable decision 6 at sidecar ordinal 231 is the
+        // next player-turn input boundary. The intervening source actions
+        // include EndPlayerTurnAction and ReadyToBeginEnemyTurnAction.
+        // One emulator end_turn must independently resolve that interval.
+        state = engine.Step(state, engine.GetLegalActions(state)
+            .Single(action => action.Kind == "end_turn")).State;
+        var turnTwo = Assert.IsType<CombatState>(state.World!.Combat);
+        var turnTwoEnemy = Assert.Single(turnTwo.Enemies);
+        Assert.True(state.Player.Hp == 56 && turnTwo.Turn == 2
+            && turnTwo.Energy == 3 && turnTwo.PlayerBlock == 0
+            && turnTwoEnemy.Hp == 44 && turnTwoEnemy.Block == 0,
+            $"Native turn-two decision 6 differs: hp={state.Player.Hp}, " +
+            $"turn={turnTwo.Turn}, energy={turnTwo.Energy}, " +
+            $"block={turnTwo.PlayerBlock}, enemy_hp={turnTwoEnemy.Hp}");
+        Assert.False(turnTwoEnemy.Statuses.TryGetValue(
+            "proto.status.weak", out var remainingWeak)
+            && remainingWeak > 0);
+        Assert.Equal(new long[] { 7, 8, 9, 10, 11 }
+            .Select(id => nativeToEmulatorCard[checked((int)id)]),
+            turnTwo.Hand);
+        Assert.Equal(new long[] { 1, 5, 6, 4, 0, 3 }
+            .Select(id => nativeToEmulatorCard[checked((int)id)]),
+            turnTwo.DiscardPile);
+        Assert.Equal(new long[] { 12 }
+            .Select(id => nativeToEmulatorCard[checked((int)id)]),
+            turnTwo.DrawPile.Reverse());
+
+        // Native action_started 7 at ordinal 236 and action_completed
+        // 7/8 at 262/296: two Strikes on the first turn-two enemy.
+        foreach (var step in new[]
+        {
+            new ObservedAction(7, 7, 262, 2, 0, 38,
+                [8, 9, 10, 11], [1, 5, 6, 4, 0, 3, 7]),
+            new ObservedAction(8, 8, 296, 1, 0, 32,
+                [9, 10, 11], [1, 5, 6, 4, 0, 3, 7, 8])
+        })
+        {
+            var play = engine.GetLegalActions(state).Single(action =>
+                action.Kind == "play_card"
+                && action.ReadPayload<PlayCardPayload>().CardInstanceId ==
+                    nativeToEmulatorCard[step.NativeCardInstanceId]
+                && action.ReadPayload<PlayCardPayload>().TargetEnemyId ==
+                    enemy.InstanceId);
+            state = engine.Step(state, play).State;
+            var current = Assert.IsType<CombatState>(state.World!.Combat);
+            var target = Assert.Single(current.Enemies);
+            Assert.True(state.Player.Hp == 56
+                && current.Turn == 2 && current.Energy == step.Energy
+                && current.PlayerBlock == step.PlayerBlock
+                && target.Hp == step.EnemyHp && target.Block == 0,
+                $"Native action {step.NativeExecutorActionId} differs " +
+                $"at sidecar ordinal {step.SourceCompleteOrdinal}; " +
+                $"hp={state.Player.Hp}, energy={current.Energy}, " +
+                $"enemy_hp={target.Hp}");
+            Assert.Equal(step.HandNativeIds.Select(id =>
+                nativeToEmulatorCard[checked((int)id)]), current.Hand);
+            Assert.Equal(step.DiscardNativeIds.Select(id =>
+                nativeToEmulatorCard[checked((int)id)]), current.DiscardPile);
         }
     }
 }
