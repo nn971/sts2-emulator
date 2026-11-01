@@ -162,7 +162,7 @@ def _native_upfront_diagnosis(source, emulator_snapshot):
         "remaining_source_draws": native_count - emulator_count,
         "source_cursor_words_match": expected == words,
         "source_upfront_all_phases_reconstructed": generated_queues_present,
-        "source_upfront_room_identity_parity": "UNOBSERVED_NATIVE_QUEUES",
+        "source_upfront_room_identity_parity": "OBSERVED_PREFIX_COMPARED_SEPARATELY",
         "first_difference": (None if matched else {
             "path": "$.native_run_rng.run.up_front.counter"
                 if native_count != emulator_count else
@@ -170,6 +170,83 @@ def _native_upfront_diagnosis(source, emulator_snapshot):
             "native": native_count if native_count != emulator_count else expected,
             "emulator": emulator_count if native_count != emulator_count else words,
         }),
+    }
+
+
+
+def _native_upfront_room_prefix_diagnosis(source, emulator_snapshot):
+    """Compare pre-generated queue prefixes with actually entered native rooms.
+
+    RNG-state agreement cannot establish queue-content agreement: identical
+    call counts can select different encounters if source pools or ordering
+    differ. Observed RoomEntered identities are independent native evidence;
+    the source does not expose the entire pre-generated queue yet.
+    """
+    startup = emulator_snapshot.get("state", {}).get("native_startup_rooms")
+    acts = startup.get("acts") if isinstance(startup, dict) else None
+    if (not isinstance(acts, list) or len(acts) != 3
+        or [a.get("act") for a in acts if isinstance(a, dict)] != [1, 2, 3]):
+        return {"status": "BLOCKED_SOURCE_ROOM_QUEUE_SNAPSHOT"}
+
+    # Native RunManager.RoomEntered is authoritative for an encountered
+    # identity, regardless of unverified map-input queue provenance.
+    observed = [room for room in source.get("source_room_arrivals", [])
+                if room.get("room_type") in ("Monster", "Elite", "Boss")]
+    if not observed:
+        return {"status": "SOURCE_ROOM_QUEUE_PREFIX_UNOBSERVED",
+                "full_queue_identity_parity": "NOT_TESTED"}
+
+    def identity_token(value):
+        return "".join(ch.upper() for ch in value if ch.isalnum())
+
+    counters = {}
+    for room in sorted(observed, key=lambda item: item.get("ordinal", 0)):
+        act_idx, room_type, native_id = (
+            room.get("act_index"), room.get("room_type"), room.get("room_model_id"))
+        if (type(act_idx) is not int or not 0 <= act_idx < 3
+            or not isinstance(native_id, str) or not native_id):
+            return {"status": "BLOCKED_NATIVE_ROOM_IDENTITY"}
+        act = acts[act_idx]
+        field = {"Monster": "normal_encounters",
+                 "Elite": "elite_encounters",
+                 "Boss": "boss_encounter"}[room_type]
+        count = counters.get((act_idx, room_type), 0)
+        counters[(act_idx, room_type)] = count + 1
+        if room_type == "Boss":
+            expected = (act.get("boss_encounter") if count == 0
+                        else act.get("second_boss_encounter"))
+            path = ("$.native_startup_rooms.acts["
+                    + str(act_idx) + "]."
+                    + ("boss_encounter" if count == 0 else "second_boss_encounter"))
+        else:
+            entries = act.get(field)
+            if not isinstance(entries, list) or count >= len(entries):
+                return {"status": "BLOCKED_SOURCE_ROOM_QUEUE_ENTRIES",
+                        "act": act_idx + 1, "room_type": room_type}
+            expected = entries[count]
+            path = ("$.native_startup_rooms.acts["
+                    + str(act_idx) + "]." + field + "[" + str(count) + "]")
+        if not isinstance(expected, str):
+            return {"status": "BLOCKED_SOURCE_ROOM_QUEUE_ENTRIES",
+                    "act": act_idx + 1, "room_type": room_type}
+        if identity_token(native_id) != identity_token(expected):
+            return {
+                "status": "SOURCE_ROOM_QUEUE_FIRST_DIFFERENCE",
+                "source_observed_prefix_length": sum(counters.values()),
+                "full_queue_identity_parity": "NOT_VERIFIED",
+                "source_evidence": "RunManager.RoomEntered",
+                "first_difference": {
+                    "path": path, "native": native_id,
+                    "emulator_source_queue": expected,
+                    "room_type": room_type, "act": act_idx + 1,
+                },
+            }
+    return {
+        "status": "SOURCE_ROOM_QUEUE_OBSERVED_PREFIX_MATCHED",
+        "source_observed_prefix_length": len(observed),
+        "full_queue_identity_parity": "NOT_VERIFIED",
+        "source_evidence": "RunManager.RoomEntered",
+        "first_difference": None,
     }
 
 
@@ -344,6 +421,8 @@ def run_bootstrap(source: dict, session):
             opening_snapshot = json.loads(state.save_snapshot())
             checks["native_upfront_startup"] = _native_upfront_diagnosis(
                 source, opening_snapshot)
+            checks["native_upfront_room_prefix"] = (
+                _native_upfront_room_prefix_diagnosis(source, opening_snapshot))
             map_check = compare_native_map(source, opening_snapshot)
             checks["native_map_comparison"] = map_check
             checks["native_map_rng_alignment"] = (
