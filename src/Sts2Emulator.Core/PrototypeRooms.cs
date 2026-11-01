@@ -1648,7 +1648,9 @@ public sealed partial class PrototypeGameEngine
                         PrototypeRunEventKind.RelicAcquired,
                         acquiredRelicId: relicId,
                         rng: state.Rng, allocateCardId: () => nextId++,
-                        nativeRunRng: nativeRunRng);
+                        nativeRunRng: nativeRunRng,
+                        useNativeSilentPotionGeneration:
+                            state.Configuration?.UsesNativeStandardActMap == true);
 
                     if (eventState.EventId == NativeDarvEventV111.EventId
                         && relicId == NativeDarvEventV111.DustyTomeId)
