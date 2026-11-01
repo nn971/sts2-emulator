@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_neow_rng_probe_audit import compare, has_pinned_native_build
 from native_run_bootstrap import run_bootstrap
 from test_native_run_bootstrap import fixture, FakeSession
+from test_native_run_rng_verify import source_fixture
 
 _IDS = [
     "proto.native.neow.arcanescroll",
@@ -108,6 +109,7 @@ class NativeNeowProbeTests(unittest.TestCase):
         native["run_identity"]["game_build"] = (
             "assembly=1.1.1.1;mvid=" + "a" * 32 + ";sha256=" + "b" * 64)
         self.assertTrue(has_pinned_native_build(native["run_identity"]))
+        native["source_run_rng_snapshots"] = source_fixture()
         class Stub(FakeSession):
             def call(self, op, **kwargs):
                 self.last_call = (op, kwargs)
@@ -120,6 +122,17 @@ class NativeNeowProbeTests(unittest.TestCase):
         self.assertEqual(0, s.reset_count)
         self.assertIsNone(snap)
         self.assertEqual("native_neow_rng_probe", s.last_call[0])
+
+    def test_pinned_native_build_requires_real_named_streams_first(self):
+        native = fixture()
+        native["run_identity"]["game_build"] = (
+            "assembly=1.1.1.1;mvid=" + "a" * 32 + ";sha256=" + "b" * 64)
+        session = FakeSession()
+        result, snapshot = run_bootstrap(native, session)
+        self.assertEqual("BLOCKED_NATIVE_NAMED_RNG_RECONSTRUCTION",
+                         result["status"])
+        self.assertIsNone(snapshot)
+        self.assertEqual(0, session.reset_count)
 
     def test_unrecognized_build_never_skips_native_rng_gate(self):
         native = fixture()
