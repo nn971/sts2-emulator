@@ -270,6 +270,65 @@ class NativeSourceJournalTests(unittest.TestCase):
         self.assertEqual("NATIVE_CALLBACK_PROJECTIONS_ONLY",
                          nested["source_comparison"])
 
+    def test_history_reset_preserves_source_only_callbacks_but_not_strict_gate(self):
+        from native_action_envelope_audit import audit as strict_audit
+
+        rows = source_capture()
+        rows[-1]["data"]["reason"] = "Combat ended"
+        # Extra frame after the native reset: the strict audit intentionally
+        # refuses to treat the reset as directly adjacent to terminal.
+        rows[-1:-1] = [
+            {"type": "history_reset",
+             "data": {"previous_count": 5, "new_count": 0}},
+            {"type": "frame_state",
+             "state": {"combat": {"energy": 1}},
+             "data": {"frame_index": 10, "state_hash": "synthetic-1"}},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        self.assertEqual("INCOMPLETE_CAPTURE", strict_audit(rows)["status"])
+        report = build(rows)
+        self.assertEqual(
+            "SOURCE_ACTION_CHRONOLOGY_HISTORY_RESET_UNRESOLVED",
+            report["status"])
+        self.assertEqual("INCOMPLETE_CAPTURE", report["source_audit"])
+        self.assertEqual([{"ordinal": len(rows) - 2,
+                           "previous_count": 5, "new_count": 0}],
+                         report["source_history_resets"])
+        self.assertEqual("SOURCE_HISTORY_RESET_UNRESOLVED_CALLBACKS_ONLY",
+                         report["source_history_continuity"])
+        self.assertEqual(1, len(report["source_executor_observed_transitions"]))
+        self.assertEqual(1, len(report["source_linked_commands"]))
+        self.assertEqual("NOT_EXECUTED", report["emulator_replay"])
+        self.assertEqual("NOT_TESTED", report["emulator_parity"])
+        self.assertEqual("NOT_VERIFIED", report["native_legal_menu"])
+
+    def test_history_reset_during_active_executor_is_never_qualified(self):
+        rows = source_capture()
+        completed = next(i for i, row in enumerate(rows)
+                         if row["type"] == "action_completed")
+        rows.insert(completed, {
+            "type": "history_reset",
+            "data": {"previous_count": 5, "new_count": 0}})
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = build(rows)
+        self.assertEqual("INVALID_SOURCE_CAPTURE", result["status"])
+        self.assertEqual([], result["source_executor_observed_transitions"])
+
+    def test_history_reset_with_invalid_counts_is_never_qualified(self):
+        rows = source_capture()
+        rows[-1:-1] = [
+            {"type": "history_reset",
+             "data": {"previous_count": 5, "new_count": 6}},
+            {"type": "frame_state", "state": {"combat": {"energy": 1}},
+             "data": {"frame_index": 10, "state_hash": "synthetic-1"}},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = build(rows)
+        self.assertEqual("INVALID_SOURCE_CAPTURE", result["status"])
+
     def test_missing_true_run_identity_remains_explicit(self):
         rows = [r for r in source_capture() if r["type"] != "native_run_identity"]
         for i, row in enumerate(rows, 1):
