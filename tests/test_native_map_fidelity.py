@@ -61,8 +61,11 @@ def example():
         "schema": "sts2-exact-snapshot-v1",
         "state": {
             "run_seed": "source-example", "ascension": 10,
-            "configuration": {"fidelity_id": MAP_PROFILE},
+            "configuration": {
+                "fidelity_id": MAP_PROFILE, "character_id": "silent",
+                "acts": [0, 2, 3]},
             "world": {"map": {
+                "generation_profile_id": "v111-experimental-native-standard-act1-map-v1",
                 "nodes": nodes, "entry_node_ids": ["1:1:3"]}},
             "native_map_rng": {"streams": [{
                 "stream_id": MAP_STREAM, "codec": MAP_CODEC,
