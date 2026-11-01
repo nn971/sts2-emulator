@@ -6,6 +6,7 @@ import io
 import json
 import sys
 import unittest
+import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
@@ -13,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_live_offline_replay import simulate_sidecar, _digest
 from native_live_fidelity_coordinator import (
     FidelityEventCursor, LiveFidelityError, IncrementalFidelityCoordinator,
-    _loopback_base, parse_sse,
+    _NoRedirect, _loopback_base, parse_sse,
 )
 from test_native_turn_checkpoint_replay import fixture, FakeSession
 
@@ -156,6 +157,24 @@ class LiveCoordinatorTests(unittest.TestCase):
             list(parse_sse(io.StringIO(wire.replace("id: 1", "id: 7"))))
         with self.assertRaisesRegex(LiveFidelityError, "Partial SSE frame"):
             list(parse_sse(io.StringIO(wire.rstrip())))
+
+    def test_invalid_sse_json_and_non_object_are_integrity_failures(self):
+        for data in ("{invalid", "[]", "null"):
+            frame = "id: 1\\nevent: native\\ndata: " + data + "\\n\\n"
+            with self.assertRaises(LiveFidelityError) as caught:
+                list(parse_sse(io.StringIO(frame.replace("\\n", "\n"))))
+            self.assertEqual("BLOCKED_STREAM_INTEGRITY",
+                             caught.exception.status)
+
+    def test_fidelity_redirect_cannot_forward_private_token(self):
+        no_redirect = _NoRedirect()
+        request = urllib.request.Request(
+            "http://127.0.0.1:39221/v1/fidelity/result",
+            headers={"Authorization": "Bearer synthetic-private-token"})
+        self.assertIsNone(no_redirect.redirect_request(
+            request, None, 302, "Found",
+            {"Location": "http://malicious.example/"},
+            "http://malicious.example/"))
 
     def test_only_loopback_origins_allowed(self):
         self.assertEqual("http://127.0.0.1:39221",
