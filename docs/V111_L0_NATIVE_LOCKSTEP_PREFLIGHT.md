@@ -1308,11 +1308,67 @@ observations are not parity checkpoints. If source evidence of quiescence
 is incomplete, report `SETTLEMENT_UNVERIFIED` and defer the parity
 comparison rather than interpreting a transient animation state as a
 divergence. The strict player-decision trace remains fail-closed at its
-decision-9 gap; independent turn checkpoints can resume after that gap
+source-specific gap (decision 9 in the older capture, decision 2 in the
+newer capture); independent turn checkpoints can resume after that gap
 without claiming the missing intermediate decisions or a complete legal
 menu. The pinned first-combat golden replay still tests its source-observed
 mechanical projections independently of this future native settlement
 contract. No original-game launch is required for the present offline work.
+
+### Installed v111 turn checkpoint capture and independent replay (2026-11-01)
+
+The second captured Silent A10 fight, on the original seed
+`6JK8MD0VQQTA` but using a **different sequence of card plays**, confirms
+that the **installed native reference mod** emitted all expected provisional
+checkpoints over a complete six-turn combat:
+
+- `PLAYER_TURN_START` ordinals **47, 224, 404, 561, 750, 835**:
+  all six canonical state projections exactly equal the next native
+  player-command request projection of the same turn.
+- `ENEMY_TURN_START` ordinals **181, 297, 522, 652, 791**:
+  all five projections exactly equal the adjacent native
+  `ReadyToBeginEnemyTurnAction` pre-executor snapshot. All follow
+  a completed `EndPlayerTurnAction`. The turn-one hand/exhaust
+  projection differs from that earlier end-turn completion because
+  Ascender's Bane is exhausted in the intervening interval.
+- The action envelope is `CALLBACK_TIMELINE_CONSISTENT` and the
+  source journal is `SOURCE_ACTION_CHRONOLOGY_OBSERVED`:
+  26 completed native executor actions, all 26 input requests linked,
+  21 canonical play/end-turn commands and five automatic enemy-setup
+  requests; no unmatched requests or journal errors. The linked run
+  prelude completed `SOURCE_PRELUDE_OBSERVED` with startup room queues.
+- The separate strict player-decision trace reaches only **two**
+  stable decisions in this capture, then reports a genuine strict
+  input gap at native ordinal **111** during card animation.
+  The earlier native capture reached decision 9 before a similar gap.
+  These strict traces remain incomplete; source executor chronology
+  and candidate checkpoints continue independently.
+
+Added `NativeObservedTurnCheckpointsV111Tests`, which bootstraps the
+typed emulator independently from the source seed, maps native card
+identities through the matching source hand/draw piles, then replays
+the second native action sequence including Survivor's nested discard
+(Defend instance 10). The test matches **all six** observed player-start
+projections (HP, block, energy, enemy HP/Strength, ordered hand/draw/
+discard/exhaust piles) and completes the lethal combat into Reward.
+It validates persistent native-run RNG ownership and the observed
+`run.shuffle` counter-31 xoshiro state. This is **source-pinned offline
+emulator mechanics agreement** for two action sequences on one seed,
+not native in-process lockstep or parity over unobserved continuation
+fields. The five enemy-start source states are independent diagnostics;
+the current emulator `end_turn` API consumes the intervening enemy turn
+before presenting the next player-start state.
+
+Each new native checkpoint remains labelled
+`SETTLEMENT_UNVERIFIED`. In the installed game the enemy-start site
+still reports `native_side=Player`, `player_phase=End`, as expected
+for a pre-enemy-setup callback; it has **not yet** been proven to be an
+atomic pre-first-enemy-effect semantic handoff. The source
+state also marks complete RNG streams, pending effects, creature move
+history, relic/potion mutable state and other continuation fields
+unsupported. To certify full turn-boundary parity, establish native
+settlement, align both engines' RNG and complete state there, and
+test diverse encounters/seeds.
 
 ### Historical native turn-boundary candidate diagnostics (no game launch)
 
