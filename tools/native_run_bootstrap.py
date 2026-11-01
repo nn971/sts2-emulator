@@ -15,6 +15,7 @@ from pathlib import Path
 
 from native_run_prelude_audit import audit, load
 from native_neow_rng_verify import verify_neow_event_rng
+from native_run_rng_verify import verify_run_streams
 from native_neow_rng_probe_audit import compare as compare_neow_rng, has_pinned_native_build
 
 SCHEMA = "native-first-combat-bootstrap-v1"
@@ -174,6 +175,18 @@ def run_bootstrap(source: dict, session):
     }
     # This verifies the source event-local RNG independently of Neow's
     # choices and without taking a single emulator or native RNG draw.
+    if has_pinned_native_build(ident):
+        stream_diagnosis = verify_run_streams(
+            ident["seed"], source.get("source_run_rng_snapshots", []))
+        checks["native_named_stream_verification"] = stream_diagnosis
+        if stream_diagnosis["status"] != "SOURCE_RNG_CHECKPOINTS_RECONSTRUCTED":
+            return _report(
+                "BLOCKED_NATIVE_NAMED_RNG_RECONSTRUCTION",
+                "Source run/player RNG stream checkpoint differs from seed/counter",
+                first=stream_diagnosis["first_difference"], checks=checks)
+    else:
+        checks["native_named_stream_verification"] = {
+            "status": "NOT_TESTED_SYNTHETIC_OR_UNRECOGNIZED_BUILD"}
     neow_rng = verify_neow_event_rng(ident["seed"], neow.get("event_rng"))
     checks["native_neow_rng_verification"] = neow_rng
     if neow_rng["status"] != "SOURCE_EVENT_RNG_RECONSTRUCTED":
