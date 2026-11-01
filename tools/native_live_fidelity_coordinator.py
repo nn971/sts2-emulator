@@ -24,7 +24,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "bindings" / "python"))
 
 from native_action_envelope_audit import load as load_sidecar
-from native_live_offline_replay import SCHEMA, CHANNEL, _digest, simulate_sidecar
+from native_live_offline_replay import (SCHEMA, CHANNEL, _digest, _LexicalFloat,
+                                        load_live, simulate_sidecar)
 from native_lockstep_source_journal import build as build_source_journal
 from native_lockstep_shadow import _resolve
 from native_run_bootstrap import run_bootstrap
@@ -406,7 +407,7 @@ def parse_sse(stream):
                 if event_type != "native" or event_id is None:
                     raise LiveFidelityError("BLOCKED_STREAM_INTEGRITY",
                                             "Unrecognized SSE data frame")
-                value = json.loads("\n".join(data))
+                value = json.loads("\\n".join(data), parse_float=_LexicalFloat)
                 if value.get("sequence") != int(event_id):
                     raise LiveFidelityError("BLOCKED_STREAM_INTEGRITY",
                                             "SSE ID differs from envelope sequence")
@@ -516,9 +517,7 @@ def main() -> int:
                                                 source_error)
                     envelope_rows = simulate_sidecar(source_rows)
                 else:
-                    envelope_rows, error = load_sidecar(args.fidelity_events)
-                    if error:
-                        raise LiveFidelityError("BLOCKED_STREAM_INTEGRITY", error)
+                    envelope_rows = load_live(args.fidelity_events)
                 for row in envelope_rows:
                     live.consume(row)
                     if live.stopped:
