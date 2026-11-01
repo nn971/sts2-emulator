@@ -5,8 +5,8 @@ namespace Sts2Emulator.Core;
 /// Source: SharedRelicPool, SilentRelicPool, RelicGrabBag.Populate,
 /// RunManager.InitializeNewRun (STS2-source@706ef1c9).
 /// Source model names are retained rather than mapped to the emulator's
-/// incomplete relic registry. This is an independently testable STARTUP
-/// PHASE, not yet full run.up_front parity: GenerateRooms follows it.
+/// incomplete relic registry. This is the first independent source
+/// startup phase; NativeUpFrontRoomsV111 follows it on the same stream.
 /// </summary>
 public static class NativeUpFrontRelicBagsV111
 {
