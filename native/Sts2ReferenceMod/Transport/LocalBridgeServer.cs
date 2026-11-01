@@ -95,7 +95,7 @@ public sealed class LocalBridgeServer : IAsyncDisposable
         {
             var method = context.Request.HttpMethod;
             var path = context.Request.Url?.AbsolutePath;
-            bool fidelityRoute = path == "/v1/fidelity/stream";
+            bool fidelityRoute = path is "/v1/fidelity/stream" or "/v1/fidelity/result";
             var expected = fidelityRoute ? _fidelityToken : _expectedToken;
             if (expected is null)
             {
@@ -124,6 +124,9 @@ public sealed class LocalBridgeServer : IAsyncDisposable
                     && _liveEvents is not null)
                     await SendStreamAsync(context, NativeLiveEventHub.FidelityChannel)
                         .ConfigureAwait(false);
+                else if (method == "POST" && path == "/v1/fidelity/result"
+                    && _liveEvents is not null)
+                    await ReceiveFidelityResultAsync(context).ConfigureAwait(false);
                 else
                     await SendAsync(context, 403, new
                     {
@@ -197,6 +200,35 @@ public sealed class LocalBridgeServer : IAsyncDisposable
             // A disconnected client must never unwind into the game thread.
             try { context.Response.Abort(); } catch (ObjectDisposedException) { }
         }
+    }
+
+    private async Task ReceiveFidelityResultAsync(HttpListenerContext context)
+    {
+        var bytes = await ReadBoundedAsync(context.Request.InputStream).ConfigureAwait(false);
+        if (bytes is null)
+        {
+            await SendAsync(context, 413, new { error = "BODY_TOO_LARGE" })
+                .ConfigureAwait(false);
+            return;
+        }
+        NativeLiveFidelityResult? update;
+        try { update = JsonSerializer.Deserialize<NativeLiveFidelityResult>(bytes, JsonOptions); }
+        catch (JsonException)
+        {
+            await SendAsync(context, 400, new { error = "INVALID_FIDELITY_RESULT_JSON" })
+                .ConfigureAwait(false);
+            return;
+        }
+        if (update is null)
+        {
+            await SendAsync(context, 400, new { error = "MISSING_FIDELITY_RESULT" })
+                .ConfigureAwait(false);
+            return;
+        }
+        string? rejected = _liveEvents!.AcceptFidelityResult(update);
+        await SendAsync(context, rejected is null ? 200 : 409,
+            rejected is null ? new { status = "ACCEPTED" } : new { status = rejected })
+            .ConfigureAwait(false);
     }
 
     private async Task SendStreamAsync(HttpListenerContext context, string channel)
