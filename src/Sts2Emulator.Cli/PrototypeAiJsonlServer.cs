@@ -151,6 +151,26 @@ internal static class PrototypeAiJsonlServer
                         Write(new { requestId, ok = true, coverage = V111Coverage.Create() });
                         break;
 
+                    case "native_neow_rng_probe":
+                    {
+                        // Pure diagnostic: no run handles or state mutation.
+                        var seed = RequiredString(request, "seed");
+                        Write(new
+                        {
+                            requestId, ok = true,
+                            schemaId = NativeNeowOfferV111.Schema,
+                            source = "Flaaax/STS2-source@706ef1c9",
+                            eventId = "NEOW",
+                            assumedPlayerSlot = 0,
+                            modifiers = "NONE_ASSUMED",
+                            dynamicUnlockGates = new[] { "Kaleidoscope", "ScrollBoxes" },
+                            nativeRngConsumedByInspector = false,
+                            emulatorEventRngAlignment = "NOT_TESTED",
+                            predictions = NativeNeowOfferV111.PredictAll(seed)
+                        });
+                        break;
+                    }
+
                     case "nature_begin":
                     {
                         var kind = RequiredString(request, "kind");
