@@ -1029,9 +1029,10 @@ capture in `NativeObservedMapV111Tests`.
 - The first combat HP, map, Neow, encounter, opening hand/draw pile,
   `run.shuffle`, `run.niche`, and Phial Holster's native potion
   RNG are verified against original-game observations. Native potion
-  identities, per-action combat transitions and postcombat rewards
-  remain separate acceptance gates. Startup room/Ancient identities
-  are observed and independently matched for this seed only.
+  identities, broader per-action combat transitions and postcombat
+  rewards remain separate acceptance gates. Selected early combat
+  actions and startup room/Ancient identities now have independently
+  checked native visible projections for this one pinned seed.
 
 **Capture limitations and later trace coverage:**
 
@@ -1050,6 +1051,48 @@ capture in `NativeObservedMapV111Tests`.
   confirmed by original-game logs. These do not establish that every
   source draw or mechanical operation has been reproduced by the
   emulator.
+
+### 2026-11-01 independent combat action-prefix replay (native observations)
+
+A new C# regression, `NativeObservedFirstCombatActionsV111Tests`,
+reconstructs Silent A10 seed `6JK8MD0VQQTA` independently using the
+source-shaped Neow choice (Phial Holster) and first map node `1:1:0`.
+It builds an explicit, identity-checked native-to-emulator card map from
+the source-observed initial hand and top-first draw pile; the game and
+emulator have distinct card instance numbers.
+
+The test replays six original native player card actions and two
+`end_turn` commands through the **actual `PrototypeGameEngine.Step`**.
+It compares executor-callback HP, energy, block, enemy HP and visible
+hand/discard sequences for Neutralize, Defend, Strike, Strike (turn 1)
+and Strike, Strike (turn 2). It separately checks stable turn-2 and
+turn-3 decisions, enemy Weak and Strength(7), draw/discard order, and
+the source `run.shuffle` cursor. The second end-turn is a source
+`CardPileCmd.Shuffle` recycle: the pin has ten fresh RNG selections,
+so the state advances from 12 to **22** calls on `run.shuffle`,
+independently of initial-shuffle setup.
+
+This exposed a real source-shuffle difference: the ordinary prototype
+combat `ShuffleRecycle` uses its synthetic stream and unsorted discard
+order; pinned v111 `CardPileCmd.Shuffle` uses
+`StableShuffle` (source model/upgrade order, then `run.shuffle`).
+`NativeSourceRecycleShuffleV111` now reconstructs the source-shuffle
+order and stores the reversed top-first pile within the **native-map
+fidelity profile only**. Its RNG advances are applied at the
+combat-owned RNG boundary, so `NativeRunRngV111.ReconcileAfterStep`
+retains the advanced stream rather than restoring the prior cursor.
+Other combat-owned streams are preserved. The existing explicit
+scripted shuffle replay takes precedence, and ordinary training runs
+retain the existing shuffle implementation. The source RNG is forked
+only when recycling occurs.
+
+**Evidence level:** these are independently simulated *visible
+mechanics matches at selected observed callback/decision boundaries*
+for one seed and one first combat. Source executor callbacks are not
+certified settled decision boundaries. Full legal menus, queued or
+overlapping inputs, nested choices, downstream combat completion and
+other seeds remain unverified. The strict decision-9 gap remains a
+separate inspector capture issue.
 
 ### 2026-11-01 strict decision-gap retrospective (source-only)
 
@@ -1095,13 +1138,11 @@ It labels request/execute and prior-completion/request state agreement
 without manufacturing an executable decision boundary or asserting
 emulator mechanics parity.
 
-**Next acceptance gate:** use the independent first-combat emulator
-snapshot and action crosswalk to replay a source-linked subset,
-checking observed HP/block/energy/creature states at exact corresponding
-boundaries. An executor callback or coincidentally identical snapshots
-cannot independently certify a post-action settled decision.
-The existing trace is sufficient for this diagnostic; no additional
-original-game launch is required.
+**Next acceptance gate:** expand the independently checked first-combat
+prefix beyond its first two end-turn boundaries; then add a source-verified
+event-driven decision boundary for overlapping UI actions. The strict
+recorder remains fail-closed at decision 9. The existing native capture
+is sufficient for the completed prefix; no original-game launch is needed.
 
 ### Offline installed-assembly API check (no game launch)
 
