@@ -107,12 +107,11 @@ def _neow_native_id(option):
 
 
 def _native_upfront_diagnosis(source, emulator_snapshot):
-    """Compare the source RunStarted cursor to the emulator's real startup.
+    """Compare the complete source-ordered UpFront schedule at RunStarted.
 
-    Relic bags are currently an explicit 229-draw source prefix; the native
-    RunStarted observation also includes subsequent three-act GenerateRooms
-    work. Report this *actual* mismatch while allowing independent map and
-    Neow checks to continue. No source cursor is imported into the emulator.
+    Verify both the native counter and four RNG words. The generated event,
+    encounter and Ancient queues are retained for future continuation, but
+    their identities remain unobserved by the passive native capture.
     """
     samples = [s for s in source.get("source_run_rng_snapshots", [])
                if s.get("site") == "run_started"]
@@ -141,16 +140,29 @@ def _native_upfront_diagnosis(source, emulator_snapshot):
     except (KeyError, ValueError, TypeError, struct.error):
         return {"status": "BLOCKED_UPFRONT_CURSOR_ENCODING"}
     matched = (native_count == emulator_count and expected == words)
+    retained = emulator_snapshot.get("state", {}).get("native_startup_rooms")
+    acts = retained.get("acts") if isinstance(retained, dict) else None
+    generated_queues_present = (isinstance(acts, list) and len(acts) == 3
+        and [act.get("act") for act in acts if isinstance(act, dict)] == [1, 2, 3]
+        and all(isinstance(act.get("events"), list)
+                and isinstance(act.get("normal_encounters"), list)
+                and isinstance(act.get("elite_encounters"), list)
+                and isinstance(act.get("boss_encounter"), str)
+                and isinstance(act.get("ancient"), str)
+                for act in acts if isinstance(act, dict)))
     return {
         "status": ("SOURCE_UPFRONT_MATCHED" if matched
                    else "SOURCE_UPFRONT_DIVERGED"),
         "source_boundary": "RunManager.RunStarted",
-        "emulator_boundary": "emulator.start_run_after_relic_bags",
+        "emulator_boundary": ("emulator.start_run_after_source_generate_rooms"
+                              if generated_queues_present else
+                              "emulator.start_run_without_retained_source_rooms"),
         "source_counter": native_count,
         "emulator_counter": emulator_count,
         "remaining_source_draws": native_count - emulator_count,
         "source_cursor_words_match": expected == words,
-        "source_upfront_all_phases_reconstructed": False,
+        "source_upfront_all_phases_reconstructed": generated_queues_present,
+        "source_upfront_room_identity_parity": "UNOBSERVED_NATIVE_QUEUES",
         "first_difference": (None if matched else {
             "path": "$.native_run_rng.run.up_front.counter"
                 if native_count != emulator_count else
