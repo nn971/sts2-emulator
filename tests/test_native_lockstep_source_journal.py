@@ -90,6 +90,64 @@ def source_capture():
 
 
 class NativeSourceJournalTests(unittest.TestCase):
+    def test_native_turn_candidates_remain_not_settled_or_compared(self):
+        rows = source_capture()
+        def candidate(kind, state, source, basis, side, phase):
+            return {"type": "native_turn_checkpoint",
+                    "state": copy.deepcopy(state),
+                    "data": {
+                        "kind": kind, "turn": 1,
+                        "observation_site": source,
+                        "observation_basis": basis,
+                        "native_side": side, "player_phase": phase,
+                        "settlement_status": "SETTLEMENT_UNVERIFIED",
+                        "complete_native_queue_verified": False,
+                        "native_phase_handoff_order_verified": False,
+                        "original_native_legal_menu": "NOT_VERIFIED",
+                        "emulator_parity": "NOT_TESTED",
+                        "rng_draws_performed_by_inspector": 0}}
+        player = candidate(
+            "PLAYER_TURN_START",
+            {"player": {"hp": 50}, "combat": {"turn": 1}},
+            "NativeV111PassiveBridge.OnFrame",
+            "IDLE_PLAYABLE_PLAYER_FRAME_BEFORE_OBSERVED_INPUT",
+            "Player", "Play")
+        rows.insert(2, player)
+        started = next(row for row in rows
+                       if row["type"] == "action_started")
+        started["state"]["combat"]["turn"] = 1
+        enemy = candidate(
+            "ENEMY_TURN_START", started["state"],
+            "ActionExecutor.BeforeActionExecuted",
+            "PRE_READY_TO_BEGIN_ENEMY_TURN_ACTION", "Player", "End")
+        # An automatic action can begin at an enemy-turn boundary;
+        # the original source capture still has to prove its semantics.
+        auto_start = {
+            "type": "action_started", "action_id": 2,
+            "native_type": "ReadyToBeginEnemyTurnAction",
+            "state": copy.deepcopy(started["state"])}
+        auto_end = {
+            "type": "action_completed", "action_id": 2,
+            "state": copy.deepcopy(started["state"])}
+        rows[-1:-1] = [auto_start, enemy, auto_end]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED",
+                         report["status"])
+        candidates = report["source_turn_checkpoint_candidates"]
+        self.assertEqual(2, len(candidates))
+        self.assertEqual(
+            ["PLAYER_TURN_START", "ENEMY_TURN_START"],
+            [c["kind"] for c in candidates])
+        self.assertEqual("NOT_TESTED", report["emulator_parity"])
+        for item in candidates:
+            self.assertEqual("SETTLEMENT_UNVERIFIED",
+                             item["settlement_status"])
+            self.assertEqual("NOT_VERIFIED",
+                             item["native_full_queue_settlement"])
+            self.assertFalse(item["emulator_applied"])
+
     def test_request_can_execute_before_queue_postfix_and_choice_is_bound(self):
         report = build(source_capture())
         self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", report["status"])
