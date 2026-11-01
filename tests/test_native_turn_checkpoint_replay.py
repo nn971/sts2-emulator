@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_turn_checkpoint_replay import (
     derive_crosswalk, first_difference, replay, _native_rng_window,
-    _selected_choice, _check_rng,
+    _selected_choice, _check_rng, check_prelude_pair,
 )
 
 
@@ -143,6 +143,25 @@ def fixture():
 
 
 class NativeTurnCheckpointReplayTests(unittest.TestCase):
+    def test_prelude_must_link_same_exact_native_combat(self):
+        j, _, _, _ = fixture()
+        j["run_id"] = "native-combat"
+        j["game_build"] = "pinned-v111"
+        prelude = {
+            "status": "RUN_PRELUDE_SOURCE_OBSERVED",
+            "run_identity": {
+                "game_build": "pinned-v111",
+                "seed": "TEST-SEED", "ascension": 10},
+            "first_combat_link": {"combat_run_id": "native-combat"}}
+        self.assertIsNone(check_prelude_pair(j, prelude))
+        prelude["first_combat_link"]["combat_run_id"] = "another-run"
+        self.assertEqual("SOURCE_PRELUDE_COMBAT_IDENTITY_MISMATCH",
+                         check_prelude_pair(j, prelude))
+        prelude["first_combat_link"]["combat_run_id"] = "native-combat"
+        prelude["run_identity"]["ascension"] = 9
+        self.assertEqual("SOURCE_PRELUDE_COMBAT_IDENTITY_MISMATCH",
+                         check_prelude_pair(j, prelude))
+
     def test_independent_persistent_emulator_matches_only_player_starts(self):
         j, start, end, _ = fixture()
         session = FakeSession(start)
