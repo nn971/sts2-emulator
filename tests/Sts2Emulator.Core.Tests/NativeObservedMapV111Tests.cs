@@ -90,8 +90,14 @@ public sealed class NativeObservedMapV111Tests
             19, 7953574168331048626UL, 3395371163224860218UL,
             16899011179517407643UL, 6951990959699619831UL);
         var predicted = NativeNeowOfferV111.PredictAll(CapturedSeed);
+        // The native mod reports public relic model identifiers, while the
+        // emulator uses internal proto.native.neow.* identifiers.
+        // Compare canonical alphanumeric model-name tokens, preserving order.
+        static string ModelToken(string id) => string.Concat(id.Split('.').Last()
+            .Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant));
         var matches = predicted.Where(p =>
-            p.OfferedRelicIds.SequenceEqual(observed)
+            p.OfferedRelicIds.Select(ModelToken)
+                .SequenceEqual(observed.Select(ModelToken))
             && p.EventRng == expectedRng).ToArray();
         Assert.True(matches.Length > 0,
             "Native Neow option/cursor mismatch. Emulator variants: " +
