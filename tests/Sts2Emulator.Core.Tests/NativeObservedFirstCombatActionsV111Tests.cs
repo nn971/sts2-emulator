@@ -320,5 +320,28 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
         Assert.Equal(new long[] { 1, 11, 12, 0, 6, 8 }.Select(id =>
             nativeToEmulatorCard[checked((int)id)]), afterSeventeen.DiscardPile);
         NativeRunRngV111.Validate(state);
+
+        // Native Survivor #18: source nested discard choice at ordinals
+        // 618-622 selects source Strike instance #4. The emulator must
+        // resolve the corresponding pending selection independently.
+        var survivor = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId ==
+                nativeToEmulatorCard[9]);
+        state = engine.Step(state, survivor).State;
+        var selection = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "select_cards"
+            && action.ReadPayload<SelectCardsPayload>().CardInstanceIds
+                .SequenceEqual(new long[] { nativeToEmulatorCard[4] }));
+        state = engine.Step(state, selection).State;
+        var afterSurvivor = Assert.IsType<CombatState>(state.World!.Combat);
+        Assert.True(state.Player.Hp == 56 && afterSurvivor.Turn == 4
+            && afterSurvivor.Energy == 1 && afterSurvivor.PlayerBlock == 8
+            && Assert.Single(afterSurvivor.Enemies).Hp == 17);
+        Assert.Equal(new long[] { 10, 3 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), afterSurvivor.Hand);
+        Assert.Equal(new long[] { 1, 11, 12, 0, 6, 8, 4, 9 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), afterSurvivor.DiscardPile);
+        NativeRunRngV111.Validate(state);
     }
 }
