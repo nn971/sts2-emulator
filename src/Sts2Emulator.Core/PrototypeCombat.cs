@@ -165,7 +165,7 @@ public sealed partial class PrototypeGameEngine
         // encounter RNG. Unsupported entries must never fall back
         // to the prototype combat RNG.
         var nativeFormation =
-            state.Configuration?.UsesExperimentalNativeWeakCombatEntry == true
+            state.Configuration?.UsesNativeActOneCombatEntry == true
                 ? NativeActOneEliteBossCombatEntryV111.IsSupported(encounter.Id)
                     ? NativeActOneEliteBossCombatEntryV111.Prepare(
                         state, world, encounter)
@@ -351,7 +351,30 @@ public sealed partial class PrototypeGameEngine
             .Where(card => !IsInnate(card))
             .Select(card => card.InstanceId)
             .ToArray();
-        PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
+        if (state.Configuration?.UsesNativeStandardActMap == true)
+        {
+            // Native Player.PopulateCombatState copies Deck in persistent
+            // order, then CardPile.RandomizeOrderInternal performs an
+            // *unstable* Fisher-Yates shuffle on run.shuffle. This is the
+            // first combat's run-owned shuffle, independent of act-map and
+            // Neow event-local streams.
+            if (innateCards.Length != 0)
+                throw new NotSupportedException(
+                    "Source initial-shuffle hooks for innate cards require a dedicated v111 parity gate.");
+            var native = state.NativeRunRng?.Fork()
+                ?? throw new InvalidDataException(
+                    "Native opening shuffle requires persistent run RNG ownership.");
+            NativeRngV111.Shuffle(native, "run.shuffle", drawPile);
+            // Native CardPile draws from its FRONT. The prototype stores
+            // the next card at the LAST index, so reverse the source's
+            // final order instead of changing the global draw convention.
+            Array.Reverse(drawPile);
+            state = state with { NativeRunRng = native };
+        }
+        else
+        {
+            PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
+        }
         var teaOfDiscourtesy = ApplyTeaOfDiscourtesyBeforeCombat(
             state.Player,
             combatCards,
