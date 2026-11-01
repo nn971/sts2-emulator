@@ -434,3 +434,45 @@ If another incompatible mod is active, disable it separately. The first
 local crash log also contained an unrelated
 `UndoAndRedoForkCode.UndoInputBindings` missing-field exception;
 the inspector fix cannot repair that other mod.
+
+## Build-only native v111 map capture preflight
+
+For the source-map capture branch, validate the native C# APIs against the
+**actual installed original-game DLL** without launching the game or
+installing the mod. The pinned v111 fingerprint is
+`0861bfa1df347538d932f22d580e75420f08082792eb914e53b4882764acdbe9`.
+The following is fish syntax, run from this repository checkout:
+
+```fish
+set game "/mnt/d/SteamLibrary/steamapps/common/Slay the Spire 2"
+python tools/native_map_build_preflight.py --game-root "$game" --stage /tmp/sts2-map-native-preflight
+```
+
+The preflight checks the native `sts2.dll` SHA-256 **before**
+compilation, then builds `Sts2ReferenceMod` with `Sts2DataDir` to
+enable `STS2_NATIVE`. It stages the compiled DLL, the matching
+manifest-only PCK and the native mod manifest under
+`/tmp/sts2-map-native-preflight/mods/Sts2ReferenceMod/`, and writes
+`native-map-build-preflight.json` with hashes and explicit
+`NOT_TESTED` fields. It refuses staging inside either the game or
+repository. No original-game content is copied into the staging folder.
+
+```fish
+cat /tmp/sts2-map-native-preflight/native-map-build-preflight.json
+```
+
+If the hash differs or the compiler rejects a native symbol, the
+preflight fails before packaging; retain the terminal output for a
+small corrective patch. Successful compilation confirms public
+member bindings against the real DLL, while the reflected private
+`StandardActMap._rng` field still requires an original-game read-only
+capture to verify runtime access. The capture itself, map parity,
+RNG parity, and F8 live lockstep remain separate acceptance gates.
+
+The pinned v111 reference source has public
+`ActMap.GetAllMapPoints`, `MapPoint.Children`,
+`MapPoint.CanBeModified`, and `MapPoint.coord`; its
+`StandardActMap` stores `_rng` privately, and
+`Rng.ToSerializable()` reads its state. These exact source
+contracts underpin the capture path; the native DLL compile
+is the final binary-level check.
