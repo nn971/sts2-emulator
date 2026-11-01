@@ -178,30 +178,41 @@ public sealed class NativeObservedMapV111Tests
         var actualHand = combat.Hand.Select(id => HandToken(byInstance[id].CardId)).ToArray();
         var actualDraw = combat.DrawPile.Select(id => HandToken(byInstance[id].CardId)).ToArray();
 
-        // SOURCE-OBSERVED NEGATIVE RESULT. The opening map, Neow offer/RNG,
-        // first encounter, HP/gold and initial monster HP match, but combat
-        // shuffling still uses legacy prototype state. The native source's
-        // run.shuffle is at counter 12, while emulator native run.shuffle
-        // remains at counter zero. This test marks the exact missing gate;
-        // convert it to a parity assertion when native combat-entry RNG is
-        // integrated rather than silently treating the matching prefix as
-        // full fidelity.
-        var nativeShuffle = state.NativeRunRng!.Streams.Single(
+        // The original-game opening shuffle consumed twelve run.shuffle
+        // calls, one native niche roll set Fuzzy Wurm's 59 HP, and the
+        // resulting first seven drawn cards are visible in source decision 1.
+        // The native draw pile is top-first, whereas the emulator's internal
+        // pile is stored bottom-first.
+        var shuffle = state.NativeRunRng!.Streams.Single(
             stream => stream.StreamId == "run.shuffle");
-        Assert.Equal(0UL, nativeShuffle.CallCount);
-        Assert.False(actualHand.SequenceEqual(nativeHand.Select(HandToken)),
-            "Known native first-hand mismatch unexpectedly disappeared; " +
-            "update this negative regression to assert actual native parity. " +
-            "source=" + string.Join(",", nativeHand) +
-            "; emulator=" + string.Join(",", actualHand) + "; " + report);
-        // Compare multiset only: the source projection's draw-pile order
-        // may have different top-of-pile orientation from the emulator.
-        // The composition already diverges (native has Survivor in draw;
-        // emulator currently has it in hand), independent of orientation.
-        Assert.False(actualDraw.Order(StringComparer.Ordinal).SequenceEqual(
-            nativeDraw.Select(HandToken).Order(StringComparer.Ordinal)),
-            "Known native remaining draw-pile composition mismatch " +
-            "unexpectedly disappeared; revisit exact-shuffle parity gate.");
+        var niche = state.NativeRunRng.Streams.Single(
+            stream => stream.StreamId == "run.niche");
+        Assert.Equal(new NativeRngSnapshot(
+            12, 15433798454644501259UL, 6094479871964560181UL,
+            5896905681693763820UL, 3755776457819266454UL),
+            NativeRngV111.ToSnapshot(shuffle));
+        Assert.Equal(new NativeRngSnapshot(
+            1, 8812873255413119488UL, 9847610160209053945UL,
+            13064119398137688314UL, 6715802103202815613UL),
+            NativeRngV111.ToSnapshot(niche));
+        Assert.True(actualHand.SequenceEqual(nativeHand.Select(HandToken)),
+            "Native first hand differs; source=" +
+            string.Join(",", nativeHand) + "; emulator=" +
+            string.Join(",", actualHand) + "; " + report);
+        Assert.True(actualDraw.Reverse()
+            .SequenceEqual(nativeDraw.Select(HandToken)),
+            "Native draw pile differs in top-first order; source=" +
+            string.Join(",", nativeDraw) + "; emulator=" +
+            string.Join(",", actualDraw.Reverse()) + "; " + report);
+
+        // Run initialization still lacks the source relic-grab-bag
+        // population (up_front=412 in this trace). Phial Holster's
+        // pre-combat potion generation also consumed four calls in the
+        // original game and is an independent pending semantic gate.
+        Assert.Equal(0UL, state.NativeRunRng.Streams.Single(
+            stream => stream.StreamId == "run.up_front").CallCount);
+        Assert.Equal(0UL, state.NativeRunRng.Streams.Single(
+            stream => stream.StreamId == "run.combat_potion_generation").CallCount);
     }
 
 }
