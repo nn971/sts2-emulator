@@ -2,30 +2,43 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Explicit, opt-in fixed Act 1 training map for delayed-credit experiments.
-/// Derives its room order from the existing Golden Path implementation,
-/// removes its second ordinary combat, and retains the normal experimental
-/// Overgrowth boss floor. This is a controlled experimental map, not a
-/// native Overgrowth generation profile or the Golden Compass relic.
+/// Uses a hand-authored single route with the normal Overgrowth boss floor.
+/// Inspired by Golden Compass topology, but its room order is a separate
+/// research fixture, not a native map or the Golden Compass relic.
 /// </summary>
 public static class ExperimentalFixedRouteOvergrowthMapV111
 {
-    public const string ProfileId = "experimental-act1-golden-path-minus-combat-v1";
-    public const int RemovedGoldenPathFloor = 3;
+    public const string ProfileId = "experimental-act1-fixed-route-credit-v2";
+
+    private static readonly PrototypeRoomType[] Rooms =
+    [
+        PrototypeRoomType.Combat,
+        PrototypeRoomType.Combat,
+        PrototypeRoomType.Unknown,
+        PrototypeRoomType.Shop,
+        PrototypeRoomType.Combat,
+        PrototypeRoomType.Rest,
+        PrototypeRoomType.Elite,
+        PrototypeRoomType.Treasure,
+        PrototypeRoomType.Unknown,
+        PrototypeRoomType.Combat,
+        PrototypeRoomType.Rest,
+        PrototypeRoomType.Combat,
+        PrototypeRoomType.Elite,
+        PrototypeRoomType.Unknown,
+        PrototypeRoomType.Rest,
+        PrototypeRoomType.Boss
+    ];
 
     public static MapState Generate()
     {
-        var original = PrototypeGoldenPathMapV111.Generate(act: 1);
-        var roomTypes = original.Nodes
-            .OrderBy(node => node.Floor)
-            .Where(node => node.Floor != RemovedGoldenPathFloor)
-            .Select(node => node.RoomType)
-            .ToArray();
+        var roomTypes = Rooms;
 
         if (roomTypes.Length != PrototypeNativeOvergrowthMap.BossFloor
             || roomTypes[0] != PrototypeRoomType.Combat
             || roomTypes[^1] != PrototypeRoomType.Boss)
             throw new InvalidOperationException(
-                "Golden Path derivative has the wrong Act 1 length or endpoints.");
+                "Experimental fixed route has the wrong Act 1 length or endpoints.");
 
         var nodes = roomTypes.Select((room, index) =>
             new MapNodeState(
