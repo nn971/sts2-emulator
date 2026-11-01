@@ -55,7 +55,6 @@ def source_projection(snapshot: dict) -> dict:
         },
         "combat": {
             "turn": combat["turn"], "energy": combat["energy"],
-            "max_energy": combat["max_energy"],
             "creatures": creatures,
             **{zone: card_list(zone) for zone in (
                 "hand", "draw_pile", "discard_pile", "exhaust_pile")}
