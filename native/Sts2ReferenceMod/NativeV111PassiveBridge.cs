@@ -216,7 +216,7 @@ internal static class NativeV111PassiveBridge
         if (_actionEnvelopes is null) return;
         _actionEnvelopes.NativeUiPlayBegin(
             combatCardId, cardModelId, viaShortcut,
-            TryActionSnapshot("native_ui_play_begin"));
+            TryOptionalUiBeginSnapshot());
     }
 
     /// <summary>Result of native CanPlayTargeting/manual action request.</summary>
@@ -884,6 +884,20 @@ internal static class NativeV111PassiveBridge
         catch (Exception error)
         {
             _actionEnvelopes?.ObservationFailure(stage, error.GetType().Name);
+            return null;
+        }
+    }
+
+    // UI-begin state is supplementary evidence. Failure to take this
+    // extra snapshot is explicitly encoded as UNOBSERVED in the sidecar;
+    // all existing strict executor and decision checks remain authoritative.
+    private static JsonElement? TryOptionalUiBeginSnapshot()
+    {
+        try { return _adapter?.CaptureCanonicalState().Clone(); }
+        catch (Exception error)
+        {
+            Godot.GD.PrintErr("[Sts2ReferenceMod] UI_BEGIN_STATE=UNOBSERVED; " +
+                              "reason=" + error.GetType().Name);
             return null;
         }
     }
