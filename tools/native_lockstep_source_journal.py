@@ -82,6 +82,8 @@ def build(records: list[dict], error: str | None = None) -> dict:
         "run_seed": None,
         "ascension": None,
         "source_linked_commands": [],
+        # Linked native executor callbacks without a canonical player command.
+        "source_linked_noncanonical_executor_actions": [],
         # Includes automatic/uncanonical native executor actions which have
         # no player-decision equivalent. These are source callback snapshots,
         # not necessarily settled state-transition boundaries.
@@ -195,6 +197,45 @@ def build(records: list[dict], error: str | None = None) -> dict:
         })
 
     linked_request_ids = set()
+    # Some native callbacks (e.g. ReadyToBeginEnemyTurnAction) have a
+    # RequestEnqueue identity but no canonical play_card/end_turn command.
+    # Account for these observed executor starts before enumerating *real*
+    # unmatched requests. Do not mislabel them as human commands.
+    for action_id, started in ordered_starts:
+        action = started.get("canonical_action") or {}
+        if action.get("kind") in ("play_card", "end_turn"):
+            continue
+        request_id = (started.get("data") or {}).get("input_request_id")
+        if request_id is None:
+            continue
+        request = requests.get(request_id)
+        completed = completions.get(action_id)
+        if (request is None or completed is None
+            or request_id in linked_request_ids
+            or request["ordinal"] >= started["ordinal"]
+            or request.get("native_type") != started.get("native_type")
+            or request.get("canonical_action") != started.get("canonical_action")):
+            result["errors"].append(
+                f"Invalid noncanonical source request/executor link for action {action_id}")
+            continue
+        linked_request_ids.add(request_id)
+        outcome = source_outcomes.get(request_id)
+        result["source_linked_noncanonical_executor_actions"].append({
+            "input_request_id": request_id,
+            "request_ordinal": request["ordinal"],
+            "executor_action_id": action_id,
+            "executor_start_ordinal": started["ordinal"],
+            "executor_complete_ordinal": completed["ordinal"],
+            "native_type": started.get("native_type"),
+            "canonical_action": started.get("canonical_action"),
+            "native_queue_return": (
+                (outcome.get("data") or {}).get("queue_result")
+                if outcome is not None else "NOT_OBSERVED"),
+            "source_boundary": "NATIVE_CALLBACKS_NOT_FULL_LEGAL_MENU",
+            "human_input_origin": "UNVERIFIED",
+            "emulator_applied": False,
+        })
+
     for action_id, started in sorted(
             starts.items(), key=lambda pair: pair[1]["ordinal"]):
         action = started.get("canonical_action") or {}
