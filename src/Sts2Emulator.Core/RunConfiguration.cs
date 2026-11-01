@@ -157,7 +157,11 @@ public sealed record RunConfiguration(
                         : PrototypeNativeUnderdocks.GenerationProfileId;
                 if (initialized.ActOneRegion != region || initialized.Map.GenerationProfileId != mapProfile
                     || (configuration.UsesNativeStandardActMap && state.NativeMapRng is null)
-                    || (!configuration.UsesNativeStandardActMap && state.NativeMapRng is not null))
+                    || (!configuration.UsesNativeStandardActMap && state.NativeMapRng is not null)
+                    || (configuration.UsesNativeStandardActMap
+                        && state.NativeStartupRelicBags is null)
+                    || (!configuration.UsesNativeStandardActMap
+                        && state.NativeStartupRelicBags is not null))
                     throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
             }
         }
@@ -259,13 +263,23 @@ public static class V111RunFactory
             || (config.UsesNativeStandardActMap && opening.NativeMapRng is null)
             || (!config.UsesNativeStandardActMap && opening.NativeMapRng is not null))
             throw new InvalidDataException("Native initial Neow event RNG/choices invariant failed.");
+        // The native fully-unlocked run first populates shared/player
+        // relic grab bags in source order on run.up_front. Persist both
+        // results and the advanced source cursor; GenerateRooms still
+        // follows, so this does NOT yet reproduce the native RunStarted
+        // UpFront cursor (412 for the pinned Silent A10 capture).
+        var runStreams = input.NativeRunRng?.Fork()
+            ?? NativeRngV111.CreateBundle(input.RunSeed);
+        var sourceRelicBags = config.UsesNativeStandardActMap
+            ? NativeUpFrontRelicBagsV111.Populate(runStreams)
+            : null;
         return opening with
         {
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,
             RunId = input.RunId, DecisionIndex = input.DecisionIndex,
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
-            NativeRunRng = input.NativeRunRng?.Fork()
-                ?? NativeRngV111.CreateBundle(input.RunSeed),
+            NativeRunRng = runStreams,
+            NativeStartupRelicBags = sourceRelicBags,
             World = opening.World! with
             {
                 RulesetId = config.RulesetId,
