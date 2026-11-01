@@ -470,6 +470,17 @@ internal static class PrototypeAiJsonlServer
                         var ascension = OptionalInt(request, "ascension") ?? 0;
                         var state = PrototypeNativeOvergrowthRunFactory.Create(
                             seed, ascension);
+                        // Only explicitly requested AI experiments change
+                        // multi-card selection into bounded virtual decisions.
+                        if (request.TryGetProperty("compact_card_selection", out var compact))
+                        {
+                            if (compact.ValueKind is not
+                                (JsonValueKind.True or JsonValueKind.False))
+                                throw new ArgumentException(
+                                    "compact_card_selection must be boolean.");
+                            if (compact.ValueKind == JsonValueKind.True)
+                                state = state with { ExperimentalCompactCardSelection = true };
+                        }
                         var handle = Store(state);
                         Write(new
                         {
