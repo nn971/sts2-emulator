@@ -13,13 +13,15 @@ public static class NativeUpFrontRelicBagsV111
     public enum RelicRarity { Common, Uncommon, Rare, Shop, Event, Ancient, Starter }
     public sealed record SourceRelic(string ModelName, RelicRarity Rarity);
     public sealed record Bag(
-        string[] Common, string[] Uncommon, string[] Rare, string[] Shop)
+        string[] Common, string[] Uncommon, string[] Rare, string[] Shop,
+        string[] Event, string[] Ancient)
     {
         public Bag Fork() => new(
             (string[])Common.Clone(), (string[])Uncommon.Clone(),
-            (string[])Rare.Clone(), (string[])Shop.Clone());
+            (string[])Rare.Clone(), (string[])Shop.Clone(),
+            (string[])Event.Clone(), (string[])Ancient.Clone());
         public int TotalCount => Common.Length + Uncommon.Length
-            + Rare.Length + Shop.Length;
+            + Rare.Length + Shop.Length + Event.Length + Ancient.Length;
     }
 
     // Exact Source Pool.GenerateAllRelics order (before unlock filtering).
@@ -173,8 +175,12 @@ public static class NativeUpFrontRelicBagsV111
     /// followed by Player.PopulateRelicGrabBagIfNecessary. Both use the
     /// SAME run.up_front stream. Group buckets by rarity in first-seen
     /// source order and UnstableShuffle each bucket independently.
-    /// The player bag includes shared plus character relics; starter,
-    /// ancient and event-only relics are ineligible for either bag.
+    /// Source RelicGrabBag.Populate(IEnumerable) retains all rarities in
+    /// the shared bag, including Event and Ancient. Its two Ancient relics
+    /// require one extra Fisher-Yates draw. The player overload filters to
+    /// Common/Uncommon/Rare/Shop before shuffling. This difference was
+    /// confirmed by the native RunStarted three-act queue capture for
+    /// seed 6JK8MD0VQQTA (2026-11-01).
     /// </summary>
     public static Result Populate(RngBundle runStreams)
     {
@@ -184,25 +190,31 @@ public static class NativeUpFrontRelicBagsV111
                 .Distinct(StringComparer.Ordinal).Count() != 126)
             throw new InvalidDataException(
                 "Pinned source pool name/inventory changed.");
-        var shared = Shuffle(Shared, runStreams);
+        var shared = Shuffle(Shared, runStreams, retainAllRarities: true);
         var first = NativeRngV111.ToSnapshot(runStreams.Streams.Single(
             stream => stream.StreamId == "run.up_front"));
-        var player = Shuffle(Shared.Concat(Silent), runStreams);
+        var player = Shuffle(Shared.Concat(Silent), runStreams,
+            retainAllRarities: false);
         var second = NativeRngV111.ToSnapshot(runStreams.Streams.Single(
             stream => stream.StreamId == "run.up_front"));
-        if (shared.TotalCount != 115 || player.TotalCount != 122
-            || first.Counter != 111 || second.Counter != 229)
+        if (shared.TotalCount != 118 || player.TotalCount != 122
+            || shared.Event.Length != 1 || shared.Ancient.Length != 2
+            || player.Event.Length != 0 || player.Ancient.Length != 0
+            || first.Counter != 112 || second.Counter != 230)
             throw new InvalidDataException(
                 "Pinned relic bag bucket sizes or shuffle call count changed.");
         return new Result(shared, player, first, second);
     }
 
     private static Bag Shuffle(IEnumerable<SourceRelic> source,
-        RngBundle runStreams)
+        RngBundle runStreams, bool retainAllRarities)
     {
-        var eligible = source.Where(p => p.Rarity is
-            RelicRarity.Common or RelicRarity.Uncommon
-            or RelicRarity.Rare or RelicRarity.Shop).ToArray();
+        // Overload-specific source behavior: the shared enumerable overload
+        // retains Ancient and Event buckets; the player overload filters them.
+        var eligible = (retainAllRarities ? source :
+            source.Where(p => p.Rarity is RelicRarity.Common or
+                RelicRarity.Uncommon or RelicRarity.Rare or
+                RelicRarity.Shop)).ToArray();
         var buckets = eligible.GroupBy(p => p.Rarity)
             .Select(g => (Rarity: g.Key,
                 Values: g.Select(e => e.ModelName).ToList())).ToArray();
@@ -212,9 +224,11 @@ public static class NativeUpFrontRelicBagsV111
         foreach (var bucket in buckets)
             NativeRngV111.Shuffle(runStreams, "run.up_front", bucket.Values);
         string[] Get(RelicRarity rarity) =>
-            buckets.Single(bucket => bucket.Rarity == rarity).Values.ToArray();
+            buckets.Where(bucket => bucket.Rarity == rarity)
+                .SelectMany(bucket => bucket.Values).ToArray();
         return new Bag(Get(RelicRarity.Common),
             Get(RelicRarity.Uncommon), Get(RelicRarity.Rare),
-            Get(RelicRarity.Shop));
+            Get(RelicRarity.Shop), Get(RelicRarity.Event),
+            Get(RelicRarity.Ancient));
     }
 }
