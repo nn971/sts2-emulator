@@ -65,6 +65,59 @@ class NativeMapBuildPreflightTests(unittest.TestCase):
                 preflight.check_installation(
                     game, root / "stage", expected_sha=expected)
 
+    def test_metadata_probe_accepts_only_pinned_matching_inspected_assembly(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data = self.synthetic_game(Path(tmp) / "game")
+            digest = preflight.file_sha256(data / "sts2.dll")
+            observed = {
+                "schema": "sts2-native-metadata-contract-v1",
+                "status": "NATIVE_METADATA_MEMBERS_PRESENT",
+                "managed_assembly_sha256": digest,
+                "metadata_only": True, "native_game_executed": False,
+                "reflection_runtime_parity": "NOT_TESTED",
+                "checks": [
+                    {"type": "MegaCrit.Sts2.Core.Models.ActModel",
+                     "kind": "field", "member": "_rooms", "present": True},
+                ],
+            }
+            class Success:
+                returncode = 0
+                stdout = json.dumps(observed)
+                stderr = ""
+            with patch.object(preflight.subprocess, "run",
+                              return_value=Success()) as run:
+                self.assertEqual(
+                    "NATIVE_METADATA_MEMBERS_PRESENT",
+                    preflight.probe_native_metadata(data)["status"])
+                self.assertIn(str(data / "sts2.dll"), run.call_args.args[0])
+                self.assertIn("--project", run.call_args.args[0])
+            observed["managed_assembly_sha256"] = "0" * 64
+            with patch.object(preflight.subprocess, "run",
+                              return_value=Success()):
+                with self.assertRaisesRegex(RuntimeError, "mismatched contract"):
+                    preflight.probe_native_metadata(data)
+            observed["managed_assembly_sha256"] = digest
+            observed["checks"][0]["present"] = False
+            with patch.object(preflight.subprocess, "run",
+                              return_value=Success()):
+                with self.assertRaisesRegex(RuntimeError, "mismatched contract"):
+                    preflight.probe_native_metadata(data)
+
+    def test_missing_native_metadata_blocks_build_without_staging(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data = self.synthetic_game(Path(tmp) / "game")
+            stage = Path(tmp) / "stage"
+            class Missing:
+                returncode = 2
+                stdout = '{"status": "NATIVE_METADATA_MEMBERS_MISSING"}'
+                stderr = ""
+            with patch.object(preflight.subprocess, "run",
+                              return_value=Missing()) as run:
+                with self.assertRaisesRegex(RuntimeError, "metadata contract failed"):
+                    preflight.build_and_stage(data, stage, {})
+                self.assertEqual(1, run.call_count)
+            self.assertFalse(stage.exists())
+
     def test_source_compiler_failure_leaves_no_staged_mod(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -74,7 +127,9 @@ class NativeMapBuildPreflightTests(unittest.TestCase):
             report = {"managed_assemblies": {"sts2.dll": {"sha256": "abc"}}}
             class Failure:
                 returncode = 1
-            with patch.object(preflight.subprocess, "run", return_value=Failure()):
+            with (patch.object(preflight, "probe_native_metadata",
+                               return_value={"status": "NATIVE_METADATA_MEMBERS_PRESENT"}),
+                  patch.object(preflight.subprocess, "run", return_value=Failure())):
                 with self.assertRaisesRegex(RuntimeError, "compilation failed"):
                     preflight.build_and_stage(game, stage, report)
             self.assertFalse((stage / "mods").exists())
@@ -102,12 +157,16 @@ class NativeMapBuildPreflightTests(unittest.TestCase):
                 "sts2.dll": {"sha256": hashlib.sha256(b"fake-sts2.dll").hexdigest()}}}
             with (patch.object(preflight, "MOD_ROOT", mock_project),
                   patch.object(preflight, "DLL_PATH", binary),
+                  patch.object(preflight, "probe_native_metadata",
+                               return_value={"status": "NATIVE_METADATA_MEMBERS_PRESENT"}),
                   patch.object(preflight.subprocess, "run", side_effect=fake_dotnet)):
                 result = preflight.build_and_stage(data, stage, pin_report)
             artifacts = stage / "mods" / "Sts2ReferenceMod"
             self.assertEqual("NATIVE_SOURCE_COMPILED_STAGED_NOT_INSTALLED",
                              result["status"])
             self.assertEqual("NOT_TESTED", result["whole_run_game_parity"])
+            self.assertEqual("NATIVE_METADATA_MEMBERS_PRESENT",
+                             result["native_metadata_contract"]["status"])
             self.assertIn("-p:Sts2DataDir=" + str(data), run_args)
             self.assertEqual(b"synthetic-compiled-inspector",
                              (artifacts / "Sts2ReferenceMod.dll").read_bytes())
