@@ -541,8 +541,15 @@ def run_bootstrap(source: dict, session):
     if has_pinned_native_build(ident):
         try:
             probe = session.call("native_neow_rng_probe", seed=ident["seed"])
+            # source_offers are emulator *actions* (take_proto.native.neow.X);
+            # the pure native Neow probe reports *relic IDs*
+            # (proto.native.neow.X). Keep the action IDs for legal-menu
+            # matching, but compare the same relic identity namespace.
+            native_offer_ids = [
+                offer.removeprefix("take_") for offer in source_offers
+            ]
             comparison = compare_neow_rng(
-                source_offers, neow.get("event_rng"), probe)
+                native_offer_ids, neow.get("event_rng"), probe)
         except (RuntimeError, ValueError, TypeError) as exc:
             return _report("BLOCKED_NATIVE_NEOW_RNG_PROBE",
                            type(exc).__name__ + ": " + str(exc),
