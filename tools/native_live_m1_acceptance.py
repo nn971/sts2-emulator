@@ -165,7 +165,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--trace-dir", type=Path, default=Path(
         os.environ.get("STS2_FIDELITY_TRACE_DIR",
-                       "/mnt/d/SteamLibrary/sts2-inspector-traces")))
+                       "/mnt/d/SteamLibrary/sts2-inspector")))
     parser.add_argument("--sidecar", type=Path)
     parser.add_argument("--prelude", type=Path)
     parser.add_argument("--out", type=Path, default=Path(
