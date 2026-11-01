@@ -167,6 +167,50 @@ def observed_indicators(actions: list[dict], records: list[dict]) -> dict:
     return result
 
 
+def _unchanged_combat_end_checkpoint(records: list[dict], reset_ordinal: int) -> bool:
+    """Recognize the pinned v111 terminal callback sequence, fail-closed.
+
+    An after_action checkpoint, optionally followed by read-only frame polls,
+    precedes the history reset; a combat_end checkpoint follows it before
+    the terminal record. This only verifies equality of *observed* streams.
+    """
+    if reset_ordinal + 1 >= len(records):
+        return False
+    end_checkpoint, terminal = records[reset_ordinal:reset_ordinal + 2]
+    if (end_checkpoint.get("type") != "native_rng_stream_checkpoint"
+        or terminal.get("type") != "terminal"):
+        return False
+    end = end_checkpoint.get("data") or {}
+    if (end.get("phase") != "combat_end"
+        or end.get("source") != "native_rng_object_to_serializable"
+        or end.get("rng_draws_performed") != 0
+        or not isinstance(end.get("streams"), list)
+        or not end["streams"]):
+        return False
+
+    # reset_ordinal is 1-based, so the last record before the reset
+    # is records[reset_ordinal - 2]. Accept intervening frame polls only.
+    prior_index = reset_ordinal - 2
+    while prior_index >= 0 and records[prior_index].get("type") == "frame_state":
+        prior_index -= 1
+    if prior_index < 1:
+        return False
+    preceding = records[prior_index]
+    before = preceding.get("data") or {}
+    if (preceding.get("type") != "native_rng_stream_checkpoint"
+        or records[prior_index - 1].get("type") != "action_completed"
+        or before.get("phase") != "after_action"
+        or before.get("source") != end.get("source")
+        or before.get("rng_draws_performed") != 0
+        or before.get("scope") != end.get("scope")
+        or before.get("complete_native_rng_inventory")
+            != end.get("complete_native_rng_inventory")
+        or before.get("exact_rng_parity") != end.get("exact_rng_parity")
+        or before.get("streams") != end.get("streams")):
+        return False
+    return True
+
+
 def audit(records: list[dict], error: str | None = None) -> dict:
     report = {
         "schema": "native-action-envelope-audit-v1",
@@ -941,10 +985,14 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             history_index = -1
             details = record.get("data") or {}
             next_record = records[ordinal] if ordinal < len(records) else None
-            final_reason = ((next_record or {}).get("data") or {}).get("reason")
-            terminal_cleanup = (not running and next_record is not None
-                and next_record.get("type") == "terminal"
+            with_end_checkpoint = _unchanged_combat_end_checkpoint(records, ordinal)
+            terminal = (records[ordinal + 1] if with_end_checkpoint
+                        else next_record)
+            final_reason = ((terminal or {}).get("data") or {}).get("reason")
+            terminal_cleanup = (not running and terminal is not None
+                and terminal.get("type") == "terminal"
                 and final_reason == "Combat ended"
+                and (next_record is terminal or with_end_checkpoint)
                 and details.get("new_count") == 0
                 and type(details.get("previous_count")) is int
                 and details["previous_count"] > 0)
