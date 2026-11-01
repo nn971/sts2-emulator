@@ -4,8 +4,10 @@ Exercises the build workflow with fabricated DLL bytes and a mocked compiler.
 No game assets or actual native compilation are used by these tests.
 """
 import hashlib
+import io
 import json
 import sys
+from contextlib import redirect_stdout
 import tempfile
 import unittest
 from pathlib import Path
@@ -118,6 +120,32 @@ class NativeMapBuildPreflightTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "metadata contract failed"):
                     preflight.build_and_stage(data, stage, {})
                 self.assertEqual(1, run.call_count)
+            self.assertFalse(stage.exists())
+
+    def test_metadata_only_cli_stages_nothing_and_never_compiles_mod(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            game = Path(tmp) / "game"
+            data = self.synthetic_game(game)
+            stage = Path(tmp) / "stage"
+            digest = preflight.file_sha256(data / "sts2.dll")
+            report = {"status": "NATIVE_METADATA_MEMBERS_PRESENT"}
+            argv = [
+                "native_map_build_preflight.py", "--game-root", str(game),
+                "--stage", str(stage), "--expected-sha256", digest,
+                "--metadata-only",
+            ]
+            output = io.StringIO()
+            with (patch.object(sys, "argv", argv),
+                  patch.object(preflight, "probe_native_metadata",
+                               return_value=report) as probe,
+                  patch.object(preflight, "build_and_stage",
+                               side_effect=AssertionError("native build should not run")),
+                  redirect_stdout(output)):
+                self.assertEqual(0, preflight.main())
+            self.assertEqual(1, probe.call_count)
+            self.assertEqual(data.resolve(), probe.call_args.args[0])
+            self.assertEqual("PINNED_NATIVE_METADATA_VERIFIED",
+                             json.loads(output.getvalue())["status"])
             self.assertFalse(stage.exists())
 
     def test_source_compiler_failure_leaves_no_staged_mod(self):
