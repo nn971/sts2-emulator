@@ -27,12 +27,17 @@ public static class NativeUpFrontEncounterCrosswalkV111
             throw new ArgumentOutOfRangeException(nameof(room));
 
         var token = Token(sourceId);
+        // Existing implementations use both proto.encounter.* and
+        // proto.native.<region>.encounter.* namespaces. Only the part
+        // after the explicit ".encounter." segment is a source identity.
         var matches = PrototypeContent.Encounters.Where(e =>
-            e.RoomType == room
-            && e.MinAct <= act && act <= e.MaxAct
-            && e.Id.StartsWith("proto.encounter.", StringComparison.Ordinal)
-            && Token(e.Id["proto.encounter.".Length..]) == token)
-            .Select(e => e.Id).Distinct(StringComparer.Ordinal).ToArray();
+        {
+            if (e.RoomType != room || e.MinAct > act || act > e.MaxAct
+                || !e.Id.StartsWith("proto.", StringComparison.Ordinal))
+                return false;
+            var marker = e.Id.LastIndexOf(".encounter.", StringComparison.Ordinal);
+            return marker >= 0 && Token(e.Id[(marker + ".encounter.".Length)..]) == token;
+        }).Select(e => e.Id).Distinct(StringComparer.Ordinal).ToArray();
         return matches.Length switch
         {
             1 => new Mapping(act, room, sourceId, matches[0], "RESOLVED"),
