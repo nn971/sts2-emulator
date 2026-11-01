@@ -27,6 +27,15 @@ class NativeRunStreamVerifyTests(unittest.TestCase):
         self.assertEqual(15, r["checked_stream_states"])
         self.assertEqual("NOT_TESTED", r["emulator_map_rng_alignment"])
 
+    def test_csharp_native_codec_named_stream_golden_vector(self):
+        # Independent C# NativeRngV111Tests.cs reference.
+        seed = xxhash64(b"v111-codec-golden")
+        words = native_stream_state(seed, "CombatTargets", 0)
+        self.assertEqual([
+            10404991001613190346, 2163311314968115413,
+            2138220657641300634, 1763551566488335709],
+            [words[f"s{i}"] for i in range(4)])
+
     def test_first_changed_run_word_is_reported(self):
         s = source_fixture()
         s[0]["streams"][0]["s3"] ^= 1
