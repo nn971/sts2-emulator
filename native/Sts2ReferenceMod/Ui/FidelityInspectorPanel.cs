@@ -3,6 +3,7 @@ using System.Text.Json;
 using Godot;
 using Sts2Emulator.Trace;
 using Sts2ReferenceMod.Trace;
+using Sts2ReferenceMod.Transport;
 
 namespace Sts2ReferenceMod.Ui;
 
@@ -27,6 +28,8 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
     private Button? _forward;
     private string _sourceStatus = "RNG source hook: UNKNOWN";
     private string _agentStatus = "Agent spectator: DISABLED";
+    private string _liveFidelityStatus = "External emulator: NOT_CONNECTED";
+    private long _lastFidelityCursor = -1;
 
     public override void _Ready()
     {
@@ -102,6 +105,25 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
         if (Visible) Refresh();
     }
 
+    /// <summary>Called on the Godot main thread with a detached, validated
+    /// coordinator receipt; status remains explicitly uncertified.</summary>
+    public void SetFidelityResult(NativeLiveFidelityResult? result, string? transportFailure)
+    {
+        var next = transportFailure is not null
+            ? "External emulator: JOURNAL_FAILED " + transportFailure
+            : result is null
+                ? "External emulator: NOT_CONNECTED"
+                : "External emulator: " + result.Status
+                    + " · player checkpoints " + result.PlayerCheckpointsMatched
+                    + " · through seq " + result.ThroughSequence
+                    + (result.FirstDifferencePath is null ? ""
+                        : " · first diff " + result.FirstDifferencePath);
+        if (next == _liveFidelityStatus) return;
+        _liveFidelityStatus = next;
+        _lastFidelityCursor = result?.ThroughSequence ?? -1;
+        if (Visible) Refresh();
+    }
+
     public void Toggle() { Visible = !Visible; if (Visible) Refresh(); }
 
     public void Tick()
@@ -130,7 +152,9 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
         _back.Disabled = _cursor == 0;
         _forward.Disabled = count == 0 || _cursor == count - 1;
         _status.Text = (_session?.IsIncomplete == true ? "INCOMPLETE_CAPTURE" : "Native-only capture")
-            + " · " + _sourceStatus + " · " + _agentStatus + " · parity NOT_TESTED";
+            + " · " + _sourceStatus + " · " + _agentStatus
+            + " · " + _liveFidelityStatus
+            + " · complete native parity NOT_CERTIFIED";
         if (count == 0)
         {
             _decision.Text = "Awaiting first stable native combat decision";
