@@ -762,8 +762,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 or (ui_observation == "SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT"
                     and isinstance(observed_state, dict)))
             if (not state_valid
-                or (card_id is not None and
-                (type(card_id) is not int or card_id < 0)
+                or card_id is not None
+                    and (type(card_id) is not int or card_id < 0)
                 or not isinstance(data.get("card_model_id"), str)
                 or not data.get("card_model_id")
                 or type(data.get("started_via_shortcut")) is not bool
