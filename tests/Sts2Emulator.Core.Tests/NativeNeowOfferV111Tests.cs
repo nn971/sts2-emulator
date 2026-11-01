@@ -60,7 +60,10 @@ public sealed class NativeNeowOfferV111Tests
     public void V111StartRunActuallyUsesNativeEventLocalRngOffers(string seed)
     {
         var configuration = RunConfiguration.Create(
-            "silent", 10, ActIdentity.Overgrowth);
+            "silent", 10, ActIdentity.Overgrowth) with
+        {
+            FidelityId = V111Build.NativeNeowOpeningFidelityId
+        };
         var root = V111RunFactory.Create(seed, configuration);
         var engine = new PrototypeGameEngine();
         var initial = engine.Step(root, engine.GetLegalActions(root).Single()).State;
@@ -96,7 +99,10 @@ public sealed class NativeNeowOfferV111Tests
     {
         var seed = "native-local-event-ownership";
         var root = V111RunFactory.Create(seed,
-            RunConfiguration.Create("silent", 10, ActIdentity.Overgrowth));
+            RunConfiguration.Create("silent", 10, ActIdentity.Overgrowth) with
+            {
+                FidelityId = V111Build.NativeNeowOpeningFidelityId
+            });
         var engine = new PrototypeGameEngine();
         var started = engine.Step(root, engine.GetLegalActions(root).Single()).State;
         var expected = NativeNeowOfferV111.Predict(
@@ -107,6 +113,27 @@ public sealed class NativeNeowOfferV111Tests
         // charged to the persistent run/player counters.
         Assert.Equal(0, started.NativeRunRng!.Streams
             .Select(x => NativeRngV111.ToSnapshot(x).Counter).Sum());
+    }
+
+    [Fact]
+    public void NativeNeowOpeningIsExplicitOptInAndPersistsInSnapshot()
+    {
+        var defaultConfig = RunConfiguration.Create("silent", 10, ActIdentity.Overgrowth);
+        var nativeConfig = defaultConfig with
+        {
+            FidelityId = V111Build.NativeNeowOpeningFidelityId
+        };
+        Assert.False(defaultConfig.UsesNativeNeowOpening);
+        Assert.True(nativeConfig.UsesNativeNeowOpening);
+        var root = V111RunFactory.Create("native-opt-in-v111", nativeConfig);
+        var restored = RunSnapshot.Load(RunSnapshot.Save(root));
+        Assert.Equal(V111Build.NativeNeowOpeningFidelityId,
+            restored.Configuration!.FidelityId);
+        var engine = new PrototypeGameEngine();
+        var defaultRoot = V111RunFactory.Create("native-opt-in-v111", defaultConfig);
+        var defaultStarted = engine.Step(
+            defaultRoot, engine.GetLegalActions(defaultRoot).Single()).State;
+        Assert.Null(defaultStarted.NativeEventRng);
     }
 
     [Fact]
