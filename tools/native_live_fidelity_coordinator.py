@@ -23,7 +23,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "bindings" / "python"))
 
-from native_action_envelope_audit import load as load_sidecar
 from native_live_offline_replay import (SCHEMA, CHANNEL, _digest, _LexicalFloat,
                                         load_live, simulate_sidecar)
 from native_lockstep_source_journal import build as build_source_journal
@@ -530,11 +529,7 @@ def main() -> int:
                 follow(base, token, live)
             else:
                 if args.sidecar:
-                    source_rows, source_error = load_sidecar(args.sidecar)
-                    if source_error is not None:
-                        raise LiveFidelityError("BLOCKED_STREAM_INTEGRITY",
-                                                source_error)
-                    envelope_rows = simulate_sidecar(source_rows)
+                    envelope_rows = simulate_sidecar(load_live(args.sidecar))
                 else:
                     envelope_rows = load_live(args.fidelity_events)
                 for row in envelope_rows:
