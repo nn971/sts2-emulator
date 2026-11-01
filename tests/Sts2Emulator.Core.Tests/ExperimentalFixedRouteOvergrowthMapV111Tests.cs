@@ -85,8 +85,9 @@ public sealed class ExperimentalFixedRouteOvergrowthMapV111Tests
         // those before asserting that the fixed map becomes selectable.
         var afterNeow = CompleteNeow(engine, a);
         var mapActions = engine.GetLegalActions(afterNeow);
-        Assert.Single(mapActions);
-        var combat = engine.Step(afterNeow, mapActions[0]).State;
+        var entry = Assert.Single(
+            mapActions, action => action.Kind == "choose_map_node");
+        var combat = engine.Step(afterNeow, entry).State;
         Assert.Equal(RunPhase.Combat, combat.Phase);
         Assert.Equal(1, combat.World!.Floor);
         Assert.Equal(ExperimentalFixedRouteOvergrowthMapV111.ProfileId,
@@ -104,8 +105,10 @@ public sealed class ExperimentalFixedRouteOvergrowthMapV111Tests
 
         // A room must really be entered before testing the late-override
         // guard: one Neow choice may leave the game in RunPhase.Event.
-        var entered = engine.Step(
-            afterNeow, Assert.Single(engine.GetLegalActions(afterNeow))).State;
+        var entry = Assert.Single(
+            engine.GetLegalActions(afterNeow),
+            action => action.Kind == "choose_map_node");
+        var entered = engine.Step(afterNeow, entry).State;
         Assert.Equal(RunPhase.Combat, entered.Phase);
         Assert.Equal(1, entered.World!.Floor);
         Assert.Throws<InvalidOperationException>(() =>
