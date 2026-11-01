@@ -17,6 +17,7 @@ using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Rooms;
 using Sts2Emulator.Core;
 using Sts2Emulator.Trace;
 using Sts2ReferenceMod.Capture;
@@ -52,6 +53,11 @@ internal static class NativeV111PassiveBridge
     // Its first-combat link is retained even before a combat sidecar exists.
     private static NativeRunPreludeRecorder? _runPrelude;
     private static MegaCrit.Sts2.Core.Runs.RunState? _preludeRunState;
+    // Generated ActModel queues are read after RunManager.GenerateRooms;
+    // reflection is read-only and never asks a bag to generate or pull.
+    private static readonly FieldInfo? NativeActRoomSetField =
+        typeof(ActModel).GetField("_rooms",
+            BindingFlags.Instance | BindingFlags.NonPublic);
     private static readonly FieldInfo? NativeStandardMapRngField =
         typeof(StandardActMap).GetField("_rng",
             BindingFlags.Instance | BindingFlags.NonPublic);
@@ -332,6 +338,7 @@ internal static class NativeV111PassiveBridge
                 state.Players[0].Character.Id.Entry, state.Act.Id.Entry,
                 state.Players.Count);
             CapturePreludeRng("run_started", state);
+            CapturePreludeRoomQueues(state);
             // Launch() raises RunStarted after synchronizer construction in
             // pinned v111. Subscribe now to capture Neow-triggered nested
             // card/deck choices before the first combat observer exists.
@@ -349,6 +356,39 @@ internal static class NativeV111PassiveBridge
             _runPrelude?.ObservationFailure("run_started", error.GetType().Name);
             GD.PushError("[Sts2ReferenceMod] RUN_PRELUDE_STATUS=FAILED;" +
                 " reason=" + error.GetType().Name);
+        }
+    }
+
+    private static void CapturePreludeRoomQueues(
+        MegaCrit.Sts2.Core.Runs.RunState state)
+    {
+        if (_runPrelude is null) return;
+        try
+        {
+            if (NativeActRoomSetField is null)
+                throw new MissingFieldException("ActModel._rooms");
+            var queued = state.Acts.Select((act, index) =>
+            {
+                if (NativeActRoomSetField.GetValue(act) is not RoomSet rooms)
+                    throw new InvalidDataException(
+                        "Native ActModel has no generated RoomSet.");
+                return new NativeStartupActRoomQueueView(
+                    index, act.Id.Entry,
+                    rooms.events.Select(e => e.Id.Entry).ToArray(),
+                    rooms.normalEncounters.Select(e => e.Id.Entry).ToArray(),
+                    rooms.eliteEncounters.Select(e => e.Id.Entry).ToArray(),
+                    rooms.Boss.Id.Entry,
+                    rooms.SecondBoss?.Id.Entry,
+                    rooms.Ancient.Id.Entry,
+                    rooms.eventsVisited, rooms.normalEncountersVisited,
+                    rooms.eliteEncountersVisited, rooms.bossEncountersVisited);
+            }).ToArray();
+            _runPrelude.StartupRoomQueues(queued);
+        }
+        catch (Exception error)
+        {
+            _runPrelude.ObservationFailure("startup_room_queues",
+                error.GetType().Name);
         }
     }
 
