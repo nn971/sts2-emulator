@@ -754,7 +754,15 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         elif typ == "native_ui_play_begin":
             data = record.get("data") or {}
             card_id = data.get("combat_card_id")
-            if (card_id is not None and
+            ui_observation = data.get("ui_state_observation")
+            observed_state = record.get("state")
+            state_valid = (
+                (ui_observation is None and observed_state is None)
+                or (ui_observation == "UNOBSERVED" and observed_state is None)
+                or (ui_observation == "SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT"
+                    and isinstance(observed_state, dict)))
+            if (not state_valid
+                or (card_id is not None and
                 (type(card_id) is not int or card_id < 0)
                 or not isinstance(data.get("card_model_id"), str)
                 or not data.get("card_model_id")
@@ -771,6 +779,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             else:
                 report["native_ui_play_begins"].append({
                     "ordinal": ordinal,
+                    "source_ui_state_observation": (
+                        ui_observation or "UNOBSERVED_LEGACY"),
                     "combat_card_id": card_id,
                     "card_model_id": data["card_model_id"],
                     "started_via_shortcut": data["started_via_shortcut"],
