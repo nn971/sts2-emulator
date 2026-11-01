@@ -22,6 +22,7 @@ SOURCE_RNG_MARKER = "StandardActMap._rng.ToSerializable"
 MAP_CODEC = "sts2-v111-xoshiro256-starstar-v1"
 MAP_STREAM = "context.act_1_map"
 MAP_PROFILE = "v111-experimental-native-standard-map-opening-v1"
+MAP_GENERATION_PROFILE = "v111-experimental-native-standard-act1-map-v1"
 
 # PrototypeRoomType values in src/Sts2Emulator.Core/PrototypeModel.cs.
 POINT_TO_EMULATOR = {
@@ -169,6 +170,7 @@ def _emulator_graph(snapshot: dict) -> tuple[dict, list]:
     world = state["world"]
     m = world.get("map")
     if (not isinstance(m, dict)
+        or m.get("generation_profile_id") != MAP_GENERATION_PROFILE
         or not isinstance(m.get("nodes"), list)
         or not isinstance(m.get("entry_node_ids"), list)):
         raise ValueError("Emulator snapshot has no complete act map")
@@ -238,12 +240,20 @@ def compare_native_map(prelude_audit: dict, emulator_snapshot: dict) -> dict:
         return out
     ident = prelude_audit["run_identity"]
     state = emulator_snapshot.get("state") if isinstance(emulator_snapshot, dict) else None
+    expected_act = {"OVERGROWTH": 0, "UNDERDOCKS": 1}.get(
+        str(ident.get("first_act_id", "")).upper())
+    configuration = state.get("configuration") if isinstance(state, dict) else None
+    actual_acts = configuration.get("acts") if isinstance(configuration, dict) else None
     if (not isinstance(state, dict)
         or state.get("run_seed") != ident.get("seed")
-        or state.get("ascension") != ident.get("ascension")):
+        or state.get("ascension") != ident.get("ascension")
+        or expected_act is None
+        or not isinstance(actual_acts, list)
+        or not actual_acts or actual_acts[0] != expected_act
+        or configuration.get("character_id") != "silent"):
         out["status"] = "BLOCKED_EMULATOR_IDENTITY"
         out["first_difference"] = {
-            "path": "$.state.run_seed/ascension", "native": {
+            "path": "$.state.run_identity", "native": {
                 "seed": ident.get("seed"), "ascension": ident.get("ascension")},
             "emulator": None if not isinstance(state, dict) else {
                 "seed": state.get("run_seed"), "ascension": state.get("ascension")}}
