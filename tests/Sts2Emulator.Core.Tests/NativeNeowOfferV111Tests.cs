@@ -70,6 +70,10 @@ public sealed class NativeNeowOfferV111Tests
         Assert.Equal(expected.OfferedRelicIds.Select(x => "take_" + x),
             initial.World!.Event!.OfferedChoiceIds);
         Assert.Equal(15, initial.NativeRunRng!.Streams.Length);
+        // Native Neow options consume ONLY their event-local native RNG.
+        // In particular, do not generate discarded prototype offers first.
+        Assert.Equal(0UL, initial.Rng.Streams.Single(
+            x => x.StreamId == "event").CallCount);
         Assert.NotNull(initial.NativeEventRng);
         Assert.Equal(expected.EventRng, NativeRngV111.ToSnapshot(
             Assert.Single(initial.NativeEventRng!.Streams)));

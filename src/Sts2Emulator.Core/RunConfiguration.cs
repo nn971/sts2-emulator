@@ -209,29 +209,25 @@ public static class V111RunFactory
         if (!config.Profile.FullyUnlocked)
             throw new NotSupportedException("Restricted-profile acquisition/progression rules are not implemented; choose an explicit fully unlocked profile.");
         var opening = config.Acts[0] == ActIdentity.Overgrowth
-            ? PrototypeNativeOvergrowthRunFactory.Create(input.RunSeed, config.Ascension)
+            ? PrototypeNativeOvergrowthRunFactory.Create(
+                input.RunSeed, config.Ascension,
+                useNativeNeowEventRng: true)
             : PrototypeNativeUnderdocksRunFactory.Create(input.RunSeed, config.Ascension);
         // Restlessness is a historical training adapter addition, not a native
         // A0 starter. Keep it only in the explicit legacy factories.
         var deck = config.Ascension < 5
             ? opening.Player.Deck.Where(card => card.CardId != "proto.common.restlessness").ToArray()
             : opening.Player.Deck;
-        // Neow is a content-local native RNG, independent of named run/player
-        // streams. Produce its actual initial event menu during the v111
-        // start_run transition, using the same NativeRngV111 provider as the
-        // standalone source-side probe. The fully-unlocked v111 profile
-        // satisfies the Kaleidoscope/ScrollBoxes source unlock gates.
-        // Source runtime unlock availability still needs native validation.
-        var neow = NativeNeowOfferV111.Predict(
-            input.RunSeed, kaleidoscopeAllowed: true,
-            scrollBoxesAllowed: true);
-        var neowChoices = neow.OfferedRelicIds.Select(id => "take_" + id).ToArray();
+        // The Overgrowth factory produces the native-local Neow choices
+        // inside the actual event creation, without consuming the separate
+        // prototype event RNG or modifying any persistent named streams.
         var nativeEvent = opening.World!.Event
             ?? throw new InvalidDataException("Native opening did not initialize Neow.");
         if (nativeEvent.EventId != PrototypeNativeOvergrowthEvents.NeowEventId
-            || neowChoices.Length != 3
-            || neowChoices.Distinct(StringComparer.Ordinal).Count() != 3)
-            throw new InvalidDataException("Native initial Neow event choice invariant failed.");
+            || nativeEvent.OfferedChoiceIds is not { Length: 3 } ids
+            || ids.Distinct(StringComparer.Ordinal).Count() != 3
+            || opening.NativeEventRng is null)
+            throw new InvalidDataException("Native initial Neow event RNG/choices invariant failed.");
         return opening with
         {
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,
@@ -239,15 +235,8 @@ public static class V111RunFactory
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
             NativeRunRng = input.NativeRunRng?.Fork()
                 ?? NativeRngV111.CreateBundle(input.RunSeed),
-            // The initial Neow options have already consumed this local
-            // source RNG. Retain its exact post-offer state for later pages.
-            NativeEventRng = new RngBundle([
-                NativeRngV111.FromSnapshot(
-                    "context.event.NEOW.player_0", neow.EventRng)
-            ]),
             World = opening.World! with
             {
-                Event = nativeEvent with { OfferedChoiceIds = neowChoices },
                 RulesetId = config.RulesetId,
                 ActIdentity = config.Acts[0],
                 PreparedLaterActEncounterBags = config.UsesExperimentalSilentThreeActRoute
