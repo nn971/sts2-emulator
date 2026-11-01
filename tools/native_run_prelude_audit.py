@@ -18,7 +18,7 @@ from native_map_fidelity import validate_native_map
 
 _TYPES = {
     "run_started", "room_entered", "run_rng_snapshot",
-    "initial_map_snapshot",
+    "initial_map_snapshot", "startup_room_queues",
     "map_action_request",
     "map_action_outcome", "opaque_action_request", "opaque_action_outcome",
     "event_choice_request", "event_choice_return", "player_choice_result",
@@ -53,6 +53,8 @@ def _status(status, errors, events, **additional):
         "first_combat_link": additional.get("combat_link"),
         "source_room_arrivals": events.get("rooms", []),
         "source_run_rng_snapshots": events.get("rng_snapshots", []),
+        "source_startup_room_queues": (
+            events["startup_queues"][0] if events.get("startup_queues") else None),
         "source_initial_map_snapshot": (
             events["maps"][0] if events.get("maps") else None),
         "source_map_rng_observed": bool(events.get("maps")),
@@ -91,7 +93,8 @@ def audit(records: list[dict], error: str | None = None,
               "opaque_requests": [], "opaque_outcomes": [],
               "event_requests": [], "event_returns": [],
               "player_choices": [],
-              "arrivals": [], "rng_snapshots": [], "maps": []}
+              "arrivals": [], "rng_snapshots": [], "maps": [],
+              "startup_queues": []}
     if error:
         errors.append(error)
     if not records or not isinstance(records, list):
@@ -238,6 +241,50 @@ def audit(records: list[dict], error: str | None = None,
                     "streams": streams,
                     "emulator_rng_alignment": "NOT_TESTED"
                 })
+        elif typ == "startup_room_queues":
+            # RunManager.GenerateRooms completed before RunStarted.
+            acts = data.get("acts")
+            good = (ordinal == 3 and not events["startup_queues"]
+                and isinstance(acts, list) and len(acts) == 3
+                and data.get("source") ==
+                    "ActModel._rooms after RunManager.GenerateRooms"
+                and data.get("source_rng_consumed_by_inspector") is False
+                and data.get("native_queue_emulator_parity") == "NOT_TESTED")
+            if good:
+                for index, act in enumerate(acts):
+                    if not isinstance(act, dict):
+                        good = False
+                        break
+                    queues = [act.get(key) for key in
+                              ("events", "normal_encounters", "elite_encounters")]
+                    if (act.get("act_index") != index
+                        or not isinstance(act.get("act_id"), str)
+                        or not act["act_id"]
+                        or not isinstance(act.get("boss_encounter"), str)
+                        or not act["boss_encounter"]
+                        or not isinstance(act.get("ancient"), str)
+                        or not act["ancient"]
+                        or (act.get("second_boss_encounter") is not None
+                            and not isinstance(act["second_boss_encounter"], str))
+                        or any(not _nonnegative(act.get(key)) or act[key] != 0
+                               for key in ("events_visited",
+                                           "normal_encounters_visited",
+                                           "elite_encounters_visited",
+                                           "boss_encounters_visited"))
+                        or any(not isinstance(q, list) or not q
+                               or not all(isinstance(v, str) and bool(v)
+                                          for v in q) for q in queues)
+                        or isinstance(queues[0], list) and len(queues[0]) > 100
+                        or isinstance(queues[1], list)
+                           and len(queues[1]) != (15, 14, 13)[index]
+                        or isinstance(queues[2], list)
+                           and len(queues[2]) != 15):
+                        good = False
+                        break
+            if not good:
+                errors.append(f"Invalid or duplicate native startup room queue at {ordinal}")
+            else:
+                events["startup_queues"].append(data)
         elif typ == "initial_map_snapshot":
             # One finalized source graph and its independent RNG cursor,
             # before the first map request. Older prelude captures may lack
@@ -464,6 +511,10 @@ def audit(records: list[dict], error: str | None = None,
         errors.append("Native map requests missing queue return observations")
     if any(request_ids[rid]["opaque"] for rid in unmatched):
         errors.append("Native opaque queue requests missing return observations")
+    if (terminal.get("startup_room_queues_recorded") is not None
+        and terminal["startup_room_queues_recorded"] !=
+            bool(events["startup_queues"])):
+        errors.append("Terminal source startup room queue flag disagrees")
     if (terminal.get("initial_map_snapshot_recorded") is not None
         and terminal["initial_map_snapshot_recorded"] != bool(events["maps"])):
         errors.append("Terminal source initial map completeness flag disagrees")
