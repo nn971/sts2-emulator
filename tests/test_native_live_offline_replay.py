@@ -109,6 +109,26 @@ class NativeLiveOfflineReplayTests(unittest.TestCase):
             recovered = load_live(path)
             self.assertEqual(_digest(row), _digest(recovered[0]))
 
+    def test_missing_source_ordinal_is_rejected_even_if_sse_sequence_is_contiguous(self):
+        rows = fixture()
+        rows[1]["ordinal"] = 4
+        self.assertEqual("INVALID_SOURCE_RECORD", self._status_simulation(rows))
+
+    @staticmethod
+    def _status_simulation(records):
+        try:
+            simulate_sidecar(records)
+        except LiveEventError as error:
+            return error.status
+        raise AssertionError("Simulating incomplete source should fail")
+
+    def test_reconstructed_gap_blocks_even_with_valid_fingerprint(self):
+        events = simulate_sidecar(fixture())
+        events[2]["source_ordinal"] = 20
+        events[2]["payload"]["ordinal"] = 20
+        events[2]["content_fingerprint"] = _digest(events[2]["payload"])
+        self.assertEqual("LIVE_SOURCE_ORDINAL_MISMATCH", status(events))
+
     def test_canonical_hash_ignores_json_object_key_order(self):
         self.assertEqual(_digest({"b": [1, 2], "a": {"z": True, "q": None}}),
                          _digest({"a": {"q": None, "z": True}, "b": [1, 2]}))
