@@ -445,10 +445,21 @@ def main():
                 if (snapshot is None
                     or bootstrap["status"] != "CANDIDATE_COMBAT_REACHED_UNCERTIFIED"):
                     report = _report("BLOCKED_EMULATOR_BOOTSTRAP",
-                                     bootstrap["status"] + ": " + bootstrap["reason"])
+                                     bootstrap["status"] + ": " + bootstrap["reason"],
+                                     first=bootstrap.get("first_difference_or_blocker"))
                 else:
                     report = replay(journal, snapshot, session, sidecar)
-                    report["bootstrap_status"] = bootstrap["status"]
+                report["bootstrap_status"] = bootstrap["status"]
+                report["bootstrap_steps"] = bootstrap.get("emulator_steps", [])
+                report["bootstrap_checks_summary"] = {
+                    key: (value.get("status") if isinstance(value, dict) else value)
+                    for key, value in bootstrap.get("checks", {}).items()
+                    if key.endswith("_comparison")
+                    or key in ("native_map_rng_alignment",
+                               "native_map_topology_parity",
+                               "native_first_combat_identity",
+                               "native_upfront_full_queues",
+                               "native_upfront_startup")}
         else:
             report = replay(journal, args.snapshot.read_text(encoding="utf-8"),
                             session, sidecar)
