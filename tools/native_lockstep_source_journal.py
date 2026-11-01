@@ -84,6 +84,7 @@ def build(records: list[dict], error: str | None = None) -> dict:
         "source_linked_commands": [],
         # Linked native executor callbacks without a canonical player command.
         "source_linked_noncanonical_executor_actions": [],
+        "source_ui_request_windows": [],
         # Includes automatic/uncanonical native executor actions which have
         # no player-decision equivalent. These are source callback snapshots,
         # not necessarily settled state-transition boundaries.
@@ -316,6 +317,102 @@ def build(records: list[dict], error: str | None = None) -> dict:
                 (outcome.get("data") or {}).get("queue_result")
                 if outcome is not None else "NOT_OBSERVED"),
             "execution_observed": False,
+        })
+
+    # Source-only UI evidence for each native play-card request. The native
+    # hand guard can admit an input while the earlier executor is active.
+    # Match by card ID within consecutive play-card request intervals; never
+    # infer human provenance, an entire legal menu, or a settled boundary.
+    ui_begins = [row for row in records
+                 if row["type"] == "native_ui_play_begin"]
+    frames = [row for row in records if row["type"] == "frame_state"]
+    strict_gaps = {row.get("action_id"): row for row in records
+                   if row["type"] == "strict_input_gap"}
+    linked_by_request = {
+        row["input_request_id"]: row
+        for row in result["source_linked_commands"]
+    }
+    last_card_request_ordinal = 0
+    for request in sorted(requests.values(),
+                          key=lambda row: row["ordinal"]):
+        canonical = request.get("canonical_action") or {}
+        if canonical.get("kind") != "play_card":
+            continue
+        at = request["ordinal"]
+        card_id = (canonical.get("payload") or {}).get("card_instance_id")
+        candidates = [
+            row for row in ui_begins
+            if last_card_request_ordinal < row["ordinal"] < at
+        ]
+        last_card_request_ordinal = at
+        matching = [row for row in candidates
+                    if (row.get("data") or {}).get("combat_card_id")
+                    == card_id]
+        selected = matching[0] if len(matching) == 1 else None
+        selected_at = selected["ordinal"] if selected else None
+        # Read-only original native guard *return* callbacks are evidence
+        # for this UI attempt when immediately before its play-begin hook.
+        guard_pair = (
+            records[selected_at - 3:selected_at - 1]
+            if selected_at is not None else [])
+        gates_passed = (len(guard_pair) == 2
+            and [r["type"] for r in guard_pair] ==
+                ["native_ui_hand_gate", "native_ui_hand_gate"]
+            and [(r.get("data") or {}).get("gate") for r in guard_pair]
+                == ["AreCardActionsAllowed", "CanPlayCards"]
+            and all((r.get("data") or {}).get("returned_allowed") is True
+                    and (r.get("data") or {}).get("source_evaluation_only")
+                        is True for r in guard_pair))
+        active_at_ui = [
+            aid for aid, start in ordered_starts
+            if selected_at is not None
+            and start["ordinal"] < selected_at
+            and (aid not in completions
+                 or completions[aid]["ordinal"] > selected_at)
+        ]
+        prior_frame = next(
+            (row for row in reversed(frames)
+             if selected_at is not None
+             and row["ordinal"] < selected_at), None)
+        linked = linked_by_request.get(
+            (request.get("data") or {}).get("input_request_id"))
+        gap = strict_gaps.get(linked["executor_action_id"]) if linked else None
+        result["source_ui_request_windows"].append({
+            "input_request_id": (request.get("data") or {}).get("input_request_id"),
+            "request_ordinal": at,
+            "card_instance_id": card_id,
+            "candidate_ui_begin_ordinals": [row["ordinal"] for row in matching],
+            "unmatched_ui_begin_ordinals": [
+                row["ordinal"] for row in candidates if row not in matching],
+            "matching_status": (
+                "SINGLE_TEMPORAL_CARD_ID_MATCH" if selected is not None else
+                "AMBIGUOUS_UI_BEGINS" if matching else "UI_BEGIN_NOT_OBSERVED"),
+            "source_ui_begin_ordinal": selected_at,
+            "original_native_hand_guards_returned_true": (
+                gates_passed if selected is not None else None),
+            "source_ui_guard_ordinals": (
+                [row["ordinal"] for row in guard_pair]
+                if gates_passed else []),
+            "active_executor_action_ids_at_ui_begin": active_at_ui,
+            "completed_executor_action_ids_between_ui_and_request": [
+                aid for aid, completed in completions.items()
+                if selected_at is not None
+                and selected_at < completed["ordinal"] < at
+            ],
+            "last_frame_before_ui_ordinal": (
+                prior_frame["ordinal"] if prior_frame else None),
+            "last_frame_to_request_state_agreement":
+                _source_snapshot_agreement(
+                    prior_frame.get("state") if prior_frame else None,
+                    request.get("state")),
+            "linked_executor_action_id": (
+                linked["executor_action_id"] if linked else None),
+            "strict_input_gap_ordinal": gap["ordinal"] if gap else None,
+            "ui_correlation": "SOURCE_TEMPORAL_CARD_ID_MATCH_ONLY",
+            "strict_decision": "NOT_VERIFIED",
+            "full_legal_menu": "NOT_VERIFIED",
+            "human_input_origin": "UNVERIFIED",
+            "emulator_applied": False,
         })
 
     menus = {
