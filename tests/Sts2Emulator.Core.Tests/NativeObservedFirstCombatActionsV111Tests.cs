@@ -127,8 +127,8 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
                 nativeToEmulatorCard[checked((int)id)]), combat.Hand);
             Assert.Equal(observed.DiscardNativeIds.Select(id =>
                 nativeToEmulatorCard[checked((int)id)]), combat.DiscardPile);
-            Assert.Equal(1, currentEnemy.Powers.Count(power =>
-                Token(power.PowerId) == "WEAK" && power.Stacks == 1));
+            Assert.Equal(1, currentEnemy.Powers?.Count(power =>
+                Token(power.PowerId) == "WEAK" && power.Stacks == 1) ?? 0);
         }
     }
 }
