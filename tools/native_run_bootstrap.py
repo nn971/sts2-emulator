@@ -37,7 +37,7 @@ def _report(status, reason, *, first=None, steps=None, snapshot=None, checks=Non
         "schema": SCHEMA, "status": status, "reason": reason,
         "first_difference_or_blocker": first,
         "emulator_steps": steps or [],
-        "candidate_emulator_snapshot": ("EXPORTED_UNCERTIFIED" if snapshot else "NOT_EXPORTED"),
+        "candidate_emulator_snapshot": ("PRODUCED_UNCERTIFIED" if snapshot else "NOT_PRODUCED"),
         "checks": checks or {},
         "source_data": "NATIVE_SOURCE_PRELUDE_OR_EXPLICIT_SYNTHETIC_FIXTURE",
         "native_mechanics_parity": "NOT_TESTED",
@@ -235,7 +235,9 @@ def run_bootstrap(source: dict, session):
                            steps=steps, checks=checks)
         # A Neow relic may trigger a nested deck/card/relic choice. We have
         # no certified source-to-emulator crosswalk for its continuation yet.
-        if frame.get("event_id") is not None or frame.get("phase") != "map_choice":
+        if frame.get("event_id") is not None or (
+                not any(a.get("kind") == "choose_map_node"
+                        for a in state.actions())):
             return _report("BLOCKED_NEOW_CONTINUATION",
                            "Source Neow effect requires further observed macro choices",
                            steps=steps, checks=checks)

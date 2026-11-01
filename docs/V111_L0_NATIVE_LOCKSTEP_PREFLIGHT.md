@@ -712,3 +712,10 @@ settlement, native mechanics, identity crosswalk and lockstep alignment
 remain unverified. A candidate snapshot must not be supplied to
 `native_lockstep_shadow.py` as an aligned checkpoint without a separate
 fidelity proof.
+
+The integration workflow also runs `native_run_bootstrap_jsonl_smoke.py`: it
+constructs an explicitly **emulator-derived synthetic** Neow offer and
+first-floor source-shaped journal, passes the strict source auditor, then
+replays it through a fresh *real emulator JSONL process*. This exercises
+transport, source identity mapping, legal Neow/map actions and actual
+combat snapshot export; by construction it proves **no native parity**.
