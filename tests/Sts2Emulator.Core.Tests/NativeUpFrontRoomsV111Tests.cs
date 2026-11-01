@@ -101,6 +101,74 @@ public sealed class NativeUpFrontRoomsV111Tests
     }
 
     [Fact]
+    public void ShadowEncounterCursorReportsMismatchWithoutChangingSourceRng()
+    {
+        var rng = NativeRngV111.CreateBundle(Seed);
+        _ = NativeUpFrontRelicBagsV111.Populate(rng);
+        var rooms = NativeUpFrontRoomsV111.Generate(rng, 10);
+        var before = NativeRngV111.ToSnapshot(rng.Streams.Single(
+            stream => stream.StreamId == "run.up_front"));
+        var empty = NativeStartupRoomQueueTraceV111.Empty();
+
+        var first = NativeStartupRoomQueueTraceV111.Observe(
+            empty, rooms, 1, PrototypeRoomType.Combat, "1:1:0",
+            "proto.encounter.fuzzy_wurm_crawler_weak");
+        var observation = Assert.Single(first.Comparisons);
+        Assert.Equal("SlimesWeak", observation.SourceEncounterId);
+        Assert.Equal("proto.encounter.slimes_weak",
+            observation.ExpectedEmulatorEncounterId);
+        Assert.Equal("proto.encounter.fuzzy_wurm_crawler_weak",
+            observation.ActualEmulatorEncounterId);
+        Assert.Equal("DIFFERS_FROM_SOURCE_PREDICTION",
+            observation.Status);
+        Assert.Equal(0, observation.QueueIndex);
+        Assert.Equal(1, first.NormalVisits[0]);
+
+        // Re-entering the same map point is not a second native queue pull.
+        Assert.Same(first, NativeStartupRoomQueueTraceV111.Observe(
+            first, rooms, 1, PrototypeRoomType.Combat, "1:1:0",
+            "proto.encounter.fuzzy_wurm_crawler_weak"));
+
+        var second = NativeStartupRoomQueueTraceV111.Observe(
+            first, rooms, 1, PrototypeRoomType.Combat, "1:2:0",
+            "proto.encounter.fuzzy_wurm_crawler_weak");
+        Assert.Equal("MATCHED_SOURCE_PREDICTION",
+            second.Comparisons[^1].Status);
+        Assert.Equal(1, second.Comparisons[^1].QueueIndex);
+        Assert.Equal(2, second.NormalVisits[0]);
+        Assert.Equal(1, first.NormalVisits[0]);
+
+        var fork = second.Fork();
+        fork.Comparisons[0] = fork.Comparisons[0] with { Status = "Changed" };
+        fork.NormalVisits[0] = 8;
+        Assert.Equal("DIFFERS_FROM_SOURCE_PREDICTION",
+            second.Comparisons[0].Status);
+        Assert.Equal(2, second.NormalVisits[0]);
+        Assert.Equal(before, NativeRngV111.ToSnapshot(rng.Streams.Single(
+            stream => stream.StreamId == "run.up_front")));
+    }
+
+    [Fact]
+    public void ShadowCursorHandlesActThreeDoubleBossWithoutAdditionalDraws()
+    {
+        var rng = NativeRngV111.CreateBundle(Seed);
+        _ = NativeUpFrontRelicBagsV111.Populate(rng);
+        var rooms = NativeUpFrontRoomsV111.Generate(rng, 10);
+        var current = NativeStartupRoomQueueTraceV111.Empty();
+        current = NativeStartupRoomQueueTraceV111.Observe(current,
+            rooms, 3, PrototypeRoomType.Boss, "3:16:3",
+            "proto.encounter.test_subject_boss");
+        current = NativeStartupRoomQueueTraceV111.Observe(current,
+            rooms, 3, PrototypeRoomType.Boss, "3:17:3",
+            "proto.encounter.queen_boss");
+        Assert.Equal(2, current.BossVisits[2]);
+        Assert.Equal(["TestSubjectBoss", "QueenBoss"],
+            current.Comparisons.Select(x => x.SourceEncounterId).ToArray());
+        Assert.All(current.Comparisons,
+            x => Assert.Equal("MATCHED_SOURCE_PREDICTION", x.Status));
+    }
+
+    [Fact]
     public void GeneratedQueuesAndAncientSubsetsForkWithoutSharedArrays()
     {
         var rng = NativeRngV111.CreateBundle(Seed);
