@@ -218,9 +218,9 @@ public static class NativeUpFrontRelicBagsV111
         var buckets = eligible.GroupBy(p => p.Rarity)
             .Select(g => (Rarity: g.Key,
                 Values: g.Select(e => e.ModelName).ToList())).ToArray();
-        if (buckets.Length != 4)
+        if (buckets.Length != (retainAllRarities ? 6 : 4))
             throw new InvalidDataException(
-                "Source relic bag must own four rarity buckets.");
+                "Unexpected source relic rarity buckets.");
         foreach (var bucket in buckets)
             NativeRngV111.Shuffle(runStreams, "run.up_front", bucket.Values);
         string[] Get(RelicRarity rarity) =>
