@@ -53,6 +53,49 @@ public sealed class NativeNeowOfferV111Tests
             "proto.native.neow.massivescroll", v.OfferedRelicIds));
     }
 
+    [Theory]
+    [InlineData("native-neow-live-initial-v111")]
+    [InlineData("ABCDEF234567")]
+    [InlineData("oldlegacy")]
+    public void V111StartRunActuallyUsesNativeEventLocalRngOffers(string seed)
+    {
+        var configuration = RunConfiguration.Create(
+            "silent", 10, ActIdentity.Overgrowth);
+        var root = V111RunFactory.Create(seed, configuration);
+        var engine = new PrototypeGameEngine();
+        var initial = engine.Step(root, engine.GetLegalActions(root).Single()).State;
+        Assert.NotNull(initial.World?.Event);
+        var expected = NativeNeowOfferV111.Predict(
+            seed, kaleidoscopeAllowed: true, scrollBoxesAllowed: true);
+        Assert.Equal(expected.OfferedRelicIds.Select(x => "take_" + x),
+            initial.World!.Event!.OfferedChoiceIds);
+        Assert.Equal(15, initial.NativeRunRng!.Streams.Length);
+        // Event-local rolls must leave persistent native named streams intact.
+        Assert.Equal(
+            NativeRngV111.CreateBundle(seed).Streams
+                .Select(x => NativeRngV111.ToSnapshot(x)),
+            initial.NativeRunRng.Streams
+                .Select(x => NativeRngV111.ToSnapshot(x)));
+    }
+
+    [Fact]
+    public void NativeNeowGeneratorHasDifferentSeedOwnershipThanPrototype()
+    {
+        var seed = "native-local-event-ownership";
+        var root = V111RunFactory.Create(seed,
+            RunConfiguration.Create("silent", 10, ActIdentity.Overgrowth));
+        var engine = new PrototypeGameEngine();
+        var started = engine.Step(root, engine.GetLegalActions(root).Single()).State;
+        var expected = NativeNeowOfferV111.Predict(
+            seed, kaleidoscopeAllowed: true, scrollBoxesAllowed: true);
+        Assert.Equal(expected.OfferedRelicIds.Select(x => "take_" + x),
+            started.World!.Event!.OfferedChoiceIds);
+        // Neow is allocated its own event stream, so its draws are never
+        // charged to the persistent run/player counters.
+        Assert.Equal(0, started.NativeRunRng!.Streams
+            .Select(x => NativeRngV111.ToSnapshot(x).Counter).Sum());
+    }
+
     [Fact]
     public void PredictionNeverMutatesEmulatorRun()
     {

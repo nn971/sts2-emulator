@@ -797,3 +797,24 @@ fixtures are explicitly excluded from the native-source verification.
 This check certifies source-algorithm consistency of captured native
 checkpoints only. The emulator's prototype map generation and native RNG
 parity remain separately unverified.
+
+### Live v111 Neow event-local native RNG integration
+
+The standard `V111RunFactory.Initialize` path now constructs Neow's
+actual three offered actions through `NativeNeowOfferV111.Predict` and
+`NativeRngV111`, using the independent content-local event seed,
+inside the ordinary `start_run` state transition. The adapter retains
+the source-equivalent order, curse exclusions, conditional extra options,
+and Fisher–Yates shuffle. The pinned v111 simulation profile is fully
+unlocked, so the implemented runtime assumption is that both
+Kaleidoscope and ScrollBoxes are available; the source inspector's
+four-hypothesis Neow offer probe remains the independent check against
+that assumption. All 15 persistent named run/player streams remain
+unaltered by local Neow draws.
+
+Other event models, native map RNG/call-order, and actual-game hook
+fidelity are still unverified. The original prototype-only
+`PrototypeNativeOvergrowthRunFactory` remains unchanged for existing
+legacy training/research consumers. Runtime tests assert the *actual*
+v111 `start_run` event menu equals native-algorithm offer reconstruction,
+including the native RNG named-stream nonmutation invariant.

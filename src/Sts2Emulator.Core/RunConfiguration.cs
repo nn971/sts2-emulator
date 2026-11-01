@@ -216,6 +216,22 @@ public static class V111RunFactory
         var deck = config.Ascension < 5
             ? opening.Player.Deck.Where(card => card.CardId != "proto.common.restlessness").ToArray()
             : opening.Player.Deck;
+        // Neow is a content-local native RNG, independent of named run/player
+        // streams. Produce its actual initial event menu during the v111
+        // start_run transition, using the same NativeRngV111 provider as the
+        // standalone source-side probe. The fully-unlocked v111 profile
+        // satisfies the Kaleidoscope/ScrollBoxes source unlock gates.
+        // Source runtime unlock availability still needs native validation.
+        var neow = NativeNeowOfferV111.Predict(
+            input.RunSeed, kaleidoscopeAllowed: true,
+            scrollBoxesAllowed: true);
+        var neowChoices = neow.OfferedRelicIds.Select(id => "take_" + id).ToArray();
+        var nativeEvent = opening.World!.Event
+            ?? throw new InvalidDataException("Native opening did not initialize Neow.");
+        if (nativeEvent.EventId != PrototypeNativeOvergrowthEvents.NeowEventId
+            || neowChoices.Length != 3
+            || neowChoices.Distinct(StringComparer.Ordinal).Count() != 3)
+            throw new InvalidDataException("Native initial Neow event choice invariant failed.");
         return opening with
         {
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,
@@ -225,6 +241,7 @@ public static class V111RunFactory
                 ?? NativeRngV111.CreateBundle(input.RunSeed),
             World = opening.World! with
             {
+                Event = nativeEvent with { OfferedChoiceIds = neowChoices },
                 RulesetId = config.RulesetId,
                 ActIdentity = config.Acts[0],
                 PreparedLaterActEncounterBags = config.UsesExperimentalSilentThreeActRoute
