@@ -256,6 +256,117 @@ class NativeSourceJournalTests(unittest.TestCase):
         self.assertEqual(automatic_type, linked[0]["native_type"])
         self.assertFalse(linked[0]["emulator_applied"])
 
+    def test_ui_input_window_during_previous_executor_is_not_a_strict_decision(self):
+        rows = source_capture()
+        card = {"kind": "play_card",
+                "payload": {"card_instance_id": 8, "target_id": None}}
+        state = {"player": {"hp": 50}, "combat": {"energy": 1}}
+        gates = [
+            {"type": "native_ui_hand_gate",
+             "data": {"gate": gate, "returned_allowed": True,
+                      "native_hand_mode": "Play",
+                      "existing_card_play_active": False,
+                      "source": "NPlayerHand." + gate + ".postfix",
+                      "result_basis": "ORIGINAL_NATIVE_RETURN_VALUE",
+                      "source_evaluation_only": True,
+                      "human_origin": "UNVERIFIED",
+                      "full_legal_menu": "NOT_TESTED",
+                      "emulator_parity": "NOT_TESTED"}}
+            for gate in ("AreCardActionsAllowed", "CanPlayCards")
+        ]
+        ui = {"type": "native_ui_play_begin",
+              "data": {"combat_card_id": 8,
+                       "card_model_id": "DEFEND_SILENT",
+                       "started_via_shortcut": False,
+                       "source": "NPlayerHand.StartCardPlay.prefix",
+                       "native_ui_gate": "SOURCE_CALLSITE_PASSED",
+                       "manual_play_accepted": "NOT_TESTED",
+                       "queue_acceptance": "NOT_TESTED",
+                       "human_origin": "UNVERIFIED",
+                       "full_legal_menu": "NOT_TESTED",
+                       "emulator_parity": "NOT_TESTED"}}
+        rows[8:8] = [*gates, ui]
+        rows[-1:-1] = [
+            {"type": "native_input_request",
+             "native_type": "PlayCardAction", "canonical_action": card,
+             "state": state,
+             "data": {"input_request_id": 2,
+                      "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                      "native_acceptance": "UNVERIFIED",
+                      "human_origin": "UNVERIFIED",
+                      "input_injected": False}},
+            {"type": "action_started", "action_id": 2,
+             "native_type": "PlayCardAction", "canonical_action": card,
+             "state": state,
+             "data": {"input_request_id": 2,
+                      "request_execution_link": "SAME_NATIVE_ACTION_OBJECT",
+                      "human_origin": "UNVERIFIED"}},
+            {"type": "strict_input_gap", "action_id": 2,
+             "data": {"reason":
+                          "executor_action_without_unique_strict_decision",
+                      "last_reported_gate":
+                          "WAITING_FOR_DECISION:CARD_PLAY_ANIMATION",
+                      "decision_generation": 1,
+                      "last_captured_generation": 0,
+                      "human_input_origin_verified": False,
+                      "legal_menu_reconstructed": False}},
+            {"type": "native_input_outcome", "native_type": "PlayCardAction",
+             "data": {"input_request_id": 2,
+                      "native_action_state": "Executing",
+                      "native_action_id": 8,
+                      "queue_result":
+                          "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+                      "source": "ActionQueueSynchronizer.RequestEnqueue.postfix",
+                      "human_origin": "UNVERIFIED",
+                      "legal_menu_verified": False}},
+            {"type": "action_completed", "action_id": 2, "state": state},
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", report["status"])
+        self.assertEqual([], report["errors"])
+        window = report["source_ui_request_windows"][1]
+        self.assertEqual("SINGLE_TEMPORAL_CARD_ID_MATCH",
+                         window["matching_status"])
+        self.assertTrue(window["original_native_hand_guards_returned_true"])
+        self.assertEqual([1], window["active_executor_action_ids_at_ui_begin"])
+        self.assertEqual([1], window[
+            "completed_executor_action_ids_between_ui_and_request"])
+        self.assertEqual(2, window["linked_executor_action_id"])
+        self.assertIsNotNone(window["strict_input_gap_ordinal"])
+        self.assertEqual("NOT_VERIFIED", window["strict_decision"])
+        self.assertEqual("NOT_VERIFIED", window["full_legal_menu"])
+        self.assertEqual("UNVERIFIED", window["human_input_origin"])
+
+    def test_duplicate_ui_begins_remain_ambiguous(self):
+        rows = source_capture()
+        begins = [
+            {"type": "native_ui_play_begin",
+             "data": {"combat_card_id": 7,
+                      "card_model_id": "STRIKE_SILENT",
+                      "started_via_shortcut": False,
+                      "source": "NPlayerHand.StartCardPlay.prefix",
+                      "native_ui_gate": "SOURCE_CALLSITE_PASSED",
+                      "manual_play_accepted": "NOT_TESTED",
+                      "queue_acceptance": "NOT_TESTED",
+                      "human_origin": "UNVERIFIED",
+                      "full_legal_menu": "NOT_TESTED",
+                      "emulator_parity": "NOT_TESTED"}}
+            for _ in range(2)
+        ]
+        rows[2:2] = begins
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = build(rows)
+        self.assertEqual("SOURCE_ACTION_CHRONOLOGY_OBSERVED", report["status"])
+        window = report["source_ui_request_windows"][0]
+        self.assertEqual("AMBIGUOUS_UI_BEGINS", window["matching_status"])
+        self.assertEqual(2, len(window["candidate_ui_begin_ordinals"]))
+        self.assertIsNone(window["source_ui_begin_ordinal"])
+        self.assertIsNone(window["original_native_hand_guards_returned_true"])
+        self.assertEqual("NOT_VERIFIED", window["strict_decision"])
+
     def test_inter_executor_state_change_is_observed_without_claiming_an_action(self):
         rows = source_capture()
         # Native callbacks may have effects *between* executor envelopes.
