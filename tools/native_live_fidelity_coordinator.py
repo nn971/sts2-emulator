@@ -407,7 +407,7 @@ def parse_sse(stream):
                 if event_type != "native" or event_id is None:
                     raise LiveFidelityError("BLOCKED_STREAM_INTEGRITY",
                                             "Unrecognized SSE data frame")
-                value = json.loads("\\n".join(data), parse_float=_LexicalFloat)
+                value = json.loads("\n".join(data), parse_float=_LexicalFloat)
                 if value.get("sequence") != int(event_id):
                     raise LiveFidelityError("BLOCKED_STREAM_INTEGRITY",
                                             "SSE ID differs from envelope sequence")
