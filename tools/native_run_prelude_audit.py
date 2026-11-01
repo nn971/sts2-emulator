@@ -14,9 +14,11 @@ from pathlib import Path
 
 from native_action_envelope_audit import audit as audit_sidecar
 from native_action_envelope_audit import load as load_sidecar
+from native_map_fidelity import validate_native_map
 
 _TYPES = {
     "run_started", "room_entered", "run_rng_snapshot",
+    "initial_map_snapshot",
     "map_action_request",
     "map_action_outcome", "opaque_action_request", "opaque_action_outcome",
     "event_choice_request", "event_choice_return", "player_choice_result",
@@ -51,6 +53,11 @@ def _status(status, errors, events, **additional):
         "first_combat_link": additional.get("combat_link"),
         "source_room_arrivals": events.get("rooms", []),
         "source_run_rng_snapshots": events.get("rng_snapshots", []),
+        "source_initial_map_snapshot": (
+            events["maps"][0] if events.get("maps") else None),
+        "source_map_rng_observed": bool(events.get("maps")),
+        "native_map_topology_parity": "NOT_TESTED",
+        "native_map_rng_alignment": "NOT_TESTED",
         "source_run_rng_state_observed": bool(events.get("rng_snapshots")),
         "precombat_rng_call_history_complete": False,
         "source_map_requests": events.get("requests", []),
@@ -84,7 +91,7 @@ def audit(records: list[dict], error: str | None = None,
               "opaque_requests": [], "opaque_outcomes": [],
               "event_requests": [], "event_returns": [],
               "player_choices": [],
-              "arrivals": [], "rng_snapshots": []}
+              "arrivals": [], "rng_snapshots": [], "maps": []}
     if error:
         errors.append(error)
     if not records or not isinstance(records, list):
@@ -231,6 +238,19 @@ def audit(records: list[dict], error: str | None = None,
                     "streams": streams,
                     "emulator_rng_alignment": "NOT_TESTED"
                 })
+        elif typ == "initial_map_snapshot":
+            # One finalized source graph and its independent RNG cursor,
+            # before the first map request. Older prelude captures may lack
+            # this record; they remain usable as source chronology only.
+            problems = validate_native_map(data)
+            if (events["maps"] or events["requests"]
+                or data.get("act_id") != first.get("first_act_id")):
+                problems.append("Native initial map is duplicate, late, or wrong act")
+            if problems:
+                errors.extend(f"Invalid source initial map at {ordinal}: {p}"
+                              for p in problems)
+            else:
+                events["maps"].append({"ordinal": ordinal, **data})
         elif typ == "map_action_request":
             request_id = data.get("request_id")
             kind = data.get("kind")
@@ -444,6 +464,9 @@ def audit(records: list[dict], error: str | None = None,
         errors.append("Native map requests missing queue return observations")
     if any(request_ids[rid]["opaque"] for rid in unmatched):
         errors.append("Native opaque queue requests missing return observations")
+    if (terminal.get("initial_map_snapshot_recorded") is not None
+        and terminal["initial_map_snapshot_recorded"] != bool(events["maps"])):
+        errors.append("Terminal source initial map completeness flag disagrees")
     if terminal.get("status") != "SOURCE_PRELUDE_OBSERVED":
         errors.append("Native prelude terminal is incomplete or lacks combat")
     if (terminal.get("combat_link_recorded") is not True
