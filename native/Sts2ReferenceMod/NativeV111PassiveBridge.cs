@@ -207,9 +207,17 @@ internal static class NativeV111PassiveBridge
 
     /// <summary>Original native UI card interaction before drag/targeting.</summary>
     internal static void NativeUiPlayBegin(
-        long? combatCardId, string cardModelId, bool viaShortcut) =>
-        _actionEnvelopes?.NativeUiPlayBegin(
-            combatCardId, cardModelId, viaShortcut);
+        long? combatCardId, string cardModelId, bool viaShortcut)
+    {
+        // Hooked at original NPlayerHand.StartCardPlay.prefix. Capture here
+        // before the game processes targeting and queueing; the preceding
+        // frame can be stale while the prior card executor remains active.
+        // No native legal-menu predicates or RNG are evaluated by this hook.
+        if (_actionEnvelopes is null) return;
+        _actionEnvelopes.NativeUiPlayBegin(
+            combatCardId, cardModelId, viaShortcut,
+            TryActionSnapshot("native_ui_play_begin"));
+    }
 
     /// <summary>Result of native CanPlayTargeting/manual action request.</summary>
     internal static void NativeManualPlayReturn(
