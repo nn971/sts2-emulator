@@ -76,6 +76,9 @@ public sealed class NativeLiveEventHub : IAsyncDisposable
                 return _failure;
             if (_latestFidelityResult is { } prior)
             {
+                if (result == prior) return null;
+                if (NativeLiveFidelityResult.IsTerminalFailure(prior.Status))
+                    return "FIDELITY_SESSION_BLOCKED";
                 if (result.ThroughSequence < prior.ThroughSequence)
                     return "STALE_FIDELITY_RESULT";
                 if (result.ThroughSequence == prior.ThroughSequence)
