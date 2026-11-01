@@ -114,6 +114,25 @@ public sealed partial class PrototypeGameEngine
 
         }
 
+        // Source-generated UpFront room queues are kept as an independent
+        // shadow prediction. Preserve the existing encounter selection and
+        // every RNG provider; mismatches are diagnostic evidence only.
+        if (state.Configuration?.UsesNativeStandardActMap == true
+            && state.NativeStartupRooms is { } sourceRooms
+            && state.NativeStartupQueueTrace is { } queueTrace
+            && world.Map.CurrentNodeId is { Length: > 0 } nodeId
+            && world.ActiveRoom == roomType
+            && roomType is (PrototypeRoomType.Combat
+                or PrototypeRoomType.Elite or PrototypeRoomType.Boss))
+        {
+            state = state with
+            {
+                NativeStartupQueueTrace = NativeStartupRoomQueueTraceV111.Observe(
+                    queueTrace, sourceRooms, world.Act, roomType, nodeId,
+                    encounter.Id)
+            };
+        }
+
         state = ApplyBeforeCombatStartRelics(state);
         state = state with
         {
