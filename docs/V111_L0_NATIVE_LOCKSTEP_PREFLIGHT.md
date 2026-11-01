@@ -1138,6 +1138,28 @@ It labels request/execute and prior-completion/request state agreement
 without manufacturing an executable decision boundary or asserting
 emulator mechanics parity.
 
+#### Verified terminal history-clear checkpoint (2026-11-01)
+
+The 909-record original v111 sidecar ends with: action #26 completion
+(904), `after_action` RNG checkpoint (905), a read-only frame observation
+(906), `history_reset` 123→0 (907), `combat_end` RNG checkpoint (908),
+and terminal `Combat ended / OBSERVED` (909). All 15 source-observed
+RNG stream snapshots match exactly between the two checkpoints.
+
+The strict action-envelope auditor now recognizes this **specific**
+terminal-cleanup ordering when no action remains active, all between-checkpoint
+observations are frame polls, the preceding RNG checkpoint directly
+follows an action completion, and the two checkpoints expose identical
+stream snapshots and read-only provenance. This accepts the original
+capture without changing any raw records or manufacturing a strict
+decision after decision 9. Other history resets remain fail-closed;
+the native RNG inventory is still explicitly incomplete.
+
+```fish
+python tools/native_action_envelope_audit.py /path/to/existing/actions.jsonl --out /tmp/native-envelope-audit.json
+python tools/native_lockstep_source_journal.py --sidecar /path/to/existing/actions.jsonl --out /tmp/native-source-action-journal.json
+```
+
 #### Source executor callback comparison after decision 9
 
 The source journal now compares each of the 26 observed executor
