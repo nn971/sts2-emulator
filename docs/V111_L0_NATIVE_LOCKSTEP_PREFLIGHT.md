@@ -1055,6 +1055,39 @@ capture in `NativeObservedMapV111Tests`.
   source draw or mechanical operation has been reproduced by the
   emulator.
 
+### Offline installed-assembly API check (no game launch)
+
+The v111 preflight now performs **read-only PE metadata inspection**
+of the installed, SHA-pinned `sts2.dll` before compiling the native
+reference mod. Its required-member contract covers `ActModel._rooms`,
+the `RoomSet` queues, counters, boss/Ancient properties,
+`StandardActMap._rng`, `RunManager.RunStarted`/`RoomEntered`,
+and the `RunState` properties used by the new native prelude capture.
+The tool is `tools/NativeV111MetadataProbe`; it uses .NET's
+`System.Reflection.Metadata` and **does not load game dependencies or
+execute native game code**. An absent member blocks staging.
+
+With the installed game root in a fish variable `$game_root`, run:
+
+```fish
+python tools/native_map_build_preflight.py --game-root "$game_root" --stage /tmp/sts2-inspector-stage --metadata-only
+```
+
+For the full compile-and-stage validation (also without launching or
+modifying the game):
+
+```fish
+python tools/native_map_build_preflight.py --game-root "$game_root" --stage /tmp/sts2-inspector-stage
+```
+
+Both commands refuse a different native DLL SHA. The second command
+emits `/tmp/sts2-inspector-stage/native-map-build-preflight.json`,
+which now includes the checked member list and DLL fingerprint.
+A successful metadata check proves member *presence*; the native
+assembly build proves public API compatibility; actual reflection
+behavior, hooks, queue identities and gameplay parity remain pending
+original-game validation.
+
 **Next gate:** verify generated weak-pool identities against the
 installed game's `ActModel._rooms` before making source queues authoritative.
 The read-only three-act queue capture and its auditor are ready for the next
