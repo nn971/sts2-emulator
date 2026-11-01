@@ -43,7 +43,7 @@ public sealed class ExperimentalFixedRouteOvergrowthMapV111Tests
                 i + 1 == map.Nodes.Length
                     ? Array.Empty<string>()
                     : new[] { $"1:{i + 2}:3" },
-                node.ChildNodeIds);
+                node.NextNodeIds);
         }
     }
 
