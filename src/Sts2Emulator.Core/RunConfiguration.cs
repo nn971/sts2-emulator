@@ -239,6 +239,12 @@ public static class V111RunFactory
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
             NativeRunRng = input.NativeRunRng?.Fork()
                 ?? NativeRngV111.CreateBundle(input.RunSeed),
+            // The initial Neow options have already consumed this local
+            // source RNG. Retain its exact post-offer state for later pages.
+            NativeEventRng = new RngBundle([
+                NativeRngV111.FromSnapshot(
+                    "context.event.NEOW.player_0", neow.EventRng)
+            ]),
             World = opening.World! with
             {
                 Event = nativeEvent with { OfferedChoiceIds = neowChoices },

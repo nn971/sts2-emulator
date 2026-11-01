@@ -70,6 +70,15 @@ public sealed class NativeNeowOfferV111Tests
         Assert.Equal(expected.OfferedRelicIds.Select(x => "take_" + x),
             initial.World!.Event!.OfferedChoiceIds);
         Assert.Equal(15, initial.NativeRunRng!.Streams.Length);
+        Assert.NotNull(initial.NativeEventRng);
+        Assert.Equal(expected.EventRng, NativeRngV111.ToSnapshot(
+            Assert.Single(initial.NativeEventRng!.Streams)));
+        Assert.Equal("context.event.NEOW.player_0",
+            Assert.Single(initial.NativeEventRng.Streams).StreamId);
+        var fork = initial.Fork();
+        Assert.NotSame(initial.NativeEventRng, fork.NativeEventRng);
+        Assert.Equal(CanonicalJson.Sha256(initial.NativeEventRng),
+            CanonicalJson.Sha256(fork.NativeEventRng));
         // Event-local rolls must leave persistent native named streams intact.
         Assert.Equal(
             NativeRngV111.CreateBundle(seed).Streams

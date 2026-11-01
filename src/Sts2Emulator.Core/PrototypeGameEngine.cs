@@ -76,6 +76,13 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 World = PrototypeNativeRelicGrabBag.PruneOwned(
                     next.World, next.Player)
             };
+        // Local event RNG belongs to the native event instance, not the
+        // run's named streams. Keep it through terminal pages or nested
+        // decisions; release it when Neow's event instance disappears.
+        if (next.NativeEventRng is not null
+            && next.World?.Event?.EventId !=
+                PrototypeNativeOvergrowthEvents.NeowEventId)
+            next = next with { NativeEventRng = null };
         return new TransitionResult(
             NativeRunRngV111.ReconcileAfterStep(state, next),
             Array.Empty<string>());
