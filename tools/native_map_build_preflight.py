@@ -84,7 +84,8 @@ def probe_native_metadata(data: Path) -> dict:
     """Inspect the pinned installed PE metadata without launching the game."""
     command = [
         "dotnet", "run", "--project", str(METADATA_PROJECT),
-        "-c", "Release", "--", str(data / "sts2.dll"),
+        "-c", "Release", "--verbosity", "quiet",
+        "--", str(data / "sts2.dll"),
     ]
     completed = subprocess.run(
         command, cwd=REPO_ROOT, check=False, capture_output=True, text=True)
