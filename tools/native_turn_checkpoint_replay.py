@@ -48,6 +48,22 @@ def _report(status, reason, *, matched=None, deferred=None, stepped=0,
     }
 
 
+def check_prelude_pair(journal, prelude):
+    """Require the source prelude to link to this exact native combat run."""
+    if (not isinstance(journal, dict) or not isinstance(prelude, dict)
+        or prelude.get("status") != "RUN_PRELUDE_SOURCE_OBSERVED"):
+        return "SOURCE_PRELUDE_UNAUDITED"
+    identity = prelude.get("run_identity") or {}
+    link = prelude.get("first_combat_link") or {}
+    if (not journal.get("run_id")
+        or link.get("combat_run_id") != journal.get("run_id")
+        or identity.get("game_build") != journal.get("game_build")
+        or identity.get("seed") != journal.get("run_seed")
+        or identity.get("ascension") != journal.get("ascension")):
+        return "SOURCE_PRELUDE_COMBAT_IDENTITY_MISMATCH"
+    return None
+
+
 def _token(value):
     if not isinstance(value, str):
         return ""
@@ -421,8 +437,9 @@ def main():
         if args.prelude:
             records, error = load_prelude(args.prelude)
             source = audit_prelude(records, error)
-            if source["status"] != "RUN_PRELUDE_SOURCE_OBSERVED":
-                report = _report("BLOCKED_NATIVE_PRELUDE", source["status"])
+            pairing = check_prelude_pair(journal, source)
+            if pairing:
+                report = _report("BLOCKED_NATIVE_PRELUDE_PAIRING", pairing)
             else:
                 bootstrap, snapshot = run_bootstrap(source, session)
                 if (snapshot is None
