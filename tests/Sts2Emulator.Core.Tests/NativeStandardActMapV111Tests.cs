@@ -109,10 +109,13 @@ public sealed class NativeStandardActMapV111Tests
         var sourceStartupStream = NativeRngV111.CreateBundle(seed);
         var expectedBags = NativeUpFrontRelicBagsV111.Populate(
             sourceStartupStream);
+        var expectedRooms = NativeUpFrontRoomsV111.Generate(sourceStartupStream, 10);
         Assert.NotNull(started.NativeStartupRelicBags);
         Assert.Equal(expectedBags.AfterPlayerBag,
             started.NativeStartupRelicBags!.AfterPlayerBag);
-        Assert.Equal(229UL, started.NativeRunRng!.Streams.Single(
+        Assert.NotNull(started.NativeStartupRooms);
+        Assert.Equal(expectedRooms.FinalRng, started.NativeStartupRooms!.FinalRng);
+        Assert.Equal(412UL, started.NativeRunRng!.Streams.Single(
             stream => stream.StreamId == "run.up_front").CallCount);
         Assert.Equal(sourceStartupStream.Streams
             .Select(NativeRngV111.ToSnapshot),
@@ -128,6 +131,11 @@ public sealed class NativeStandardActMapV111Tests
             snapshot.NativeStartupRelicBags!.SharedBag.Common);
         Assert.NotSame(started.NativeStartupRelicBags,
             started.Fork().NativeStartupRelicBags);
+        Assert.NotSame(started.NativeStartupRooms, snapshot.NativeStartupRooms);
+        Assert.NotSame(started.NativeStartupRooms!.Acts[0].Events,
+            snapshot.NativeStartupRooms!.Acts[0].Events);
+        Assert.NotSame(started.NativeStartupRooms,
+            started.Fork().NativeStartupRooms);
         RunConfiguration.ValidateState(snapshot);
     }
 
