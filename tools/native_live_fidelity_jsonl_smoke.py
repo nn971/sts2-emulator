@@ -12,14 +12,16 @@ from __future__ import annotations
 import io
 import json
 from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "bindings" / "python"))
 
 from sts2_emulator import Session
 from native_live_fidelity_coordinator import (
     IncrementalFidelityCoordinator, parse_sse)
 from native_live_offline_replay import simulate_sidecar, _dump_json
 from native_turn_checkpoint_jsonl_smoke import source_projection
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def native_source_records(run_seed, ascension, initial, final):
