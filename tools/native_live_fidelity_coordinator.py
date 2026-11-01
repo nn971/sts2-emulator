@@ -406,7 +406,14 @@ def parse_sse(stream):
                 if event_type != "native" or event_id is None:
                     raise LiveFidelityError("BLOCKED_STREAM_INTEGRITY",
                                             "Unrecognized SSE data frame")
-                value = json.loads("\n".join(data), parse_float=_LexicalFloat)
+                try:
+                    value = json.loads("\n".join(data), parse_float=_LexicalFloat)
+                except (ValueError, TypeError) as error:
+                    raise LiveFidelityError("BLOCKED_STREAM_INTEGRITY",
+                                            "Invalid SSE JSON payload") from error
+                if not isinstance(value, dict):
+                    raise LiveFidelityError("BLOCKED_STREAM_INTEGRITY",
+                                            "Expected object SSE envelope")
                 if value.get("sequence") != int(event_id):
                     raise LiveFidelityError("BLOCKED_STREAM_INTEGRITY",
                                             "SSE ID differs from envelope sequence")
@@ -438,13 +445,27 @@ def _loopback_base(value: str) -> str:
     return value.rstrip("/")
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Never forward a privileged bearer token to a redirect target."""
+
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        return None
+
+
+# Bypass system HTTP proxies even when NO_PROXY is incorrectly configured.
+# A local service's redirect must not move the token off loopback.
+_LOCAL_OPENER = urllib.request.build_opener(
+    urllib.request.ProxyHandler({}), _NoRedirect())
+
+
 def post_feedback(base: str, token: str, receipt: dict, timeout: int = 10):
+    base = _loopback_base(base)
     body = json.dumps(receipt, separators=(",", ":")).encode("utf-8")
     request = urllib.request.Request(
         base + "/v1/fidelity/result", data=body, method="POST",
         headers={"Authorization": "Bearer " + token,
                  "Content-Type": "application/json"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with _LOCAL_OPENER.open(request, timeout=timeout) as response:
         if response.status != 200:
             raise RuntimeError("Fidelity feedback endpoint rejected report")
 
@@ -474,7 +495,7 @@ def follow(base: str, token: str, coordinator: IncrementalFidelityCoordinator,
             headers={"Authorization": "Bearer " + token,
                      "Last-Event-ID": str(cursor.sequence)})
         try:
-            with urllib.request.urlopen(request, timeout=20) as response:
+            with _LOCAL_OPENER.open(request, timeout=20) as response:
                 reconnects = 0
                 for row in parse_sse(response):
                     report = coordinator.consume(row)
@@ -484,6 +505,11 @@ def follow(base: str, token: str, coordinator: IncrementalFidelityCoordinator,
                         return
         except LiveFidelityError as error:
             _notify_terminal_fault(base, token, coordinator, error.status, str(error))
+            return
+        except urllib.error.HTTPError as error:
+            _notify_terminal_fault(base, token, coordinator,
+                "BLOCKED_STREAM_INTEGRITY",
+                "Native fidelity HTTP request rejected (status " + str(error.code) + ")")
             return
         except (TimeoutError, OSError, urllib.error.URLError, EOFError):
             reconnects += 1
