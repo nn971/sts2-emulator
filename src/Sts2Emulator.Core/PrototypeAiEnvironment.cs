@@ -48,7 +48,13 @@ public sealed record PrototypeAiEnemy(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     int? IntentHits = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    int? IntentBaseDamage = null);
+    int? IntentBaseDamage = null,
+    // Max HP and minion status are visible combat properties. Exported only
+    // by the experimental compact-choice research profile for reward metrics.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? MaxHp = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    bool? IsMinion = null);
 
 public sealed record PrototypeAiCombat(
     int Turn,
@@ -994,7 +1000,10 @@ public sealed class PrototypeAiEnvironment
                         new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray(),
                     threat.Damage,
                     threat.Hits,
-                    threat.BaseDamage);
+                    threat.BaseDamage,
+                    exposeCompactSelection ? enemy.MaxHp : null,
+                    exposeCompactSelection
+                        ? PrototypeContent.Enemy(enemy.EnemyId).IsMinion : null);
             }).ToArray(),
             PendingChoiceId: combat.PendingChoice?.ChoiceId,
             PlayerPowers: combat.PlayerPowers
