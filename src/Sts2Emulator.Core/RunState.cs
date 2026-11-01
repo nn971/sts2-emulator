@@ -105,7 +105,12 @@ public sealed record RunState(
     NativeUpFrontRoomsV111.Result? NativeStartupRooms = null,
     // Diagnostic-only queue cursor; records expected versus actually
     // entered encounters without changing gameplay or named RNG streams.
-    NativeStartupRoomQueueTraceV111.Snapshot? NativeStartupQueueTrace = null)
+    NativeStartupRoomQueueTraceV111.Snapshot? NativeStartupQueueTrace = null,
+    // Opt-in AI action abstraction. Native/fidelity runs retain atomic
+    // select_cards actions and their original legal-action enumeration.
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool ExperimentalCompactCardSelection = false)
 {
     public RunState Fork() => this with
     {
