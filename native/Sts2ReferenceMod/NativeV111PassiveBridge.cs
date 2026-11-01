@@ -67,6 +67,11 @@ internal static class NativeV111PassiveBridge
     private static int _decisionGeneration;
     private static int _lastCapturedGeneration = -1;
     private static bool _awaitingSettlement;
+    // Independent turn-start candidates continue even after strict input
+    // capture reaches its decision-9 gap. No candidate is a parity certificate.
+    private static readonly HashSet<int> ObservedPlayerInputTurns = [];
+    private static readonly HashSet<int> ObservedPlayerStartTurns = [];
+    private static readonly HashSet<int> ObservedEnemyStartTurns = [];
     private static bool _choiceInterrupted;
     private static int _historyIndex;
     private static bool _handlingFrame;
@@ -675,6 +680,28 @@ internal static class NativeV111PassiveBridge
                 if (frameState.HasValue)
                     _actionEnvelopes.ObserveFrame(frameState.Value);
             }
+            // First idle playable frame in a turn, before any observed
+            // player action. This is a candidate, not a certified queue
+            // settlement: future native source hooks must prove that all
+            // automatic/queued effects have finished.
+            if (_actionEnvelopes is not null && _adapter is not null
+                && combat.CurrentSide == CombatSide.Player
+                && combat.Players[0].PlayerCombatState is { } playerState
+                && playerState.TurnNumber > 0
+                && !ObservedPlayerInputTurns.Contains(playerState.TurnNumber)
+                && !ObservedPlayerStartTurns.Contains(playerState.TurnNumber)
+                && StableDecisionBlocker(combat) is null)
+            {
+                var checkpointState = TryOptionalUiBeginSnapshot();
+                if (checkpointState.HasValue)
+                {
+                    _actionEnvelopes.TurnBoundaryCandidate(
+                        "PLAYER_TURN_START", playerState.TurnNumber,
+                        checkpointState.Value, combat.CurrentSide.ToString(),
+                        playerState.Phase.ToString());
+                    ObservedPlayerStartTurns.Add(playerState.TurnNumber);
+                }
+            }
             if (_recording is null || _adapter is null || _choiceInterrupted) return;
             string? blocker = StableDecisionBlocker(combat);
             if (blocker is not null)
@@ -755,6 +782,9 @@ internal static class NativeV111PassiveBridge
     {
         _combat = combat;
         _decisionGeneration = 0;
+        ObservedPlayerInputTurns.Clear();
+        ObservedPlayerStartTurns.Clear();
+        ObservedEnemyStartTurns.Clear();
         _lastCapturedGeneration = -1;
         _awaitingSettlement = false;
         _choiceInterrupted = false;
@@ -923,6 +953,28 @@ internal static class NativeV111PassiveBridge
         _actionEnvelopes?.Start(
             action, action.GetType().FullName ?? action.GetType().Name,
             snapshot, chosen);
+
+        // Native automatic enemy-turn setup follows player cleanup in
+        // observed source traces. Capture its pre-execution state without
+        // claiming that this hook is an atomically settled enemy-side gate.
+        if (action is ReadyToBeginEnemyTurnAction
+            && _combat is { Players.Count: 1 } observedCombat
+            && observedCombat.Players[0].PlayerCombatState is { } pcs
+            && pcs.TurnNumber > 0
+            && snapshot.HasValue
+            && ObservedEnemyStartTurns.Add(pcs.TurnNumber))
+        {
+            _actionEnvelopes?.TurnBoundaryCandidate(
+                "ENEMY_TURN_START", pcs.TurnNumber, snapshot.Value,
+                observedCombat.CurrentSide.ToString(), pcs.Phase.ToString());
+        }
+        if (chosen is not null
+            && _combat is { Players.Count: 1 } sourceCombat
+            && sourceCombat.Players[0].PlayerCombatState is { } current
+            && current.TurnNumber > 0)
+        {
+            ObservedPlayerInputTurns.Add(current.TurnNumber);
+        }
         NativeV111RngHook.CaptureStreamCheckpoint("before_action");
 
         if (_recording is null || _choiceInterrupted || chosen is null) return;
