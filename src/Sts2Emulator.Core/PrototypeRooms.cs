@@ -856,7 +856,7 @@ public sealed partial class PrototypeGameEngine
     {
         var world = RequireWorld(state);
         var nativeOvergrowth = world.Act == 1
-            && PrototypeNativeOvergrowthMap.IsGenerationProfile(
+            && PrototypeNativeOvergrowthMap.UsesOvergrowthGameplay(
                 world.Map.GenerationProfileId);
         var nativeUnderdocks = world.Act == 1
             && world.Map.GenerationProfileId
@@ -1635,7 +1635,8 @@ public sealed partial class PrototypeGameEngine
                         && world.Map.GenerationProfileId
                             is PrototypeNativeOvergrowthMap.GenerationProfileId
                                 or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
-                            or PrototypeNativeUnderdocks.GenerationProfileId
+                                or ExperimentalFixedRouteOvergrowthMapV111.ProfileId
+                                or PrototypeNativeUnderdocks.GenerationProfileId
                         && world.Map.CurrentNodeId is null)
                 {
                     // Ancient openings precede the map and do not complete a
