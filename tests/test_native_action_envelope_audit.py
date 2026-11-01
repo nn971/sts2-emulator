@@ -530,6 +530,59 @@ class EnvelopeAuditTests(unittest.TestCase):
         self.assertEqual(1, result["action_resumptions"])
         self.assertEqual(1, result["terminal_history_clears"])
 
+    def test_terminal_history_clear_with_unchanged_rng_checkpoint(self):
+        rows = sample()
+        rows[-1]["data"]["reason"] = "Combat ended"
+        streams = [{"stream_id": "run.shuffle", "owner_id": "run",
+                    "cursor": {"Counter": 22, "State0": 1, "State1": 2,
+                               "State2": 3, "State3": 4}}]
+        def checkpoint(phase):
+            return {"type": "native_rng_stream_checkpoint",
+                    "data": {"phase": phase,
+                             "source": "native_rng_object_to_serializable",
+                             "rng_draws_performed": 0,
+                             "scope": "15_persistent_streams_in_observed_combat",
+                             "streams": copy.deepcopy(streams),
+                             "complete_native_rng_inventory": False,
+                             "exact_rng_parity": "NOT_TESTED"}}
+        rows[-1:-1] = [
+            checkpoint("after_action"),
+            {"type": "frame_state", "state": {"combat": {"energy": 2}},
+             "data": {"frame_index": 7, "state_hash": "terminal-frame"}},
+            {"type": "history_reset",
+             "data": {"previous_count": 5, "new_count": 0}},
+            checkpoint("combat_end"),
+        ]
+        def check(records):
+            for i, row in enumerate(records, 1):
+                row["ordinal"] = i
+            return audit(records)
+        report = check(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(1, report["terminal_history_clears"])
+        self.assertEqual(2, report["native_rng_stream_checkpoint_count"])
+        self.assertEqual([], report["incomplete_observations"])
+
+        # A terminal checkpoint with changed RNG is a separate event,
+        # not proven read-only terminal cleanup.
+        changed = copy.deepcopy(rows)
+        changed[-2]["data"]["streams"][0]["cursor"]["State3"] += 1
+        self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
+        changed = copy.deepcopy(rows)
+        changed[-2]["data"]["phase"] = "after_action"
+        self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
+        changed = copy.deepcopy(rows)
+        changed[-2]["data"]["rng_draws_performed"] = 1
+        self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
+        changed = copy.deepcopy(rows)
+        changed.pop(-5)  # Missing prior after_action checkpoint.
+        self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
+        changed = copy.deepcopy(rows)
+        changed.insert(-3, {"type": "history_entry",
+                            "data": {"history_index": 4,
+                                     "missing_fields": []}})
+        self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
+
     def test_legacy_choice_resume_is_qualified_not_rewritten(self):
         records = sample()
         records.insert(5, {"type": "anomaly", "data": {
