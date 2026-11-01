@@ -10,6 +10,7 @@ using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
@@ -40,11 +41,16 @@ internal static class NativeV111PassiveBridge
     private static FidelityInspectorPanel? _panel;
     private static bool _f8WasDown;
     private static ActionExecutor? _executor;
+    private static PlayerChoiceSynchronizer? _choiceSync;
     private static CombatState? _combat;
     private static NativeRecordingSession? _recording;
     // Independent action observer: remains active after the strict decision
     // trace reaches an unsupported nested choice or an unstable input boundary.
     private static NativeActionEnvelopeRecorder? _actionEnvelopes;
+    // Independent source-run prelude, begun at RunManager.RunStarted.
+    // Its first-combat link is retained even before a combat sidecar exists.
+    private static NativeRunPreludeRecorder? _runPrelude;
+    private static MegaCrit.Sts2.Core.Runs.RunState? _preludeRunState;
     private static NativeCombatAdapter? _adapter;
     private static int _decisionGeneration;
     private static int _lastCapturedGeneration = -1;
@@ -96,6 +102,146 @@ internal static class NativeV111PassiveBridge
     internal static void NativeRngHookFailure(string exceptionType) =>
         _actionEnvelopes?.ObservationFailure("native_rng_source_hook", exceptionType);
 
+    internal static void NativeInputHookFailure(string exceptionType)
+    {
+        _actionEnvelopes?.ObservationFailure("native_input_source_hook", exceptionType);
+        _runPrelude?.ObservationFailure("native_input_source_hook", exceptionType);
+    }
+
+    // Called by a source method Harmony PREFIX, while the original native
+    // request is still pending. Acceptance and human provenance are unknown.
+    internal static void NativeInputRequested(NativeGameAction action)
+    {
+        if (_combat is null && _runPrelude is not null)
+        {
+            try { ObservePrecombatMapRequest(action); }
+            catch (Exception error)
+            {
+                _runPrelude.ObservationFailure("precombat_map_request",
+                    error.GetType().Name);
+            }
+        }
+        if (_actionEnvelopes is null || _combat is null) return;
+        _actionEnvelopes.NativeInputRequest(action,
+            action.GetType().FullName ?? action.GetType().Name,
+            TryActionSnapshot("native_input_request"),
+            ProjectCanonicalAction(action));
+    }
+
+    internal static void NativeInputRequestOutcome(
+        NativeGameAction action, string nativeState, uint? nativeActionId)
+    {
+        _actionEnvelopes?.NativeInputOutcome(action, nativeState, nativeActionId);
+        _runPrelude?.MapActionOutcome(action, nativeState, nativeActionId);
+        TryFinishRunPrelude();
+    }
+
+    internal static bool HasRunPrelude => _runPrelude is not null && _combat is null;
+
+    internal static void NativeEventChoiceRequested(
+        object token, string eventModelId, ulong ownerId, int selectedIndex,
+        IReadOnlyList<NativeEventOptionView> options,
+        NativeEventRngView eventRng) =>
+        _runPrelude?.EventChoiceRequested(
+            token, eventModelId, ownerId, selectedIndex, options, eventRng);
+
+    internal static void NativeEventChoiceReturned(object token)
+    {
+        _runPrelude?.EventChoiceReturned(token);
+        TryFinishRunPrelude();
+    }
+
+    /// <summary>Read-only capture of the original UI-filtered hand options.</summary>
+    internal static void NativeHandMenu(
+        string mode, string? sourceModelId,
+        int minSelect, int maxSelect, bool requireConfirmation,
+        int holderCount, int missingCardIds,
+        IReadOnlyList<NativeHandMenuOption> options,
+        ulong? choiceOwnerId, uint? choiceId, string bindingStatus,
+        object nativeHand) =>
+        _actionEnvelopes?.NativeHandMenu(mode, sourceModelId, minSelect,
+            maxSelect, requireConfirmation, holderCount, missingCardIds,
+            options, choiceOwnerId, choiceId, bindingStatus, nativeHand);
+
+    /// <summary>Read completed native visibility updates, without rerunning a filter.</summary>
+    internal static void NativeHandMenuRefresh(
+        object nativeHand, string mode, bool peekMode, int holderCount,
+        int missingCardIds, IReadOnlyList<NativeHandMenuOption> options) =>
+        _actionEnvelopes?.NativeHandMenuRefresh(nativeHand, mode, peekMode,
+            holderCount, missingCardIds, options);
+
+    /// <summary>Close the original UI menu lifetime, preserving native reason.</summary>
+    internal static void NativeHandMenuClosed(object nativeHand, string reason) =>
+        _actionEnvelopes?.NativeHandMenuClosed(nativeHand, reason);
+
+    /// <summary>Read the original native hand-click/shortcut UI gate result.</summary>
+    internal static void NativeUiHandGate(
+        string sourceMethod, bool allowed, string nativeMode,
+        bool existingCardPlay) =>
+        _actionEnvelopes?.NativeUiHandGate(
+            sourceMethod, allowed, nativeMode, existingCardPlay);
+
+    /// <summary>Original native UI card interaction before drag/targeting.</summary>
+    internal static void NativeUiPlayBegin(
+        long? combatCardId, string cardModelId, bool viaShortcut) =>
+        _actionEnvelopes?.NativeUiPlayBegin(
+            combatCardId, cardModelId, viaShortcut);
+
+    /// <summary>Result of native CanPlayTargeting/manual action request.</summary>
+    internal static void NativeManualPlayReturn(
+        long? combatCardId, string cardModelId,
+        string? targetId, bool success) =>
+        _actionEnvelopes?.NativeManualPlayResult(
+            combatCardId, cardModelId, targetId, success);
+
+    private static CanonicalAction? ProjectCanonicalAction(NativeGameAction action) =>
+        action switch
+        {
+            PlayCardAction play => new CanonicalAction("play_card",
+                JsonSerializer.SerializeToElement(new
+                {
+                    card_instance_id = (long)play.NetCombatCard.CombatCardIndex,
+                    target_id = play.TargetId.HasValue
+                        ? "creature:" + play.TargetId.Value : null
+                })),
+            EndPlayerTurnAction => CanonicalAction.Empty("end_turn"),
+            _ => null
+        };
+
+    private static void OnNativePlayerChoice(
+        Player player, uint choiceId, NetPlayerChoiceResult result)
+    {
+        try
+        {
+            // The game's synchronizer publishes the selected *result*.
+            // CombatCard choices carry original combat-card indexes, including
+            // Survivor's selected discard. This event has no legal menu.
+            if (_runPrelude is not null && _combat is null)
+                _runPrelude.PrecombatPlayerChoice(
+                    player.NetId, choiceId, result.type.ToString(),
+                    result.combatCards?.Select(c =>
+                        (long)c.CombatCardIndex).ToArray(),
+                    result.deckCards?.Select(c =>
+                        (long)c.DeckIndex).ToArray(),
+                    result.canonicalCards?.Select(c =>
+                        c.Id.Entry).ToArray(),
+                    result.indexes?.ToArray(), result.playerId,
+                    result.mutableCards?.Count, result.mutableCardOwner);
+            _actionEnvelopes?.NativePlayerChoice(
+                player.NetId, choiceId, result.type.ToString(),
+                result.combatCards?.Select(card =>
+                    (long)card.CombatCardIndex).ToArray(),
+                result.indexes?.ToArray(),
+                result.canonicalCards?.Select(card =>
+                    card.Id.Entry).ToArray(),
+                result.playerId);
+        }
+        catch (Exception error)
+        {
+            CaptureCallbackFailure("native_player_choice", error);
+        }
+    }
+
     internal static void Start()
     {
         string? expected = System.Environment.GetEnvironmentVariable("STS2_FIDELITY_EXPECT_SHA256");
@@ -117,6 +263,10 @@ internal static class NativeV111PassiveBridge
         }
         if (_tree is not null) return;
         _tree = tree;
+        // RunStarted provides the only source-verifiable initial run identity;
+        // subscribing after a run began deliberately does not invent it.
+        RunManager.Instance.RunStarted += OnRunStarted;
+        RunManager.Instance.RoomEntered += OnRunRoomEntered;
         StartSpectatorIfRequested();
         tree.ProcessFrame += OnFrame;
         Godot.GD.Print("[Sts2ReferenceMod] CAPTURE_STATUS=HOOK_ENABLED; " +
@@ -124,6 +274,175 @@ internal static class NativeV111PassiveBridge
             (System.Environment.GetEnvironmentVariable("STS2_FIDELITY_TRACE_DIR")
                 ?? Path.Combine(OS.GetUserDataDir(), "native_fidelity_traces")) +
             "; native parity NOT_TESTED.");
+    }
+
+    private static void OnRunStarted(MegaCrit.Sts2.Core.Runs.RunState state)
+    {
+        try
+        {
+            if (_runPrelude is not null)
+            {
+                if (!_runPrelude.HasLinkedCombatRoomAndSettledMapRequests)
+                    _runPrelude.ObservationFailure("run_replaced",
+                        "PREVIOUS_PRELUDE_UNSETTLED");
+                _runPrelude.Finish("A new RunStarted replaced the previous prelude");
+                _ = FinishRunPreludeAsync(_runPrelude);
+                _runPrelude = null;
+            }
+            if (_choiceSync is not null)
+            {
+                _choiceSync.PlayerChoiceReceived -= OnNativePlayerChoice;
+                _choiceSync = null;
+            }
+            _preludeRunState = state;
+            if (state.Players.Count != 1) return;
+            string seed = state.Rng.StringSeed;
+            if (string.IsNullOrWhiteSpace(seed)) return;
+            string runId = Guid.NewGuid().ToString("N");
+            string root = System.Environment.GetEnvironmentVariable(
+                "STS2_FIDELITY_TRACE_DIR")
+                ?? Path.Combine(OS.GetUserDataDir(), "native_fidelity_traces");
+            Directory.CreateDirectory(root);
+            string path = Path.Combine(root,
+                "run-prelude-" +
+                DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmssfff") +
+                "-" + runId + ".jsonl");
+            _runPrelude = new NativeRunPreludeRecorder(
+                path, BuildId, runId, seed, state.AscensionLevel,
+                state.Players[0].Character.Id.Entry, state.Act.Id.Entry,
+                state.Players.Count);
+            CapturePreludeRng("run_started", state);
+            // Launch() raises RunStarted after synchronizer construction in
+            // pinned v111. Subscribe now to capture Neow-triggered nested
+            // card/deck choices before the first combat observer exists.
+            _choiceSync = RunManager.Instance.PlayerChoiceSynchronizer;
+            if (_choiceSync is null)
+                _runPrelude.ObservationFailure("precombat_player_choice",
+                    "SOURCE_SYNCHRONIZER_UNAVAILABLE");
+            else
+                _choiceSync.PlayerChoiceReceived += OnNativePlayerChoice;
+            GD.Print("[Sts2ReferenceMod] RUN_PRELUDE_STATUS=RUN_STARTED; " +
+                "source=RunManager.RunStarted; path=" + path);
+        }
+        catch (Exception error)
+        {
+            _runPrelude?.ObservationFailure("run_started", error.GetType().Name);
+            GD.PushError("[Sts2ReferenceMod] RUN_PRELUDE_STATUS=FAILED;" +
+                " reason=" + error.GetType().Name);
+        }
+    }
+
+    private static void OnRunRoomEntered()
+    {
+        if (_runPrelude is null || _preludeRunState is not { } state
+            || state.Players.Count != 1) return;
+        try
+        {
+            var coord = state.CurrentMapCoord;
+            var room = state.CurrentRoom;
+            _runPrelude.RoomEntered(
+                state.CurrentActIndex, state.Act.Id.Entry,
+                state.ActFloor, state.TotalFloor,
+                coord?.col, coord?.row,
+                room?.RoomType.ToString() ?? "UNAVAILABLE",
+                room?.ModelId?.Entry,
+                state.Players[0].Creature.CurrentHp,
+                state.Players[0].Gold);
+            CapturePreludeRng("room_entered", state);
+            TryFinishRunPrelude();
+        }
+        catch (Exception error)
+        {
+            _runPrelude.ObservationFailure("room_entered",
+                error.GetType().Name);
+        }
+    }
+
+    private static void ObservePrecombatMapRequest(NativeGameAction action)
+    {
+        if (_runPrelude is null || _preludeRunState is null) return;
+        // Pinned source ToNetAction() for these two actions only constructs
+        // a value-type envelope from existing private fields; no RNG/queue.
+        if (action is MoveToMapCoordAction move
+            && move.ToNetAction() is NetMoveToMapCoordAction netMove)
+        {
+            var prior = _preludeRunState.CurrentMapCoord;
+            _runPrelude.MapActionRequested(
+                action, "map_move", _preludeRunState.CurrentActIndex,
+                prior?.col, prior?.row,
+                netMove.destination.col, netMove.destination.row, null);
+        }
+        else if (action is VoteForMapCoordAction vote
+            && vote.ToNetAction() is NetVoteForMapCoordAction netVote)
+        {
+            var from = netVote.source.coord;
+            var to = netVote.destination;
+            _runPrelude.MapActionRequested(
+                action, "map_vote", netVote.source.actIndex,
+                from?.col, from?.row,
+                to?.coord.col, to?.coord.row, to?.mapGenerationCount);
+        }
+        else
+        {
+            // Non-map source requests remain opaque: observing their CLR
+            // class and queue return is safe, but does not capture an
+            // executable Neow/reward/event choice.
+            _runPrelude.OpaqueActionRequested(action,
+                action.GetType().FullName ?? action.GetType().Name);
+        }
+    }
+
+    private static void CapturePreludeRng(
+        string site, MegaCrit.Sts2.Core.Runs.RunState state)
+    {
+        if (_runPrelude is null || state.Players.Count != 1) return;
+        try
+        {
+            // Both ToSerializable calls inspect native RNG words/counters
+            // without advancing or reconstructing any source RNG stream.
+            var run = state.Rng.ToSerializable();
+            var player = state.Players[0].PlayerRng.ToSerializable();
+            var streams = run.Rngs.Select(pair =>
+                new NativeRunRngStreamView(
+                    "run", pair.Key.ToString(), pair.Value.counter,
+                    pair.Value.state0, pair.Value.state1,
+                    pair.Value.state2, pair.Value.state3))
+                .Concat(player.Rngs.Select(pair =>
+                    new NativeRunRngStreamView(
+                        "player", pair.Key.ToString(), pair.Value.counter,
+                        pair.Value.state0, pair.Value.state1,
+                        pair.Value.state2, pair.Value.state3)))
+                .ToArray();
+            _runPrelude.RunRngSnapshot(site, player.Seed, streams);
+        }
+        catch (Exception error)
+        {
+            _runPrelude.ObservationFailure("source_rng_snapshot",
+                error.GetType().Name);
+        }
+    }
+
+    private static void TryFinishRunPrelude()
+    {
+        var prelude = _runPrelude;
+        if (prelude is null
+            || !prelude.HasLinkedCombatRoomAndSettledMapRequests)
+            return;
+        prelude.Finish("Linked first combat room and map returns observed");
+        _runPrelude = null;
+        _preludeRunState = null;
+        _ = FinishRunPreludeAsync(prelude);
+    }
+
+    private static async Task FinishRunPreludeAsync(
+        NativeRunPreludeRecorder recorder)
+    {
+        try { await recorder.DisposeAsync().ConfigureAwait(false); }
+        catch (Exception error)
+        {
+            GD.PushError("[Sts2ReferenceMod] RUN_PRELUDE_STATUS=WRITE_FAILED;" +
+                " reason=" + error.GetType().Name);
+        }
     }
 
     private static void StartSpectatorIfRequested()
@@ -316,16 +635,42 @@ internal static class NativeV111PassiveBridge
         Directory.CreateDirectory(root);
         _currentFile = Path.Combine(root, "passive-" +
             DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmssfff") + "-" + runId + ".jsonl");
+        // Source-v111 real run seed and ascension; unlike the old env-provided
+        // STS2_FIDELITY_RUN_SEED this is taken directly from RunState.
+        string actualSeed = combat.Players[0].RunState.Rng.StringSeed;
+        int actualAscension = combat.Players[0].RunState.AscensionLevel;
         var header = new NativeTraceHeader(
             "header", NativeTraceVersion.Current, BuildId,
             typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown",
             null, runId,
-            System.Environment.GetEnvironmentVariable("STS2_FIDELITY_RUN_SEED") ?? "UNVERIFIED",
+            string.IsNullOrWhiteSpace(actualSeed) ? "UNVERIFIED" : actualSeed,
             DateTimeOffset.UtcNow, "passive", "v111_source_audited_local_validation_pending;"
                 + "emulator_commit=UNVERIFIED;static_data=UNVERIFIED;single_player_combat");
         _recording = new NativeRecordingSession(_currentFile, header);
         // A separate append-only action timeline survives unsupported player
         // input semantics, and retains automatic actions before the first hand.
+        // Link the independently captured source run prelude to precisely
+        // this combat trace, then close the precombat journal. A run that
+        // started before the Inspector attached has no such claim.
+        if (_runPrelude is { } prelude)
+        {
+            try
+            {
+                var coord = _preludeRunState?.CurrentMapCoord;
+                if (_preludeRunState is not null)
+                    CapturePreludeRng("combat_attach", _preludeRunState);
+                prelude.CombatLink(runId, _currentFile,
+                    _preludeRunState?.CurrentActIndex ?? 0,
+                    coord?.col, coord?.row);
+                // RoomEntered fires after an awaited room.Enter. It may
+                // arrive after combat frame polling has already begun.
+                TryFinishRunPrelude();
+            }
+            catch (Exception error)
+            {
+                prelude.ObservationFailure("combat_link", error.GetType().Name);
+            }
+        }
         _actionEnvelopes = new NativeActionEnvelopeRecorder(
             _currentFile[..^".jsonl".Length] + ".actions.jsonl",
             BuildId, runId,
@@ -337,7 +682,16 @@ internal static class NativeV111PassiveBridge
             nativeRngBoolHookInstalled: NativeV111RngHook.HasBoolHook,
             nativeRngStreamCheckpointsEnabled:
                 NativeV111RngHook.StreamCheckpointsEnabled,
-            nativeRngFloatHookInstalled: NativeV111RngHook.HasFloatHook);
+            nativeRngFloatHookInstalled: NativeV111RngHook.HasFloatHook,
+            nativeInputHookInstalled: NativeV111InputHooks.IsInstalled,
+            nativeHandMenuHookInstalled: NativeV111InputHooks.HasHandMenuHook,
+            nativeHandChoiceFlowHookInstalled:
+                NativeV111InputHooks.HasHandChoiceFlowHook,
+            nativeManualPlayHookInstalled: NativeV111InputHooks.HasManualPlayHook,
+            nativeUiPlayBeginHookInstalled: NativeV111InputHooks.HasUiPlayBeginHook,
+            nativeUiGateHookInstalled: NativeV111InputHooks.HasUiGateHook);
+        if (!string.IsNullOrWhiteSpace(actualSeed))
+            _actionEnvelopes.NativeRunIdentity(actualSeed, actualAscension);
         // A source-audited initial shuffle executes before the rendered
         // combat frame. Buffered evidence must precede later RNG requests
         // in this sidecar, with its pre-attachment basis clearly marked.
@@ -362,6 +716,15 @@ internal static class NativeV111PassiveBridge
             _agentBridge is not null);
         CombatManager.Instance.History.Changed += OnHistoryChanged;
         AttachActionExecutor();
+        var currentChoiceSync = RunManager.Instance.PlayerChoiceSynchronizer;
+        if (!ReferenceEquals(_choiceSync, currentChoiceSync))
+        {
+            if (_choiceSync is not null)
+                _choiceSync.PlayerChoiceReceived -= OnNativePlayerChoice;
+            _choiceSync = currentChoiceSync;
+            if (_choiceSync is not null)
+                _choiceSync.PlayerChoiceReceived += OnNativePlayerChoice;
+        }
         Godot.GD.Print("[Sts2ReferenceMod] CAPTURE_STATUS=RECORDING_STARTED; " +
             "Recording (passive): " + _currentFile);
     }
@@ -410,17 +773,7 @@ internal static class NativeV111PassiveBridge
         var snapshot = TryActionSnapshot("before_action");
         action.BeforePausedForPlayerChoice -= OnNestedChoice;
         action.BeforePausedForPlayerChoice += OnNestedChoice;
-        CanonicalAction? chosen = action switch
-        {
-            PlayCardAction play => new CanonicalAction("play_card",
-                JsonSerializer.SerializeToElement(new
-                {
-                    card_instance_id = (long)play.NetCombatCard.CombatCardIndex,
-                    target_id = play.TargetId.HasValue ? "creature:" + play.TargetId.Value : null
-                })),
-            EndPlayerTurnAction => CanonicalAction.Empty("end_turn"),
-            _ => null
-        };
+        CanonicalAction? chosen = ProjectCanonicalAction(action);
         _actionEnvelopes?.Start(
             action, action.GetType().FullName ?? action.GetType().Name,
             snapshot, chosen);
@@ -435,6 +788,11 @@ internal static class NativeV111PassiveBridge
         }
         catch (InvalidOperationException)
         {
+            // Preserve the *last reported frame gate*, which is more useful
+            // than querying StableDecisionBlocker inside an already-running
+            // ActionExecutor callback. This is diagnostic only.
+            _actionEnvelopes?.StrictInputGap(
+                _lastGateReason, _decisionGeneration, _lastCapturedGeneration);
             _choiceInterrupted = true;
             StopStrictCapture("INCOMPLETE_CAPTURE: action started without a stable boundary");
         }
@@ -555,6 +913,17 @@ internal static class NativeV111PassiveBridge
 
     private static void EndCombat(string reason)
     {
+        // If the native room callback or a pending map request postfix was
+        // never observed, preserve the incomplete run-prelude evidence.
+        if (_runPrelude is { } prelude)
+        {
+            prelude.ObservationFailure("linked_combat_room_settlement",
+                "FIRST_COMBAT_FINISHED_BEFORE_PRELUDE_SETTLED");
+            prelude.Finish("First combat ended before native prelude completed");
+            _runPrelude = null;
+            _preludeRunState = null;
+            _ = FinishRunPreludeAsync(prelude);
+        }
         _agentFeed?.EndCombat(reason);
         NativeV111RngHook.EndCombat();
         var recording = _recording;
@@ -588,6 +957,11 @@ internal static class NativeV111PassiveBridge
             _executor.BeforeActionExecuted -= BeforeAction;
             _executor.AfterActionExecuted -= AfterAction;
             _executor = null;
+        }
+        if (_choiceSync is not null)
+        {
+            _choiceSync.PlayerChoiceReceived -= OnNativePlayerChoice;
+            _choiceSync = null;
         }
         CombatManager.Instance.History.Changed -= OnHistoryChanged;
         _combat = null;

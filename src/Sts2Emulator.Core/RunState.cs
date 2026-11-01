@@ -92,13 +92,17 @@ public sealed record RunState(
     RunConfiguration? Configuration = null,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    RngBundle? NativeRunRng = null)
+    RngBundle? NativeRunRng = null,
+    // The native event owns its local RNG across option/page decisions.
+    // Unlike NativeRunRng, this RNG has a content-derived lifetime.
+    RngBundle? NativeEventRng = null)
 {
     public RunState Fork() => this with
     {
         Player = Player.Fork(),
         Rng = Rng.Fork(),
         NativeRunRng = NativeRunRng?.Fork(),
+        NativeEventRng = NativeEventRng?.Fork(),
         ExtensionState = ExtensionState.Clone(),
         World = World?.Fork(),
         Configuration = Configuration?.Fork()

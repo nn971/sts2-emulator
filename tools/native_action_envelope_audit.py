@@ -178,6 +178,26 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "record_counts": dict(Counter(r.get("type") for r in records)),
         "actions": [],
         "nested_choices": [],
+        "strict_input_gaps": [],
+        "native_input_hook_installed": False,
+        "native_hand_menu_hook_installed": False,
+        "native_hand_choice_flow_hook_installed": False,
+        "native_manual_play_hook_installed": False,
+        "native_ui_play_begin_hook_installed": False,
+        "native_ui_gate_hook_installed": False,
+        "native_ui_hand_gates": [],
+        "native_ui_play_begins": [],
+        "native_input_requests": [],
+        "native_input_outcomes": [],
+        "native_player_choices": [],
+        "native_hand_menus": [],
+        "native_hand_menu_revisions": [],
+        "native_hand_menu_closures": [],
+        "native_hand_menu_open_lifetimes": [],
+        "native_hand_menu_choice_matches": [],
+        "native_manual_play_results": [],
+        "native_run_identity": None,
+        "source_request_execution_links": 0,
         "observed_mechanic_indicators": {},
         "nested_choice_pauses": 0,
         "unattributed_history_entries": 0,
@@ -213,6 +233,18 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     if records[0].get("data", {}).get("schema") != "native-action-envelope-v1":
         report["reason"] = "Unexpected sidecar schema"
         return report
+    report["native_input_hook_installed"] = (
+        records[0].get("data", {}).get("native_input_hook_installed") is True)
+    report["native_hand_menu_hook_installed"] = (
+        records[0].get("data", {}).get("native_hand_menu_hook_installed") is True)
+    report["native_hand_choice_flow_hook_installed"] = (
+        records[0].get("data", {}).get("native_hand_choice_flow_hook_installed") is True)
+    report["native_manual_play_hook_installed"] = (
+        records[0].get("data", {}).get("native_manual_play_hook_installed") is True)
+    report["native_ui_play_begin_hook_installed"] = (
+        records[0].get("data", {}).get("native_ui_play_begin_hook_installed") is True)
+    report["native_ui_gate_hook_installed"] = (
+        records[0].get("data", {}).get("native_ui_gate_hook_installed") is True)
     report["native_rng_hook_installed"] = (
         records[0].get("data", {}).get("native_rng_hook_installed") is True)
     report["native_rng_double_hook_installed"] = (
@@ -237,10 +269,15 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         return report
     allowed = {
         "header", "history_baseline", "frame_state", "action_started", "action_resumed", "action_completed", "stable_decision",
-        "nested_choice_pause", "history_entry", "history_reset", "anomaly",
+        "nested_choice_pause", "strict_input_gap", "history_entry", "history_reset", "anomaly",
         "observation_failure", "native_rng_boundary",
         "native_rng_scalar_boundary", "native_rng_stream_checkpoint",
-        "native_shuffle_operation", "native_initial_hp_roll", "terminal",
+        "native_shuffle_operation", "native_initial_hp_roll",
+        "native_input_request", "native_input_outcome",
+        "native_player_choice", "native_run_identity",
+        "native_hand_menu", "native_hand_menu_revision",
+        "native_hand_menu_closed", "native_manual_play_result",
+        "native_ui_play_begin", "native_ui_hand_gate", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -250,6 +287,12 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     last_frame_index = -1
     last_frame_hash = None
     strict_failures: list[str] = []
+    input_requests: dict[int, dict] = {}
+    request_outcomes: set[int] = set()
+    choices_seen: set[tuple[int, int]] = set()
+    hand_menus_seen: set[int] = set()
+    menus_by_choice: dict[tuple[int, int], dict] = {}
+    menus_by_id: dict[int, dict] = {}
     for ordinal, record in enumerate(records, 1):
         typ = record.get("type")
         if record.get("ordinal") != ordinal:
@@ -280,6 +323,16 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 report["reason"] = f"Action {aid} references inactive parent {parent}"
                 return report
             running[aid] = record
+            link = (record.get("data") or {}).get("input_request_id")
+            if link is not None:
+                source = input_requests.get(link)
+                if (source is None
+                    or source.get("canonical_action") != record.get("canonical_action")
+                    or source.get("native_type") != record.get("native_type")):
+                    strict_failures.append(
+                        f"Invalid source request/executor link at ordinal {ordinal}")
+                else:
+                    report["source_request_execution_links"] += 1
         elif typ == "action_resumed":
             if aid not in running or aid not in awaiting_resume:
                 report["reason"] = f"Resume has no matching suspended action: {aid}"
@@ -330,6 +383,458 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 strict_failures.append(f"Nested choice with no active action: {aid}")
             else:
                 awaiting_resume.add(aid)
+        elif typ == "strict_input_gap":
+            data = record.get("data") or {}
+            if (aid not in running
+                or data.get("reason") != "executor_action_without_unique_strict_decision"
+                or type(data.get("decision_generation")) is not int
+                or type(data.get("last_captured_generation")) is not int
+                or data.get("human_input_origin_verified") is not False
+                or data.get("legal_menu_reconstructed") is not False):
+                strict_failures.append(f"Invalid strict input gap at ordinal {ordinal}")
+            else:
+                report["strict_input_gaps"].append({
+                    "ordinal": ordinal,
+                    "action_id": aid,
+                    "last_reported_gate": data.get("last_reported_gate"),
+                    "decision_generation": data["decision_generation"],
+                    "last_captured_generation": data["last_captured_generation"],
+                })
+        elif typ == "native_run_identity":
+            data = record.get("data") or {}
+            if (report["native_run_identity"] is not None
+                or not isinstance(data.get("seed"), str)
+                or not data["seed"]
+                or type(data.get("ascension")) is not int
+                or data["ascension"] < 0
+                or data.get("source") != "RunState.Rng.StringSeed"
+                or data.get("rng_draws_performed") != 0):
+                strict_failures.append(f"Invalid native run identity at {ordinal}")
+            else:
+                report["native_run_identity"] = {
+                    "seed": data["seed"], "ascension": data["ascension"],
+                    "source": data["source"]
+                }
+        elif typ == "native_input_request":
+            data = record.get("data") or {}
+            request_id = data.get("input_request_id")
+            if (type(request_id) is not int or request_id <= 0
+                or request_id in input_requests
+                or data.get("source") !=
+                    "ActionQueueSynchronizer.RequestEnqueue.prefix"
+                or data.get("native_acceptance") != "UNVERIFIED"
+                or data.get("human_origin") != "UNVERIFIED"
+                or data.get("input_injected") is not False
+                or not isinstance(record.get("native_type"), str)):
+                strict_failures.append(f"Invalid native input request at {ordinal}")
+            else:
+                input_requests[request_id] = record
+                report["native_input_requests"].append({
+                    "ordinal": ordinal,
+                    "input_request_id": request_id,
+                    "native_type": record["native_type"],
+                    "canonical_action": record.get("canonical_action"),
+                    "acceptance": "UNVERIFIED",
+                })
+        elif typ == "native_input_outcome":
+            data = record.get("data") or {}
+            request_id = data.get("input_request_id")
+            request = input_requests.get(request_id)
+            native_state = data.get("native_action_state")
+            action_id = data.get("native_action_id")
+            expected = (
+                "DEFERRED_OR_UNENQUEUED"
+                if native_state == "None" and action_id is None else
+                "CANCELED_AT_RETURN"
+                if native_state == "Canceled" else
+                "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN"
+                if native_state in ("WaitingForExecution", "Executing",
+                                    "GatheringPlayerChoice",
+                                    "ReadyToResumeExecuting", "Finished")
+                and type(action_id) is int and action_id >= 0 else
+                "STATE_UNCLASSIFIED"
+            )
+            if (request is None or request_id in request_outcomes
+                or request.get("native_type") != record.get("native_type")
+                or data.get("source") !=
+                    "ActionQueueSynchronizer.RequestEnqueue.postfix"
+                or data.get("human_origin") != "UNVERIFIED"
+                or data.get("legal_menu_verified") is not False
+                or data.get("queue_result") != expected):
+                strict_failures.append(f"Invalid native input outcome at {ordinal}")
+            else:
+                request_outcomes.add(request_id)
+                report["native_input_outcomes"].append({
+                    "ordinal": ordinal, "input_request_id": request_id,
+                    "native_action_id": action_id,
+                    "native_action_state": native_state,
+                    "queue_result": expected,
+                    "menu_verified": False,
+                })
+        elif typ == "native_hand_menu":
+            data = record.get("data") or {}
+            menu_id = data.get("menu_id")
+            mode = data.get("mode")
+            minimum, maximum = data.get("min_select"), data.get("max_select")
+            holder_count = data.get("native_hand_holder_count")
+            missing_ids = data.get("missing_card_ids")
+            options = data.get("options")
+            binding = data.get("selection_id_binding")
+            owner = data.get("selection_owner_id")
+            choice_id = data.get("selection_choice_id")
+            exact = binding == "SOURCE_ASYNC_FLOW_RESERVED_ID"
+            valid_binding = (binding in (
+                    "UNVERIFIED", "SOURCE_ASYNC_FLOW_RESERVED_ID",
+                    "CHOICE_ID_NOT_YET_OBSERVED",
+                    "AMBIGUOUS_SOURCE_RESERVATION")
+                and (type(owner) is int and owner >= 0 or owner is None)
+                and ((type(choice_id) is int and choice_id >= 0
+                      and type(owner) is int and owner >= 0)
+                     if exact else choice_id is None))
+            valid = (valid_binding
+                and type(menu_id) is int and menu_id > 0
+                and menu_id not in hand_menus_seen
+                and mode in ("SimpleSelect", "UpgradeSelect")
+                and type(minimum) is int and minimum >= 0
+                and type(maximum) is int and maximum >= minimum
+                and type(holder_count) is int and holder_count >= 0
+                and type(missing_ids) is int and missing_ids >= 0
+                and type(data.get("require_manual_confirmation")) is bool
+                and isinstance(options, list)
+                and len(options) + missing_ids <= holder_count
+                and data.get("predicate_re_evaluated_by_inspector") is False
+                and data.get("source") ==
+                    "NPlayerHand.SelectCards.postfix_after_native_visibility_update"
+                and data.get("emulator_parity") == "NOT_TESTED"
+                and data.get("coverage") == (
+                    "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"
+                    if missing_ids == 0 else
+                    "INCOMPLETE_NATIVE_CARD_ID_MAPPING"))
+            if valid:
+                all_ids, all_positions = [], []
+                for option in options:
+                    if not isinstance(option, dict):
+                        valid = False
+                        break
+                    card_id = option.get("combat_card_id")
+                    model_id = option.get("card_model_id")
+                    slot = option.get("ui_hand_index")
+                    if (type(card_id) is not int or card_id < 0
+                        or not isinstance(model_id, str) or not model_id
+                        or type(slot) is not int
+                        or slot < 0 or slot >= holder_count):
+                        valid = False
+                        break
+                    all_ids.append(card_id)
+                    all_positions.append(slot)
+                if valid:
+                    valid = (
+                        len(all_ids) == len(set(all_ids))
+                        and len(all_positions) == len(set(all_positions))
+                        and all_positions == sorted(all_positions))
+            if not valid:
+                strict_failures.append(f"Invalid native hand menu at {ordinal}")
+            else:
+                hand_menus_seen.add(menu_id)
+                if exact:
+                    key = (owner, choice_id)
+                    if key in menus_by_choice:
+                        strict_failures.append(
+                            f"Multiple source menus for one choice id at {ordinal}")
+                    else:
+                        menus_by_choice[key] = {
+                            "menu_id": menu_id, "ordinal": ordinal,
+                            "options": options, "coverage": data["coverage"],
+                            "latest_options": options,
+                            "latest_coverage": data["coverage"],
+                            "latest_peek_mode": False,
+                            "revision": 1,
+                            "mode": mode,
+                            "owner": owner,
+                            "choice_id": choice_id,
+                            "binding": binding,
+                            "closed": False
+                        }
+                if exact and (owner, choice_id) in menus_by_choice:
+                    menus_by_id[menu_id] = menus_by_choice[(owner, choice_id)]
+                else:
+                    menus_by_id[menu_id] = {
+                        "menu_id": menu_id, "ordinal": ordinal,
+                        "options": options, "coverage": data["coverage"],
+                        "latest_options": options,
+                        "latest_coverage": data["coverage"],
+                        "latest_peek_mode": False,
+                        "revision": 1,
+                        "mode": mode,
+                        "owner": owner,
+                        "choice_id": choice_id,
+                        "binding": binding,
+                        "closed": False
+                    }
+                report["native_hand_menus"].append({
+                    "ordinal": ordinal, "menu_id": menu_id,
+                    "mode": mode,
+                    "source_model_id": data.get("source_model_id"),
+                    "min_select": minimum, "max_select": maximum,
+                    "options": options, "coverage": data["coverage"],
+                    "choice_id_binding": binding,
+                    "choice_owner_id": owner, "choice_id": choice_id,
+                })
+        elif typ == "native_hand_menu_revision":
+            data = record.get("data") or {}
+            menu_id = data.get("menu_id")
+            menu = menus_by_id.get(menu_id)
+            revision = data.get("revision")
+            options = data.get("options")
+            peeking = data.get("peek_mode")
+            count = data.get("native_hand_holder_count")
+            missing = data.get("missing_card_ids")
+            expected_coverage = (
+                "NATIVE_PEEK_VIEW_NOT_SELECTABLE" if peeking is True
+                else "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"
+                if missing == 0 else "INCOMPLETE_NATIVE_CARD_ID_MAPPING")
+            valid = (
+                menu is not None and not menu["closed"]
+                and type(revision) is int
+                and revision == menu["revision"] + 1
+                and data.get("mode") == menu["mode"]
+                and data.get("selection_owner_id") == menu["owner"]
+                and data.get("selection_choice_id") == menu["choice_id"]
+                and data.get("selection_id_binding") == menu["binding"]
+                and type(peeking) is bool
+                and type(count) is int and count >= 0
+                and type(missing) is int and missing >= 0
+                and isinstance(options, list)
+                and data.get("coverage") == expected_coverage
+                and data.get("source") ==
+                    "NPlayerHand.UpdateSelectModeCardVisibility.postfix"
+                and data.get("predicate_re_evaluated_by_inspector") is False
+                and data.get("complete_menu_history") == "NOT_VERIFIED"
+                and data.get("emulator_parity") == "NOT_TESTED"
+                and (not peeking or (missing == 0 and len(options) == 0))
+                and (peeking or len(options) + missing <= count))
+            if valid:
+                ids = []
+                slots = []
+                for option in options:
+                    if not isinstance(option, dict):
+                        valid = False
+                        break
+                    card_id = option.get("combat_card_id")
+                    model_id = option.get("card_model_id")
+                    slot = option.get("ui_hand_index")
+                    if (type(card_id) is not int or card_id < 0
+                        or not isinstance(model_id, str) or not model_id
+                        or type(slot) is not int or slot < 0 or slot >= count):
+                        valid = False
+                        break
+                    ids.append(card_id)
+                    slots.append(slot)
+                if len(set(ids)) != len(ids) or len(set(slots)) != len(slots):
+                    valid = False
+                if slots != sorted(slots):
+                    valid = False
+            if not valid:
+                strict_failures.append(
+                    f"Invalid native hand menu revision at {ordinal}")
+            else:
+                menu.update(
+                    latest_options=options,
+                    latest_coverage=data["coverage"],
+                    latest_peek_mode=peeking,
+                    revision=revision)
+                report["native_hand_menu_revisions"].append({
+                    "ordinal": ordinal, "menu_id": menu_id,
+                    "revision": revision, "peek_mode": peeking,
+                    "coverage": data["coverage"],
+                    "options": options,
+                    "choice_id_binding": menu["binding"],
+                })
+        elif typ == "native_hand_menu_closed":
+            data = record.get("data") or {}
+            menu_id = data.get("menu_id")
+            menu = menus_by_id.get(menu_id)
+            reason = data.get("native_reason")
+            expected_source = (
+                "NPlayerHand.AfterCardsSelected.postfix"
+                if reason == "AfterCardsSelected"
+                else "NPlayerHand._ExitTree.prefix")
+            valid = (
+                menu is not None and not menu["closed"]
+                and type(data.get("final_revision")) is int
+                and data.get("final_revision") == menu["revision"]
+                and data.get("selection_owner_id") == menu["owner"]
+                and data.get("selection_choice_id") == menu["choice_id"]
+                and data.get("selection_id_binding") == menu["binding"]
+                and reason in ("AfterCardsSelected", "NativeHandExitTree")
+                and data.get("source") == expected_source
+                and data.get("native_choice_result_verified") is False
+                and data.get("complete_menu_history") == "NOT_VERIFIED")
+            if not valid:
+                strict_failures.append(
+                    f"Invalid native hand menu close at {ordinal}")
+            else:
+                menu["closed"] = True
+                report["native_hand_menu_closures"].append({
+                    "ordinal": ordinal, "menu_id": menu_id,
+                    "final_revision": menu["revision"],
+                    "native_reason": reason
+                })
+        elif typ == "native_ui_hand_gate":
+            data = record.get("data") or {}
+            gate = data.get("gate")
+            if (gate not in ("CanPlayCards", "AreCardActionsAllowed")
+                or type(data.get("returned_allowed")) is not bool
+                or data.get("native_hand_mode") not in (
+                    "Play", "None", "SimpleSelect", "UpgradeSelect")
+                or type(data.get("existing_card_play_active")) is not bool
+                or data.get("source") !=
+                    "NPlayerHand." + str(gate) + ".postfix"
+                or data.get("result_basis") != "ORIGINAL_NATIVE_RETURN_VALUE"
+                or data.get("source_evaluation_only") is not True
+                or data.get("human_origin") != "UNVERIFIED"
+                or data.get("full_legal_menu") != "NOT_TESTED"
+                or data.get("emulator_parity") != "NOT_TESTED"):
+                strict_failures.append(
+                    f"Invalid native hand UI gate at {ordinal}")
+            else:
+                report["native_ui_hand_gates"].append({
+                    "ordinal": ordinal, "gate": gate,
+                    "returned_allowed": data["returned_allowed"],
+                    "native_hand_mode": data["native_hand_mode"],
+                    "existing_card_play_active":
+                        data["existing_card_play_active"],
+                    "source_evaluation_only": True,
+                    "full_legal_menu": "NOT_TESTED"
+                })
+        elif typ == "native_ui_play_begin":
+            data = record.get("data") or {}
+            card_id = data.get("combat_card_id")
+            if (card_id is not None and
+                (type(card_id) is not int or card_id < 0)
+                or not isinstance(data.get("card_model_id"), str)
+                or not data.get("card_model_id")
+                or type(data.get("started_via_shortcut")) is not bool
+                or data.get("source") != "NPlayerHand.StartCardPlay.prefix"
+                or data.get("native_ui_gate") != "SOURCE_CALLSITE_PASSED"
+                or data.get("manual_play_accepted") != "NOT_TESTED"
+                or data.get("queue_acceptance") != "NOT_TESTED"
+                or data.get("human_origin") != "UNVERIFIED"
+                or data.get("full_legal_menu") != "NOT_TESTED"
+                or data.get("emulator_parity") != "NOT_TESTED"):
+                strict_failures.append(
+                    f"Invalid native UI play begin at {ordinal}")
+            else:
+                report["native_ui_play_begins"].append({
+                    "ordinal": ordinal,
+                    "combat_card_id": card_id,
+                    "card_model_id": data["card_model_id"],
+                    "started_via_shortcut": data["started_via_shortcut"],
+                    "ui_gate": "SOURCE_CALLSITE_PASSED",
+                })
+        elif typ == "native_manual_play_result":
+            data = record.get("data") or {}
+            card_id = data.get("combat_card_id")
+            if (card_id is not None and
+                (type(card_id) is not int or card_id < 0)
+                or not isinstance(data.get("card_model_id"), str)
+                or not data.get("card_model_id")
+                or type(data.get("returned_success")) is not bool
+                or data.get("source") != "CardModel.TryManualPlay.postfix"
+                or data.get("queue_acceptance") != "UNVERIFIED"
+                or data.get("human_origin") != "UNVERIFIED"
+                or data.get("emulator_parity") != "NOT_TESTED"):
+                strict_failures.append(
+                    f"Invalid native manual play result at {ordinal}")
+            else:
+                report["native_manual_play_results"].append({
+                    "ordinal": ordinal,
+                    "combat_card_id": card_id,
+                    "card_model_id": data["card_model_id"],
+                    "target_id": data.get("target_id"),
+                    "returned_success": data["returned_success"],
+                    "queue_acceptance": "UNVERIFIED",
+                })
+        elif typ == "native_player_choice":
+            data = record.get("data") or {}
+            owner, choice_id = data.get("owner_id"), data.get("choice_id")
+            kind, projection = data.get("choice_type"), data.get("selection_projection")
+            valid = (type(owner) is int and owner >= 0
+                and type(choice_id) is int and choice_id >= 0
+                and isinstance(kind, str) and bool(kind)
+                and data.get("origin") ==
+                    "PlayerChoiceSynchronizer.PlayerChoiceReceived"
+                and data.get("accepted_choice_menu") == "NOT_CAPTURED"
+                and data.get("human_origin") == "UNVERIFIED"
+                and (owner, choice_id) not in choices_seen
+                and (projection == {
+                    "CombatCard": "EXACT_COMBAT_CARD_IDS",
+                    "Index": "EXACT_INDEXES",
+                    "CanonicalCard": "EXACT_CANONICAL_MODEL_IDS",
+                    "Player": "EXACT_PLAYER_ID",
+                }.get(kind, "UNPROJECTED_CHOICE_PAYLOAD")))
+            if kind == "CombatCard":
+                valid = valid and isinstance(
+                    data.get("selected_combat_card_ids"), list)
+            elif kind == "Index":
+                valid = valid and isinstance(data.get("selected_indexes"), list)
+            elif kind == "CanonicalCard":
+                valid = valid and isinstance(
+                    data.get("selected_canonical_card_models"), list)
+            if not valid:
+                strict_failures.append(f"Invalid native player choice at {ordinal}")
+            else:
+                choices_seen.add((owner, choice_id))
+                report["native_player_choices"].append({
+                    "ordinal": ordinal, "action_id": aid,
+                    "owner_id": owner, "choice_id": choice_id,
+                    "choice_type": kind, "selection_projection": projection,
+                    "selected_combat_card_ids":
+                        data.get("selected_combat_card_ids"),
+                    "selected_indexes": data.get("selected_indexes"),
+                })
+                source_menu = menus_by_choice.get((owner, choice_id))
+                if source_menu is not None and kind == "CombatCard":
+                    selected = data.get("selected_combat_card_ids")
+                    initial_offers = {
+                        option["combat_card_id"]
+                        for option in source_menu["options"]}
+                    is_initial_subset = (
+                        isinstance(selected, list)
+                        and all(type(x) is int and x >= 0 for x in selected)
+                        and set(selected) <= initial_offers)
+                    report["native_hand_menu_choice_matches"].append({
+                        "owner_id": owner, "choice_id": choice_id,
+                        "menu_id": source_menu["menu_id"],
+                        "menu_ordinal": source_menu["ordinal"],
+                        "choice_ordinal": ordinal,
+                        "selection_in_initial_visible_options": (
+                            is_initial_subset
+                            if source_menu["coverage"] ==
+                            "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"
+                            else None),
+                        "latest_captured_revision": source_menu["revision"],
+                        "latest_captured_peek_mode":
+                            source_menu["latest_peek_mode"],
+                        "selection_in_latest_captured_options": (
+                            set(selected) <= {
+                                x["combat_card_id"]
+                                for x in source_menu["latest_options"]}
+                            if (isinstance(selected, list)
+                                and all(type(x) is int and x >= 0
+                                    for x in selected)
+                                and source_menu["latest_coverage"] ==
+                                    "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"
+                                and not source_menu["latest_peek_mode"])
+                            else None),
+                        "native_hand_menu_closed_before_choice":
+                            source_menu["closed"],
+                        "selection_menu_revalidation": (
+                            "SOURCE_REVISIONS_OBSERVED"
+                            if source_menu["revision"] > 1 else "NOT_OBSERVED"),
+                        "complete_menu_history": "NOT_VERIFIED",
+                        "binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+                    })
         elif typ == "native_initial_hp_roll":
             data = record.get("data") or {}
             if (data.get("source_version") != "v0.111.0"
@@ -481,6 +986,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         elif typ == "stable_decision" and not isinstance(record.get("state"), dict):
             strict_failures.append(f"Missing stable decision state at {ordinal}")
 
+    report["native_hand_menu_open_lifetimes"] = sorted(
+        menu_id for menu_id, menu in menus_by_id.items() if not menu["closed"])
     final = records[-1].get("data") or {}
     reported_open = final.get("open_actions", [])
     if sorted(running) != sorted(reported_open):

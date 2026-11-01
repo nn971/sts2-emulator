@@ -35,6 +35,410 @@ public sealed class NativeActionEnvelopeRecorderTests
     }
 
     [Fact]
+    public void NativeHandChoiceFlowBindsOnlyOneMatchingSourceReservation()
+    {
+        Assert.Equal("UNVERIFIED", NativeHandChoiceFlow.Current().Status);
+        using (NativeHandChoiceFlow.BeginFromHand(11))
+        {
+            Assert.Equal("CHOICE_ID_NOT_YET_OBSERVED",
+                NativeHandChoiceFlow.Current().Status);
+            NativeHandChoiceFlow.Reserved(11, 4);
+            var binding = NativeHandChoiceFlow.Current();
+            Assert.Equal(11UL, binding.OwnerId);
+            Assert.Equal(4U, binding.ChoiceId);
+            Assert.Equal("SOURCE_ASYNC_FLOW_RESERVED_ID", binding.Status);
+            using (NativeHandChoiceFlow.BeginFromHand(12))
+            {
+                NativeHandChoiceFlow.Reserved(12, 8);
+                Assert.Equal(8U, NativeHandChoiceFlow.Current().ChoiceId);
+                NativeHandChoiceFlow.Reserved(12, 9);
+                Assert.Equal("AMBIGUOUS_SOURCE_RESERVATION",
+                    NativeHandChoiceFlow.Current().Status);
+                Assert.Null(NativeHandChoiceFlow.Current().ChoiceId);
+            }
+            Assert.Equal(4U, NativeHandChoiceFlow.Current().ChoiceId);
+        }
+        Assert.Equal("UNVERIFIED", NativeHandChoiceFlow.Current().Status);
+        using (NativeHandChoiceFlow.BeginFromHand(11))
+        {
+            NativeHandChoiceFlow.Reserved(99, 3);
+            Assert.Equal("AMBIGUOUS_SOURCE_RESERVATION",
+                NativeHandChoiceFlow.Current().Status);
+        }
+    }
+
+    [Fact]
+    public async Task NativeHandChoiceFlowSurvivesCapturedAsyncContinuationAndRestoresCaller()
+    {
+        var ready = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        static async Task<NativeHandChoiceFlow.Binding> GetAfterAwait(
+            Task wait)
+        {
+            await wait;
+            return NativeHandChoiceFlow.Current();
+        }
+        Task<NativeHandChoiceFlow.Binding> continuation;
+        using (NativeHandChoiceFlow.BeginFromHand(7))
+        {
+            NativeHandChoiceFlow.Reserved(7, 18);
+            continuation = GetAfterAwait(ready.Task);
+        }
+        Assert.Equal("UNVERIFIED", NativeHandChoiceFlow.Current().Status);
+        ready.SetResult(true);
+        var binding = await continuation;
+        Assert.Equal(7UL, binding.OwnerId);
+        Assert.Equal(18U, binding.ChoiceId);
+        Assert.Equal("SOURCE_ASYNC_FLOW_RESERVED_ID", binding.Status);
+        Assert.Equal("UNVERIFIED", NativeHandChoiceFlow.Current().Status);
+    }
+
+    [Fact]
+    public async Task NativeRequestAndExecutionRetainSameObjectIdentityAndUnknownAcceptance()
+    {
+        object action = new();
+        var canonical = new Sts2Emulator.Core.GameAction("play_card",
+            JsonSerializer.SerializeToElement(new
+            {
+                card_instance_id = 5L,
+                target_id = (string?)null
+            }));
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeRunIdentity("6JK8MD0VQQTA", 10);
+            recorder.NativeInputRequest(action, "PlayCardAction", State(3),
+                canonical);
+            recorder.Start(action, "PlayCardAction", State(3), canonical);
+            recorder.Complete(action, State(2));
+            // Exercise the possible synchronous completion: even if the
+            // original completes before the postfix, the source request
+            // identity must still be available.
+            recorder.NativeInputOutcome(action, "Finished", 5U);
+            object deferred = new();
+            recorder.NativeInputRequest(deferred, "PlayCardAction", State(2),
+                canonical);
+            recorder.NativeInputOutcome(deferred, "None", null);
+            recorder.Finish("Combat ended", State(2));
+        });
+        var outcomes = entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_input_outcome").ToArray();
+        Assert.Equal(2, outcomes.Length);
+        Assert.Equal("ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+            outcomes[0].GetProperty("data").GetProperty("queue_result").GetString());
+        Assert.Equal("DEFERRED_OR_UNENQUEUED",
+            outcomes[1].GetProperty("data").GetProperty("queue_result").GetString());
+        var identity = Assert.Single(entries,
+            x => x.GetProperty("type").GetString() == "native_run_identity");
+        Assert.Equal("6JK8MD0VQQTA",
+            identity.GetProperty("data").GetProperty("seed").GetString());
+        Assert.Equal(10,
+            identity.GetProperty("data").GetProperty("ascension").GetInt32());
+        var requests = entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_input_request").ToArray();
+        Assert.Equal(2, requests.Length);
+        var request = requests[0];
+        Assert.Equal("UNVERIFIED", request.GetProperty("data")
+            .GetProperty("native_acceptance").GetString());
+        Assert.False(request.GetProperty("data")
+            .GetProperty("input_injected").GetBoolean());
+        var started = Assert.Single(entries,
+            x => x.GetProperty("type").GetString() == "action_started");
+        Assert.Equal(1, started.GetProperty("data")
+            .GetProperty("input_request_id").GetInt64());
+        Assert.Equal("SAME_NATIVE_ACTION_OBJECT", started.GetProperty("data")
+            .GetProperty("request_execution_link").GetString());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task NativeChoiceResultSurvivesStrictNestedCaptureStop()
+    {
+        object survivor = new();
+        var entries = await Record(recorder =>
+        {
+            recorder.Start(survivor, "PlayCardAction", State(3));
+            recorder.ChoicePause(survivor, State(2));
+            recorder.NativePlayerChoice(1, 0, "CombatCard",
+                [7L], null, null, null);
+            recorder.Start(survivor, "PlayCardAction", State(2));
+            recorder.Complete(survivor, State(2));
+            recorder.Finish("Combat ended", State(2));
+        });
+        var observed = Assert.Single(entries,
+            x => x.GetProperty("type").GetString() == "native_player_choice");
+        var data = observed.GetProperty("data");
+        Assert.Equal(1UL, data.GetProperty("owner_id").GetUInt64());
+        Assert.Equal(0U, data.GetProperty("choice_id").GetUInt32());
+        Assert.Equal("CombatCard", data.GetProperty("choice_type").GetString());
+        Assert.Equal(7, data.GetProperty("selected_combat_card_ids")[0].GetInt64());
+        Assert.Equal("NOT_CAPTURED",
+            data.GetProperty("accepted_choice_menu").GetString());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task NativeHandMenuRetainsOriginalFilteredUiOrderAndBounds()
+    {
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeHandMenu("SimpleSelect", "SURVIVOR",
+                1, 1, false, 4, 0,
+                [
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 0),
+                    new NativeHandMenuOption(9, "STRIKE_SILENT", 1),
+                    new NativeHandMenuOption(11, "NEUTRALIZE", 3)
+                ]);
+            recorder.NativePlayerChoice(1, 4, "CombatCard",
+                [9L], null, null, null);
+            recorder.Finish("Combat ended", State(2));
+        });
+        var menu = Assert.Single(entries, x =>
+            x.GetProperty("type").GetString() == "native_hand_menu");
+        var data = menu.GetProperty("data");
+        Assert.Equal("SURVIVOR",
+            data.GetProperty("source_model_id").GetString());
+        Assert.Equal(1, data.GetProperty("min_select").GetInt32());
+        Assert.Equal(1, data.GetProperty("max_select").GetInt32());
+        var options = data.GetProperty("options");
+        Assert.Equal(3, options.GetArrayLength());
+        Assert.Equal(7L, options[0].GetProperty("combat_card_id").GetInt64());
+        Assert.Equal(11L, options[2].GetProperty("combat_card_id").GetInt64());
+        Assert.Equal(3, options[2].GetProperty("ui_hand_index").GetInt32());
+        Assert.Equal("SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+            data.GetProperty("coverage").GetString());
+        Assert.Equal("UNVERIFIED",
+            data.GetProperty("selection_id_binding").GetString());
+        Assert.False(data.GetProperty("predicate_re_evaluated_by_inspector").GetBoolean());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task SourceReservedChoiceIdIsEmittedOnlyWithAnExactFlowBinding()
+    {
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeHandMenu("SimpleSelect", "SURVIVOR",
+                1, 1, false, 2, 0,
+                [
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 0),
+                    new NativeHandMenuOption(9, "STRIKE_SILENT", 1)
+                ],
+                1UL, 4U, "SOURCE_ASYNC_FLOW_RESERVED_ID");
+            recorder.NativePlayerChoice(1UL, 4U, "CombatCard",
+                [9L], null, null, null);
+            recorder.Finish("Combat ended", State(2));
+        });
+        var menu = Assert.Single(entries, x =>
+            x.GetProperty("type").GetString() == "native_hand_menu");
+        var data = menu.GetProperty("data");
+        Assert.Equal(1UL, data.GetProperty("selection_owner_id").GetUInt64());
+        Assert.Equal(4U, data.GetProperty("selection_choice_id").GetUInt32());
+        Assert.Equal("SOURCE_ASYNC_FLOW_RESERVED_ID",
+            data.GetProperty("selection_id_binding").GetString());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task UnprovenOrAmbiguousNativeMenuIdCannotBeAssertedAsExact()
+    {
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeHandMenu("SimpleSelect", "SURVIVOR",
+                1, 1, false, 1, 0,
+                [new NativeHandMenuOption(7, "DEFEND_SILENT", 0)],
+                1UL, 4U, "AMBIGUOUS_SOURCE_RESERVATION");
+            recorder.Finish("Combat ended", State(3));
+        });
+        Assert.DoesNotContain(entries,
+            x => x.GetProperty("type").GetString() == "native_hand_menu");
+        Assert.Single(entries, x => x.GetProperty("type").GetString()
+            == "observation_failure");
+        Assert.Equal("INCOMPLETE_CAPTURE", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task NativeMenuRevalidationAndPeekAreVersionedWithoutRecheckingFilter()
+    {
+        object hand = new();
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeHandMenu("SimpleSelect", "SURVIVOR",
+                1, 1, false, 3, 0,
+                [
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 0),
+                    new NativeHandMenuOption(9, "STRIKE_SILENT", 2)
+                ], 1UL, 4U, "SOURCE_ASYNC_FLOW_RESERVED_ID", hand);
+            // An unchanged original native refresh has no new evidence.
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect",
+                false, 3, 0,
+                [
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 0),
+                    new NativeHandMenuOption(9, "STRIKE_SILENT", 2)
+                ]);
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect",
+                false, 3, 0,
+                [new NativeHandMenuOption(9, "STRIKE_SILENT", 2)]);
+            // Peek mode may show every card; none is a selectable offer.
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect",
+                true, 3, 0, []);
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect",
+                false, 3, 0,
+                [
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 0),
+                    new NativeHandMenuOption(9, "STRIKE_SILENT", 2)
+                ]);
+            recorder.NativeHandMenuClosed(hand, "AfterCardsSelected");
+            recorder.NativeHandMenuClosed(hand, "NativeHandExitTree");
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect", false, 0, 0, []);
+            recorder.Finish("Combat ended", State(2));
+        });
+        var revisions = entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_hand_menu_revision").ToArray();
+        Assert.Equal(3, revisions.Length);
+        Assert.Equal(2, revisions[0].GetProperty("data")
+            .GetProperty("revision").GetInt32());
+        Assert.Equal(4, revisions[2].GetProperty("data")
+            .GetProperty("revision").GetInt32());
+        Assert.Equal("NATIVE_PEEK_VIEW_NOT_SELECTABLE",
+            revisions[1].GetProperty("data").GetProperty("coverage").GetString());
+        Assert.True(revisions[1].GetProperty("data")
+            .GetProperty("peek_mode").GetBoolean());
+        Assert.Equal(0, revisions[1].GetProperty("data")
+            .GetProperty("options").GetArrayLength());
+        Assert.All(revisions, rev => Assert.Equal(4U,
+            rev.GetProperty("data").GetProperty("selection_choice_id").GetUInt32()));
+        var closed = Assert.Single(entries, x =>
+            x.GetProperty("type").GetString() == "native_hand_menu_closed");
+        Assert.Equal(4, closed.GetProperty("data")
+            .GetProperty("final_revision").GetInt32());
+        Assert.Equal("AfterCardsSelected",
+            closed.GetProperty("data").GetProperty("native_reason").GetString());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task InvalidNativeMenuRefreshFailsClosedWithoutInventingOptions()
+    {
+        object hand = new();
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeHandMenu("SimpleSelect", "SURVIVOR",
+                1, 1, false, 1, 0,
+                [new NativeHandMenuOption(7, "DEFEND_SILENT", 0)],
+                nativeHand: hand);
+            recorder.NativeHandMenuRefresh(hand, "SimpleSelect",
+                true, 1, 0,
+                [new NativeHandMenuOption(7, "DEFEND_SILENT", 0)]);
+            recorder.NativeHandMenuClosed(hand, "NativeHandExitTree");
+            recorder.Finish("Combat ended", State(2));
+        });
+        Assert.DoesNotContain(entries, x =>
+            x.GetProperty("type").GetString() == "native_hand_menu_revision");
+        Assert.Single(entries, x =>
+            x.GetProperty("type").GetString() == "observation_failure");
+        Assert.Equal("INCOMPLETE_CAPTURE", entries[^1]
+            .GetProperty("data").GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task UnmappedUiCardPreventsCompleteMenuAndInvalidProjectionFailsClosed()
+    {
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeHandMenu("UpgradeSelect", "ARMAMENTS",
+                1, 1, false, 3, 1,
+                [
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 0),
+                    new NativeHandMenuOption(8, "STRIKE_SILENT", 2)
+                ]);
+            recorder.NativeHandMenu("SimpleSelect", "SURVIVOR",
+                1, 1, false, 2, 0,
+                [
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 0),
+                    new NativeHandMenuOption(7, "DEFEND_SILENT", 1)
+                ]);
+            recorder.Finish("Combat ended", State(2));
+        });
+        var menu = Assert.Single(entries, x =>
+            x.GetProperty("type").GetString() == "native_hand_menu");
+        Assert.Equal("INCOMPLETE_NATIVE_CARD_ID_MAPPING",
+            menu.GetProperty("data").GetProperty("coverage").GetString());
+        Assert.Single(entries, x => x.GetProperty("type").GetString()
+            == "observation_failure");
+        Assert.Equal("INCOMPLETE_CAPTURE", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task NativeHandUiGateObservationsKeepRealReturnValuesAndUnknownMenu()
+    {
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeUiHandGate("CanPlayCards", false, "Play", true);
+            recorder.NativeUiHandGate("AreCardActionsAllowed", true,
+                "Play", true);
+            recorder.NativeUiPlayBegin(8, "SHIV", true);
+            recorder.Finish("Combat ended", State(3));
+        });
+        var gates = entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_ui_hand_gate").ToArray();
+        Assert.Equal(2, gates.Length);
+        Assert.False(gates[0].GetProperty("data")
+            .GetProperty("returned_allowed").GetBoolean());
+        Assert.True(gates[1].GetProperty("data")
+            .GetProperty("returned_allowed").GetBoolean());
+        Assert.True(gates[1].GetProperty("data")
+            .GetProperty("existing_card_play_active").GetBoolean());
+        Assert.Equal("ORIGINAL_NATIVE_RETURN_VALUE",
+            gates[1].GetProperty("data").GetProperty("result_basis").GetString());
+        Assert.Equal("NOT_TESTED",
+            gates[1].GetProperty("data").GetProperty("full_legal_menu").GetString());
+        Assert.Equal("OBSERVED", entries[^1]
+            .GetProperty("data").GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task ManualCardPlayReturnSeparatesLocalAcceptanceFromQueueExecution()
+    {
+        var entries = await Record(recorder =>
+        {
+            recorder.NativeUiPlayBegin(5, "SHIV", true);
+            recorder.NativeManualPlayResult(5, "SHIV", "creature:2", true);
+            recorder.NativeUiPlayBegin(6, "DEFEND_SILENT", false);
+            recorder.NativeManualPlayResult(6, "DEFEND_SILENT", null, false);
+            recorder.Finish("Combat ended", State(3));
+        });
+        var uiStarts = entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_ui_play_begin").ToArray();
+        Assert.Equal(2, uiStarts.Length);
+        Assert.True(uiStarts[0].GetProperty("data")
+            .GetProperty("started_via_shortcut").GetBoolean());
+        Assert.Equal("NOT_TESTED", uiStarts[0].GetProperty("data")
+            .GetProperty("manual_play_accepted").GetString());
+        Assert.Equal("SOURCE_CALLSITE_PASSED", uiStarts[0].GetProperty("data")
+            .GetProperty("native_ui_gate").GetString());
+        var results = entries.Where(x =>
+            x.GetProperty("type").GetString() == "native_manual_play_result").ToArray();
+        Assert.Equal(2, results.Length);
+        Assert.True(results[0].GetProperty("data")
+            .GetProperty("returned_success").GetBoolean());
+        Assert.False(results[1].GetProperty("data")
+            .GetProperty("returned_success").GetBoolean());
+        Assert.Equal("UNVERIFIED", results[0].GetProperty("data")
+            .GetProperty("queue_acceptance").GetString());
+        Assert.Equal("NOT_TESTED", results[0].GetProperty("data")
+            .GetProperty("emulator_parity").GetString());
+        Assert.Equal("OBSERVED", entries[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task AllExecutorActionsSurviveUnsupportedNestedPlayerChoice()
     {
         object play = new();

@@ -18,6 +18,9 @@ public static class V111Build
     // randomness is NOT made native by this combat-entry milestone.
     public const string NativeWeakCombatEntryFidelityId =
         "v111-experimental-native-weak-combat-entry-v1";
+    // Explicit source-replay Neow event RNG; leave default training unchanged.
+    public const string NativeNeowOpeningFidelityId =
+        "v111-experimental-native-neow-opening-v1";
     // Explicit opt-in to a deliberately restricted three-act Silent route.
     // Its late-act encounter/event bags and combat RNG are provisional.
     public const string ExperimentalSilentThreeActRouteFidelityId =
@@ -51,6 +54,8 @@ public sealed record RunConfiguration(
 {
     public bool UsesExperimentalNativeWeakCombatEntry =>
         FidelityId == V111Build.NativeWeakCombatEntryFidelityId;
+    public bool UsesNativeNeowOpening =>
+        FidelityId == V111Build.NativeNeowOpeningFidelityId;
     public bool UsesExperimentalSilentThreeActRoute =>
         FidelityId == V111Build.ExperimentalSilentThreeActRouteFidelityId;
 
@@ -82,6 +87,7 @@ public sealed record RunConfiguration(
         if (RulesetId != V111Build.RulesetId || BuildFingerprint != V111Build.Fingerprint
             || FidelityId is not ("v111-mechanics-prototype-rng-v1"
                 or V111Build.NativeWeakCombatEntryFidelityId
+                or V111Build.NativeNeowOpeningFidelityId
                 or V111Build.ExperimentalSilentThreeActRouteFidelityId))
             throw new NotSupportedException("Configured runs require the pinned v111 ruleset and fingerprint.");
         if (Acts.Length != 3 || Acts[0] is not (ActIdentity.Overgrowth or ActIdentity.Underdocks)
@@ -209,13 +215,29 @@ public static class V111RunFactory
         if (!config.Profile.FullyUnlocked)
             throw new NotSupportedException("Restricted-profile acquisition/progression rules are not implemented; choose an explicit fully unlocked profile.");
         var opening = config.Acts[0] == ActIdentity.Overgrowth
-            ? PrototypeNativeOvergrowthRunFactory.Create(input.RunSeed, config.Ascension)
-            : PrototypeNativeUnderdocksRunFactory.Create(input.RunSeed, config.Ascension);
+            ? PrototypeNativeOvergrowthRunFactory.Create(
+                input.RunSeed, config.Ascension,
+                useNativeNeowEventRng: config.UsesNativeNeowOpening)
+            : PrototypeNativeUnderdocksRunFactory.Create(
+                input.RunSeed, config.Ascension,
+                useNativeNeowEventRng: config.UsesNativeNeowOpening);
         // Restlessness is a historical training adapter addition, not a native
         // A0 starter. Keep it only in the explicit legacy factories.
         var deck = config.Ascension < 5
             ? opening.Player.Deck.Where(card => card.CardId != "proto.common.restlessness").ToArray()
             : opening.Player.Deck;
+        // The Overgrowth factory produces the native-local Neow choices
+        // inside the actual event creation, without consuming the separate
+        // prototype event RNG or modifying any persistent named streams.
+        var nativeEvent = opening.World!.Event
+            ?? throw new InvalidDataException("Native opening did not initialize Neow.");
+        var nativeChoices = nativeEvent.OfferedChoiceIds;
+        if (nativeEvent.EventId != PrototypeNativeOvergrowthEvents.NeowEventId
+            || nativeChoices is null || nativeChoices.Length != 3
+            || nativeChoices.Distinct(StringComparer.Ordinal).Count() != 3
+            || (config.UsesNativeNeowOpening && opening.NativeEventRng is null)
+            || (!config.UsesNativeNeowOpening && opening.NativeEventRng is not null))
+            throw new InvalidDataException("Native initial Neow event RNG/choices invariant failed.");
         return opening with
         {
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,

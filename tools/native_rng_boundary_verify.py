@@ -110,9 +110,16 @@ def verify_scalar_call(data: dict) -> str | None:
             # MegaRandom.NextDouble, adds min in double, and converts the
             # final result back to float32. No extra PRNG step is taken.
             f32 = lambda x: struct.unpack("<f", struct.pack("<f", x))[0]
-            if any(f32(x) != x for x in (minimum, maximum, actual)):
-                return "INVALID_SCALAR_VALUE"
-            if minimum > maximum:
+            # System.Text.Json writes the *shortest decimal* that round-trips
+            # to a C# System.Single. json.loads reads it as Python binary64:
+            # e.g. serialized 0.3 is unequal to the actual binary32 0.3.
+            # Restore the recorded operands/result to binary32 before both
+            # native arithmetic and comparison. An alternate JSON decimal
+            # representing the same single has identical source semantics.
+            minimum, maximum, actual = (
+                f32(minimum), f32(maximum), f32(actual))
+            if (not all(map(math.isfinite, (minimum, maximum, actual)))
+                or minimum > maximum):
                 return "INVALID_SCALAR_VALUE"
             expected = f32(next_double * f32(maximum - minimum) + minimum)
         except (OverflowError, struct.error):

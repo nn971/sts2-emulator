@@ -27,6 +27,9 @@ public static class Plugin
             // Extra environment gate: default passive Inspector stays intact,
             // while source-level RNG observation must be explicitly requested.
             NativeV111RngHook.TryInstall();
+            // Separate explicit opt-in; observes requests before queue
+            // authorization and never changes game input or dispatch.
+            NativeV111InputHooks.TryInstall();
         }
         else
         {

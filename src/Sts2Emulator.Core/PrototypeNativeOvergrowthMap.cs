@@ -267,7 +267,8 @@ public static class PrototypeNativeOvergrowthMap
 /// </summary>
 public static class PrototypeNativeOvergrowthRunFactory
 {
-    public static RunState Create(string seed, int ascension = 0)
+    public static RunState Create(
+        string seed, int ascension = 0, bool useNativeNeowEventRng = false)
     {
         var engine = new PrototypeGameEngine();
         var state = engine.Step(
@@ -308,6 +309,20 @@ public static class PrototypeNativeOvergrowthRunFactory
             : state.Player.MaxHp;
         var nativePotionSlots = ascension >= 4 ? 2 : 3;
 
+        // In the pinned v111 transition, this content-local stream is
+        // allocated by EventModel.BeginEvent, independently of the map and
+        // named run/player RNGs. No prototype "event" draw occurs.
+        // The native singleplayer v111 profile is fully unlocked.
+        var nativeNeow = useNativeNeowEventRng
+            ? NativeNeowOfferV111.Predict(seed,
+                kaleidoscopeAllowed: true, scrollBoxesAllowed: true)
+            : null;
+        var nativeNeowRng = nativeNeow is null ? null
+            : new RngBundle([
+                NativeRngV111.FromSnapshot(
+                    "context.event.NEOW.player_0", nativeNeow.EventRng)
+            ]);
+
         return state with
         {
             Player = state.Player with
@@ -317,6 +332,7 @@ public static class PrototypeNativeOvergrowthRunFactory
                 Deck = state.Player.Deck.Append(additionalStarterCard).ToArray()
             },
             Rng = rng,
+            NativeEventRng = nativeNeowRng,
             World = world with
             {
                 Map = map,
@@ -326,7 +342,10 @@ public static class PrototypeNativeOvergrowthRunFactory
                 Event = new EventState(
                     PrototypeNativeOvergrowthEvents.NeowEventId,
                     OfferedChoiceIds:
-                        PrototypeNativeOvergrowthEvents.GenerateNeowOfferedChoiceIds(rng)),
+                        nativeNeow is null
+                            ? PrototypeNativeOvergrowthEvents.GenerateNeowOfferedChoiceIds(rng)
+                            : nativeNeow.OfferedRelicIds
+                                .Select(id => "take_" + id).ToArray()),
                 EventHistory =
                 [
                     PrototypeNativeOvergrowthEvents.NeowEventId

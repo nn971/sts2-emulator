@@ -58,6 +58,451 @@ class EnvelopeAuditTests(unittest.TestCase):
         self.assertEqual(0, installed["native_rng_source_calls"])
         self.assertEqual("NOT_TESTED", installed["exact_rng_parity"])
 
+    def test_source_request_seed_and_choice_are_audited_without_acceptance_claim(self):
+        records = sample()
+        records[0]["data"]["native_input_hook_installed"] = True
+        identity = {"type": "native_run_identity", "data": {
+            "seed": "6JK8MD0VQQTA", "ascension": 10,
+            "source": "RunState.Rng.StringSeed",
+            "rng_draws_performed": 0,
+            "emulator_run_identity_parity": "NOT_TESTED"}}
+        request = {"type": "native_input_request",
+            "native_type": "PlayCardAction",
+            "canonical_action": records[2]["canonical_action"],
+            "data": {"input_request_id": 1,
+                "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                "native_acceptance": "UNVERIFIED",
+                "human_origin": "UNVERIFIED",
+                "input_injected": False}}
+        records[2]["data"] = {
+            "input_request_id": 1,
+            "request_execution_link": "SAME_NATIVE_ACTION_OBJECT",
+            "human_origin": "UNVERIFIED"}
+        selection = {"type": "native_player_choice",
+            "action_id": 1,
+            "data": {"owner_id": 1, "choice_id": 0,
+                "choice_type": "CombatCard",
+                "selected_combat_card_ids": [5],
+                "selected_indexes": None,
+                "selected_canonical_card_models": None,
+                "selected_player_id": None,
+                "selection_projection": "EXACT_COMBAT_CARD_IDS",
+                "origin": "PlayerChoiceSynchronizer.PlayerChoiceReceived",
+                "accepted_choice_menu": "NOT_CAPTURED",
+                "human_origin": "UNVERIFIED"}}
+        records.insert(1, identity)
+        records.insert(3, request)
+        records.insert(7, selection)
+        for i, record in enumerate(records):
+            record["ordinal"] = i + 1
+        result = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertTrue(result["native_input_hook_installed"])
+        self.assertEqual("6JK8MD0VQQTA",
+                         result["native_run_identity"]["seed"])
+        self.assertEqual(1, result["source_request_execution_links"])
+        self.assertEqual(1, len(result["native_input_requests"]))
+        self.assertEqual("UNVERIFIED",
+                         result["native_input_requests"][0]["acceptance"])
+        self.assertEqual([5],
+                         result["native_player_choices"][0]["selected_combat_card_ids"])
+        self.assertEqual("NOT_TESTED", result["native_game_parity"])
+
+        forged = copy.deepcopy(records)
+        forged[4]["data"]["input_request_id"] = 999
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+        forged = copy.deepcopy(records)
+        forged[7]["data"]["accepted_choice_menu"] = "EXACT"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+
+    def test_canceled_or_deferred_request_never_becomes_accepted_by_auditor(self):
+        records = sample()
+        request = {"type": "native_input_request", "native_type": "PlayCardAction",
+            "canonical_action": records[2]["canonical_action"],
+            "data": {"input_request_id": 1,
+                "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                "native_acceptance": "UNVERIFIED",
+                "human_origin": "UNVERIFIED",
+                "input_injected": False}}
+        records.insert(2, request)
+        for i, row in enumerate(records):
+            row["ordinal"] = i + 1
+        result = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(0, result["source_request_execution_links"])
+        self.assertEqual("UNVERIFIED",
+                         result["native_input_requests"][0]["acceptance"])
+
+    def test_native_request_postfix_distinguishes_queue_and_cancellation(self):
+        records = sample()
+        source = "ActionQueueSynchronizer.RequestEnqueue."
+        request = {"type": "native_input_request",
+            "native_type": "PlayCardAction",
+            "canonical_action": records[2]["canonical_action"],
+            "data": {"input_request_id": 1,
+                "source": source + "prefix",
+                "native_acceptance": "UNVERIFIED",
+                "human_origin": "UNVERIFIED", "input_injected": False}}
+        accepted = {"type": "native_input_outcome",
+            "native_type": "PlayCardAction",
+            "data": {"input_request_id": 1,
+                "native_action_state": "Executing", "native_action_id": 8,
+                "queue_result": "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+                "source": source + "postfix",
+                "human_origin": "UNVERIFIED",
+                "legal_menu_verified": False}}
+        records.insert(2, request)
+        records[3]["data"] = {
+            "input_request_id": 1,
+            "request_execution_link": "SAME_NATIVE_ACTION_OBJECT",
+            "human_origin": "UNVERIFIED"}
+        records.insert(4, accepted)
+        for i, row in enumerate(records):
+            row["ordinal"] = i + 1
+        report = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(1, report["source_request_execution_links"])
+        self.assertEqual(1, len(report["native_input_outcomes"]))
+        self.assertFalse(report["native_input_outcomes"][0]["menu_verified"])
+        self.assertEqual("ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+                         report["native_input_outcomes"][0]["queue_result"])
+
+        canceled = copy.deepcopy(records)
+        canceled[4]["data"].update(
+            native_action_state="Canceled", native_action_id=8,
+            queue_result="CANCELED_AT_RETURN")
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT",
+                         audit(canceled)["status"])
+        # A state of None with no queue ID has no acceptance evidence.
+        deferred = copy.deepcopy(records)
+        deferred[4]["data"].update(
+            native_action_state="None", native_action_id=None,
+            queue_result="DEFERRED_OR_UNENQUEUED")
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT",
+                         audit(deferred)["status"])
+        forged = copy.deepcopy(records)
+        forged[4]["data"].update(
+            native_action_state="None", native_action_id=None,
+            queue_result="ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN")
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+
+    def test_native_hand_menu_is_ui_evidence_without_choice_id_reconstruction(self):
+        rows = sample()
+        menu = {"type": "native_hand_menu", "action_id": 1, "data": {
+            "menu_id": 1, "mode": "SimpleSelect",
+            "source_model_id": "SURVIVOR",
+            "min_select": 1, "max_select": 1,
+            "require_manual_confirmation": False,
+            "native_hand_holder_count": 4, "missing_card_ids": 0,
+            "options": [
+                {"combat_card_id": 7, "card_model_id": "DEFEND_SILENT",
+                 "ui_hand_index": 0},
+                {"combat_card_id": 9, "card_model_id": "STRIKE_SILENT",
+                 "ui_hand_index": 2}],
+            "coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+            "selection_id_binding": "UNVERIFIED",
+            "predicate_re_evaluated_by_inspector": False,
+            "source": "NPlayerHand.SelectCards.postfix_after_native_visibility_update",
+            "emulator_parity": "NOT_TESTED"}}
+        rows.insert(5, menu)
+        for i, r in enumerate(rows):
+            r["ordinal"] = i + 1
+        result = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, len(result["native_hand_menus"]))
+        self.assertEqual([7, 9], [o["combat_card_id"] for o in
+                         result["native_hand_menus"][0]["options"]])
+        self.assertEqual("UNVERIFIED",
+                         result["native_hand_menus"][0]["choice_id_binding"])
+        self.assertEqual("NOT_TESTED", result["native_game_parity"])
+        forged = copy.deepcopy(rows)
+        forged[5]["data"]["predicate_re_evaluated_by_inspector"] = True
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+        duplicate = copy.deepcopy(rows)
+        duplicate[5]["data"]["options"][1]["combat_card_id"] = 7
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(duplicate)["status"])
+        missing = copy.deepcopy(rows)
+        missing[5]["data"]["missing_card_ids"] = 1
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(missing)["status"])
+
+    def test_original_native_hand_gate_results_do_not_imply_full_menu(self):
+        rows = sample()
+        gate = {"type": "native_ui_hand_gate", "data": {
+            "gate": "AreCardActionsAllowed",
+            "returned_allowed": True, "native_hand_mode": "Play",
+            "existing_card_play_active": True,
+            "source": "NPlayerHand.AreCardActionsAllowed.postfix",
+            "result_basis": "ORIGINAL_NATIVE_RETURN_VALUE",
+            "source_evaluation_only": True, "human_origin": "UNVERIFIED",
+            "full_legal_menu": "NOT_TESTED",
+            "emulator_parity": "NOT_TESTED"}}
+        rows.insert(3, gate)
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        audit_result = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT",
+                         audit_result["status"])
+        observed = audit_result["native_ui_hand_gates"]
+        self.assertEqual(1, len(observed))
+        self.assertTrue(observed[0]["returned_allowed"])
+        self.assertTrue(observed[0]["existing_card_play_active"])
+        self.assertEqual("NOT_TESTED", observed[0]["full_legal_menu"])
+        forgery = copy.deepcopy(rows)
+        forgery[3]["data"]["full_legal_menu"] = "VERIFIED"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forgery)["status"])
+        forgery = copy.deepcopy(rows)
+        forgery[3]["data"]["source_evaluation_only"] = False
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forgery)["status"])
+        forgery = copy.deepcopy(rows)
+        forgery[3]["data"]["gate"] = "FakeGate"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forgery)["status"])
+
+    def test_native_ui_card_interaction_is_before_optional_manual_acceptance(self):
+        rows = sample()
+        ui = {"type": "native_ui_play_begin", "data": {
+            "combat_card_id": 19, "card_model_id": "SHIV",
+            "started_via_shortcut": True,
+            "source": "NPlayerHand.StartCardPlay.prefix",
+            "native_ui_gate": "SOURCE_CALLSITE_PASSED",
+            "manual_play_accepted": "NOT_TESTED",
+            "queue_acceptance": "NOT_TESTED",
+            "human_origin": "UNVERIFIED",
+            "full_legal_menu": "NOT_TESTED",
+            "emulator_parity": "NOT_TESTED"}}
+        rows.insert(3, ui)
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, len(result["native_ui_play_begins"]))
+        self.assertTrue(
+            result["native_ui_play_begins"][0]["started_via_shortcut"])
+        forged = copy.deepcopy(rows)
+        forged[3]["data"]["full_legal_menu"] = "VERIFIED"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+
+    def test_source_reserved_hand_choice_id_links_initial_menu_to_selection(self):
+        rows = sample()
+        menu = {"type": "native_hand_menu", "action_id": 1, "data": {
+            "menu_id": 1, "mode": "SimpleSelect",
+            "source_model_id": "SURVIVOR",
+            "min_select": 1, "max_select": 1,
+            "require_manual_confirmation": False,
+            "native_hand_holder_count": 2, "missing_card_ids": 0,
+            "options": [
+                {"combat_card_id": 7, "card_model_id": "DEFEND_SILENT",
+                 "ui_hand_index": 0},
+                {"combat_card_id": 9, "card_model_id": "STRIKE_SILENT",
+                 "ui_hand_index": 1}],
+            "coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+            "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+            "selection_owner_id": 1,
+            "selection_choice_id": 4,
+            "predicate_re_evaluated_by_inspector": False,
+            "source": "NPlayerHand.SelectCards.postfix_after_native_visibility_update",
+            "emulator_parity": "NOT_TESTED"}}
+        selection = {"type": "native_player_choice", "action_id": 1, "data": {
+            "owner_id": 1, "choice_id": 4, "choice_type": "CombatCard",
+            "selected_combat_card_ids": [9],
+            "selection_projection": "EXACT_COMBAT_CARD_IDS",
+            "origin": "PlayerChoiceSynchronizer.PlayerChoiceReceived",
+            "accepted_choice_menu": "NOT_CAPTURED",
+            "human_origin": "UNVERIFIED"}}
+        rows.insert(5, menu)
+        rows.insert(6, selection)
+        for i, r in enumerate(rows, 1):
+            r["ordinal"] = i
+        result = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual("SOURCE_ASYNC_FLOW_RESERVED_ID",
+                         result["native_hand_menus"][0]["choice_id_binding"])
+        self.assertEqual(4, result["native_hand_menus"][0]["choice_id"])
+        matches = result["native_hand_menu_choice_matches"]
+        self.assertEqual(1, len(matches))
+        self.assertEqual(1, matches[0]["menu_id"])
+        self.assertTrue(matches[0]["selection_in_initial_visible_options"])
+        self.assertEqual("NOT_VERIFIED", matches[0]["complete_menu_history"])
+
+        wrong_id = copy.deepcopy(rows)
+        wrong_id[5]["data"]["selection_choice_id"] = 5
+        result = audit(wrong_id)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual([], result["native_hand_menu_choice_matches"])
+
+        ambiguous = copy.deepcopy(rows)
+        ambiguous[5]["data"]["selection_id_binding"] = "AMBIGUOUS_SOURCE_RESERVATION"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(ambiguous)["status"])
+
+        changed = copy.deepcopy(rows)
+        changed[6]["data"]["selected_combat_card_ids"] = [12]
+        result = audit(changed)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertFalse(result["native_hand_menu_choice_matches"][0][
+            "selection_in_initial_visible_options"])
+
+        duplicated = copy.deepcopy(rows)
+        second = copy.deepcopy(menu)
+        second["data"]["menu_id"] = 2
+        duplicated.insert(6, second)
+        for i, r in enumerate(duplicated, 1):
+            r["ordinal"] = i
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(duplicated)["status"])
+
+    def test_source_menu_lifetime_revisions_and_peek_never_invent_eligibility(self):
+        rows = sample()
+        original = {"type": "native_hand_menu", "action_id": 1, "data": {
+            "menu_id": 1, "mode": "SimpleSelect",
+            "source_model_id": "SURVIVOR",
+            "min_select": 1, "max_select": 1,
+            "require_manual_confirmation": False,
+            "native_hand_holder_count": 2, "missing_card_ids": 0,
+            "options": [
+                {"combat_card_id": 7, "card_model_id": "DEFEND_SILENT",
+                 "ui_hand_index": 0}],
+            "coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+            "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+            "selection_owner_id": 1, "selection_choice_id": 4,
+            "predicate_re_evaluated_by_inspector": False,
+            "source": "NPlayerHand.SelectCards.postfix_after_native_visibility_update",
+            "emulator_parity": "NOT_TESTED"}}
+        def revision(number, option_ids, peek=False):
+            options = [
+                {"combat_card_id": cid,
+                 "card_model_id": "STRIKE_SILENT" if cid == 9 else "DEFEND_SILENT",
+                 "ui_hand_index": i} for i, cid in enumerate(option_ids)]
+            return {"type": "native_hand_menu_revision", "action_id": 1,
+                "data": {
+                    "menu_id": 1, "revision": number,
+                    "selection_owner_id": 1,
+                    "selection_choice_id": 4,
+                    "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+                    "mode": "SimpleSelect", "peek_mode": peek,
+                    "native_hand_holder_count": 2,
+                    "missing_card_ids": 0, "options": options,
+                    "coverage": ("NATIVE_PEEK_VIEW_NOT_SELECTABLE" if peek
+                        else "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS"),
+                    "source": "NPlayerHand.UpdateSelectModeCardVisibility.postfix",
+                    "predicate_re_evaluated_by_inspector": False,
+                    "complete_menu_history": "NOT_VERIFIED",
+                    "emulator_parity": "NOT_TESTED"}}
+        closed = {"type": "native_hand_menu_closed", "action_id": 1,
+                  "data": {"menu_id": 1, "final_revision": 4,
+                    "selection_owner_id": 1, "selection_choice_id": 4,
+                    "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+                    "native_reason": "AfterCardsSelected",
+                    "source": "NPlayerHand.AfterCardsSelected.postfix",
+                    "native_choice_result_verified": False,
+                    "complete_menu_history": "NOT_VERIFIED"}}
+        selection = {"type": "native_player_choice", "action_id": 1, "data": {
+            "owner_id": 1, "choice_id": 4,
+            "choice_type": "CombatCard",
+            "selected_combat_card_ids": [9],
+            "selection_projection": "EXACT_COMBAT_CARD_IDS",
+            "origin": "PlayerChoiceSynchronizer.PlayerChoiceReceived",
+            "accepted_choice_menu": "NOT_CAPTURED",
+            "human_origin": "UNVERIFIED"}}
+        # The original visible offer contained only 7; after state change it
+        # contains 9. Native peek never establishes a selectable option.
+        rows[5:5] = [original, revision(2, [9]), revision(3, [], True),
+                     revision(4, [9]), closed, selection]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(3, len(report["native_hand_menu_revisions"]))
+        self.assertEqual(1, len(report["native_hand_menu_closures"]))
+        self.assertEqual([], report["native_hand_menu_open_lifetimes"])
+        self.assertEqual("NATIVE_PEEK_VIEW_NOT_SELECTABLE",
+                         report["native_hand_menu_revisions"][1]["coverage"])
+        link = report["native_hand_menu_choice_matches"][0]
+        self.assertFalse(link["selection_in_initial_visible_options"])
+        self.assertTrue(link["selection_in_latest_captured_options"])
+        self.assertTrue(link["native_hand_menu_closed_before_choice"])
+        self.assertEqual(4, link["latest_captured_revision"])
+        self.assertEqual("SOURCE_REVISIONS_OBSERVED",
+                         link["selection_menu_revalidation"])
+        self.assertEqual("NOT_VERIFIED", link["complete_menu_history"])
+
+        altered = copy.deepcopy(rows)
+        altered[7]["data"]["options"] = [
+            {"combat_card_id": 9, "card_model_id": "STRIKE_SILENT",
+             "ui_hand_index": 0}]
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(altered)["status"])
+        altered = copy.deepcopy(rows)
+        altered[8]["data"]["revision"] = 7
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(altered)["status"])
+        altered = copy.deepcopy(rows)
+        altered[9]["data"]["final_revision"] = 3
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(altered)["status"])
+        altered = copy.deepcopy(rows)
+        altered[9]["data"]["selection_choice_id"] = 5
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(altered)["status"])
+
+    def test_source_peek_mode_has_no_selectable_options_at_choice(self):
+        rows = sample()
+        initial = {"type": "native_hand_menu", "data": {
+            "menu_id": 1, "mode": "SimpleSelect",
+            "source_model_id": "SURVIVOR", "min_select": 1, "max_select": 1,
+            "require_manual_confirmation": False,
+            "native_hand_holder_count": 1, "missing_card_ids": 0,
+            "options": [{"combat_card_id": 7, "card_model_id": "DEFEND_SILENT",
+                         "ui_hand_index": 0}],
+            "coverage": "SOURCE_NATIVE_UI_VISIBLE_HAND_OPTIONS",
+            "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+            "selection_owner_id": 1, "selection_choice_id": 4,
+            "predicate_re_evaluated_by_inspector": False,
+            "source": "NPlayerHand.SelectCards.postfix_after_native_visibility_update",
+            "emulator_parity": "NOT_TESTED"}}
+        peek = {"type": "native_hand_menu_revision", "data": {
+            "menu_id": 1, "revision": 2,
+            "selection_owner_id": 1, "selection_choice_id": 4,
+            "selection_id_binding": "SOURCE_ASYNC_FLOW_RESERVED_ID",
+            "mode": "SimpleSelect", "peek_mode": True,
+            "native_hand_holder_count": 1, "missing_card_ids": 0,
+            "options": [], "coverage": "NATIVE_PEEK_VIEW_NOT_SELECTABLE",
+            "source": "NPlayerHand.UpdateSelectModeCardVisibility.postfix",
+            "predicate_re_evaluated_by_inspector": False,
+            "complete_menu_history": "NOT_VERIFIED",
+            "emulator_parity": "NOT_TESTED"}}
+        selection = {"type": "native_player_choice", "data": {
+            "owner_id": 1, "choice_id": 4,
+            "choice_type": "CombatCard", "selected_combat_card_ids": [7],
+            "selection_projection": "EXACT_COMBAT_CARD_IDS",
+            "origin": "PlayerChoiceSynchronizer.PlayerChoiceReceived",
+            "accepted_choice_menu": "NOT_CAPTURED",
+            "human_origin": "UNVERIFIED"}}
+        rows[5:5] = [initial, peek, selection]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        link = result["native_hand_menu_choice_matches"][0]
+        self.assertIsNone(link["selection_in_latest_captured_options"])
+        self.assertTrue(link["latest_captured_peek_mode"])
+        self.assertEqual([1], result["native_hand_menu_open_lifetimes"])
+
+    def test_native_manual_play_result_does_not_prove_queue_acceptance(self):
+        rows = sample()
+        manual = {"type": "native_manual_play_result", "data": {
+            "combat_card_id": 19, "card_model_id": "SHIV",
+            "target_id": "creature:1", "returned_success": True,
+            "source": "CardModel.TryManualPlay.postfix",
+            "queue_acceptance": "UNVERIFIED",
+            "human_origin": "UNVERIFIED",
+            "emulator_parity": "NOT_TESTED"}}
+        rows.insert(3, manual)
+        for i, r in enumerate(rows):
+            r["ordinal"] = i + 1
+        result = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, len(result["native_manual_play_results"]))
+        self.assertTrue(result["native_manual_play_results"][0]["returned_success"])
+        self.assertEqual("UNVERIFIED",
+                         result["native_manual_play_results"][0]["queue_acceptance"])
+        forged = copy.deepcopy(rows)
+        forged[3]["data"]["queue_acceptance"] = "VERIFIED"
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(forged)["status"])
+
     def test_valid_nested_action_window_and_measured_delta(self):
         report = audit(sample())
         self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
@@ -115,6 +560,29 @@ class EnvelopeAuditTests(unittest.TestCase):
             "previous_count": 4, "new_count": 0}})
         for i, entry in enumerate(records):
             entry["ordinal"] = i + 1
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(records)["status"])
+
+    def test_source_observed_strict_boundary_miss_preserves_executor_timeline(self):
+        records = sample()
+        records.insert(3, {"type": "strict_input_gap", "action_id": 1,
+                           "data": {
+                               "reason": "executor_action_without_unique_strict_decision",
+                               "last_reported_gate": "WAITING_FOR_DECISION:CARD_PLAY_ANIMATION",
+                               "decision_generation": 15,
+                               "last_captured_generation": 14,
+                               "provenance": "native_executor_callback_and_cached_frame_gate",
+                               "human_input_origin_verified": False,
+                               "legal_menu_reconstructed": False}})
+        for i, row in enumerate(records):
+            row["ordinal"] = i + 1
+        report = audit(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(1, len(report["strict_input_gaps"]))
+        gap = report["strict_input_gaps"][0]
+        self.assertEqual(1, gap["action_id"])
+        self.assertEqual(15, gap["decision_generation"])
+        self.assertEqual("NOT_TESTED", report["native_game_parity"])
+        records[3]["data"]["legal_menu_reconstructed"] = True
         self.assertEqual("INCOMPLETE_CAPTURE", audit(records)["status"])
 
     def test_frame_hp_delta_records_enemy_damage_between_callbacks(self):
