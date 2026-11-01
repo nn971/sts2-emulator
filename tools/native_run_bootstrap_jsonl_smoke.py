@@ -128,7 +128,8 @@ def main():
         chosen = None
         for index in range(12):
             seed = "native-bootstrap-emulator-synthetic-" + str(index)
-            first = session.reset(seed, ascension=10, first_act="Overgrowth")
+            first = session.reset(seed, ascension=10, first_act="Overgrowth",
+                                  fidelity_id="v111-experimental-native-neow-opening-v1")
             start = first.actions()
             if len(start) != 1 or start[0]["kind"] != "start_run":
                 raise AssertionError("Native v111 start_run wire changed")
