@@ -1370,6 +1370,43 @@ unsupported. To certify full turn-boundary parity, establish native
 settlement, align both engines' RNG and complete state there, and
 test diverse encounters/seeds.
 
+### Persistent JSONL emulator comparison at native player-turn starts
+
+`tools/native_turn_checkpoint_replay.py` independently bootstraps combat
+from the audited native run prelude, then advances a persistent emulator
+JSONL state with the native source commands. Initial native/emulator card
+identities are paired by the complete ordered hand/draw/discard/exhaust
+piles and card models, and enemy identities by model/HP and position.
+Nested CombatCard selections are resolved by the native selected card IDs.
+At each `PLAYER_TURN_START`, it compares HP, block, gold, energy,
+turn, enemy HP/block/Strength and ordered card zones, stopping with
+the field path at the first difference.
+
+```fish
+cd ~/projects/sts2-emulator
+dotnet build Sts2Emulator.sln -c Release
+set trace /mnt/d/SteamLibrary/sts2-inspector-traces
+set sidecar "$trace/passive-20261101-160143200-2f31471031db497ea665c7c717fb7bfa.actions.jsonl"
+set prelude "$trace/run-prelude-20261101-160138676-ba0f5b2258a046b483717098ff872f10.jsonl"
+python tools/native_lockstep_source_journal.py --sidecar "$sidecar" --out /tmp/native-source-action-journal.json > /dev/null
+python tools/native_turn_checkpoint_replay.py --sidecar "$sidecar" --journal /tmp/native-source-action-journal.json --prelude "$prelude" --out /tmp/native-turn-checkpoint-emulator-replay.json
+```
+
+The runner cross-validates the supplied source journal against its audited
+sidecar and requires a matching independent emulator combat bootstrap.
+`--snapshot` can instead supply a separately generated emulator exact
+combat snapshot. The native combat projection is never imported into
+the emulator. All `ENEMY_TURN_START` records remain explicitly deferred:
+the current emulator's `end_turn` executes the entire enemy turn atomically.
+
+With `--sidecar`, source RNG state is bracketed by preceding/following
+15-stream snapshots. Only unchanged source brackets can be compared
+to emulator xoshiro states; a changed bracket is reported as uncertain.
+For this capture, nine of the eleven turn candidates have stable source
+RNG brackets; player starts 3 and 5 have changed brackets due to shuffle.
+All observed checkpoints remain `SETTLEMENT_UNVERIFIED`. A matching report
+shows projected mechanics agreement, not certified native/emulator parity.
+The JSONL process smoke uses emulator-derived synthetic data exclusively.
 ### Historical native turn-boundary candidate diagnostics (no game launch)
 
 For an existing `.actions.jsonl` capture, use:
