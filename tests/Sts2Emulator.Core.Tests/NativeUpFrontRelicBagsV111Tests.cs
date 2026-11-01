@@ -38,7 +38,7 @@ public sealed class NativeUpFrontRelicBagsV111Tests
         Assert.Empty(result.PlayerBag.Event);
         Assert.Empty(result.PlayerBag.Ancient);
         Assert.Equal(["FresnelLens"], result.SharedBag.Event);
-        Assert.Equal(["LoomingFruit", "VeryHotCocoa"].Order(StringComparer.Ordinal),
+        Assert.Equal(new[] { "LoomingFruit", "VeryHotCocoa" }.Order(StringComparer.Ordinal),
             result.SharedBag.Ancient.Order(StringComparer.Ordinal));
 
         static string[] All(NativeUpFrontRelicBagsV111.Bag bag) =>
