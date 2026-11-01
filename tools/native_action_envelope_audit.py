@@ -231,6 +231,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_ui_gate_hook_installed": False,
         "native_ui_hand_gates": [],
         "native_ui_play_begins": [],
+        "turn_boundary_candidates": [],
         "native_input_requests": [],
         "native_input_outcomes": [],
         "native_player_choices": [],
@@ -321,7 +322,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_player_choice", "native_run_identity",
         "native_hand_menu", "native_hand_menu_revision",
         "native_hand_menu_closed", "native_manual_play_result",
-        "native_ui_play_begin", "native_ui_hand_gate", "terminal",
+        "native_ui_play_begin", "native_ui_hand_gate",
+        "native_turn_checkpoint", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -337,6 +339,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     hand_menus_seen: set[int] = set()
     menus_by_choice: dict[tuple[int, int], dict] = {}
     menus_by_id: dict[int, dict] = {}
+    turn_checkpoint_ids: set[tuple[str, int]] = set()
     for ordinal, record in enumerate(records, 1):
         typ = record.get("type")
         if record.get("ordinal") != ordinal:
@@ -404,6 +407,60 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 "pre_state_present": isinstance(start.get("state"), dict),
                 "post_state_present": isinstance(record.get("state"), dict),
             }
+        elif typ == "native_turn_checkpoint":
+            data = record.get("data") or {}
+            kind, turn = data.get("kind"), data.get("turn")
+            player_start = kind == "PLAYER_TURN_START"
+            enemy_start = kind == "ENEMY_TURN_START"
+            key = (kind, turn)
+            snapshot = record.get("state")
+            combat = (snapshot or {}).get("combat") if isinstance(
+                snapshot, dict) else None
+            previous = records[ordinal - 2] if ordinal > 1 else None
+            native_type = (previous or {}).get("native_type") or ""
+            valid = (
+                (player_start or enemy_start)
+                and type(turn) is int and turn > 0
+                and key not in turn_checkpoint_ids
+                and isinstance(combat, dict)
+                and combat.get("turn") == turn
+                and data.get("observation_site") ==
+                    ("NativeV111PassiveBridge.OnFrame" if player_start
+                     else "ActionExecutor.BeforeActionExecuted")
+                and data.get("observation_basis") ==
+                    ("IDLE_PLAYABLE_PLAYER_FRAME_BEFORE_OBSERVED_INPUT"
+                     if player_start else
+                     "PRE_READY_TO_BEGIN_ENEMY_TURN_ACTION")
+                and isinstance(data.get("native_side"), str)
+                and isinstance(data.get("player_phase"), str)
+                and data.get("settlement_status") == "SETTLEMENT_UNVERIFIED"
+                and data.get("complete_native_queue_verified") is False
+                and data.get("native_phase_handoff_order_verified") is False
+                and data.get("original_native_legal_menu") == "NOT_VERIFIED"
+                and data.get("emulator_parity") == "NOT_TESTED"
+                and data.get("rng_draws_performed_by_inspector") == 0
+                and (player_start and not running
+                     and data["native_side"] == "Player"
+                     and data["player_phase"] == "Play"
+                     or enemy_start and previous is not None
+                     and previous.get("type") == "action_started"
+                     and native_type.endswith("ReadyToBeginEnemyTurnAction")
+                     and previous.get("state") == snapshot)
+            )
+            if not valid:
+                strict_failures.append(
+                    f"Invalid native turn-boundary candidate at {ordinal}")
+            else:
+                turn_checkpoint_ids.add(key)
+                report["turn_boundary_candidates"].append({
+                    "ordinal": ordinal, "kind": kind, "turn": turn,
+                    "observation_site": data["observation_site"],
+                    "observation_basis": data["observation_basis"],
+                    "native_side": data["native_side"],
+                    "player_phase": data["player_phase"],
+                    "settlement_status": "SETTLEMENT_UNVERIFIED",
+                    "emulator_parity": "NOT_TESTED",
+                })
         elif typ == "frame_state":
             info = record.get("data") or {}
             idx, state_hash = info.get("frame_index"), info.get("state_hash")
