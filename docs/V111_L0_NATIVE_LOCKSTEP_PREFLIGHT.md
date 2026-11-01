@@ -1214,11 +1214,21 @@ the source capture's strict provenance. The next offline step is to locate
 the reset ordinal and inspect its neighboring source events; do not alter
 the original sidecar.
 
-**Next acceptance gate:** expand the independently checked first-combat
-prefix beyond its first two end-turn boundaries; then add a source-verified
-event-driven decision boundary for overlapping UI actions. The strict
-recorder remains fail-closed at decision 9. The existing native capture
-is sufficient for the completed prefix; no original-game launch is needed.
+**Current first-combat result (2026-11-01):** the independent typed
+emulator golden regression now extends through the original 26-executor
+first combat. It replays all source-observed card plays, five end-turn
+transitions (including automatic enemy-turn setup), and Survivor's selected
+nested discard. Measured HP/block/energy, enemy HP and powers, card-zone
+ordering, and run.shuffle at both the 22-draw and 31-draw checkpoints
+match through lethal on turn 6. The emulator enters Reward afterwards.
+This establishes the tested source-observable projection, not full
+native-state or legal-decision parity.
+
+**Next acceptance gate:** event-driven capture of uniquely identified,
+source-verified legal decision boundaries during overlapping card animations.
+The strict recorder remains fail-closed at decision 9. The existing
+capture suffices for the completed first-combat replay; no new native
+game launch is needed for further offline analysis.
 
 ### Offline installed-assembly API check (no game launch)
 
