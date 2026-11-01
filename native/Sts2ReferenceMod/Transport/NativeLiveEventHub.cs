@@ -31,6 +31,7 @@ public sealed class NativeLiveEventHub : IAsyncDisposable
     private long _sessionEpoch;
     private string? _runId;
     private string? _failure;
+    private NativeLiveFidelityResult? _latestFidelityResult;
 
     public NativeLiveEventHub(string journalPrefix, int capacity = 200_000,
         int diskQueueCapacity = 8192)
@@ -42,6 +43,47 @@ public sealed class NativeLiveEventHub : IAsyncDisposable
             diskQueueCapacity);
         _fidelityWriter = new AsyncTraceWriter(journalPrefix + ".fidelity.jsonl",
             diskQueueCapacity);
+    }
+
+    public NativeLiveFidelityResult? LatestFidelityResult
+    {
+        get { lock (_sync) return _latestFidelityResult; }
+    }
+
+    /// <summary>Fidelity results are accepted only from a separately
+    /// authenticated coordinator at an observed event cursor in the current
+    /// source combat. They are diagnostic claims, never parity certificates.</summary>
+    public string? AcceptFidelityResult(NativeLiveFidelityResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        lock (_sync)
+        {
+            if (result.Schema != NativeLiveFidelityResult.SchemaId
+                || !NativeLiveFidelityResult.AllowedStatuses.Contains(result.Status)
+                || result.Reason is null || result.Reason.Length > 300
+                || result.PlayerCheckpointsMatched < 0
+                || result.EnemyCheckpointsDeferred < 0
+                || result.EmulatorActionsStepped < 0
+                || result.FirstDifferencePath?.Length > 300
+                || result.FirstDifferenceReason?.Length > 300)
+                return "INVALID_FIDELITY_RESULT";
+            if (_runId is null || result.RunId != _runId
+                || result.SessionEpoch != _sessionEpoch)
+                return "STALE_FIDELITY_SESSION";
+            if (result.ThroughSequence < 1 || result.ThroughSequence > _fidelitySequence)
+                return "UNOBSERVED_FIDELITY_CURSOR";
+            if (_failure is not null)
+                return _failure;
+            if (_latestFidelityResult is { } prior)
+            {
+                if (result.ThroughSequence < prior.ThroughSequence)
+                    return "STALE_FIDELITY_RESULT";
+                if (result.ThroughSequence == prior.ThroughSequence)
+                    return result == prior ? null : "CONFLICTING_FIDELITY_RESULT";
+            }
+            _latestFidelityResult = result;
+            return null;
+        }
     }
 
     public string? Failure
@@ -70,6 +112,7 @@ public sealed class NativeLiveEventHub : IAsyncDisposable
             if (_failure is not null) return false;
             _runId = runId;
             ++_sessionEpoch;
+            _latestFidelityResult = null;
             var payload = JsonSerializer.SerializeToElement(new
             {
                 status = "NATIVE_COMBAT_ATTACHED",
@@ -176,3 +219,29 @@ public sealed record NativeLiveEvent(
     string Schema, string Channel, string RunId, long SessionEpoch,
     long Sequence, string Kind, long? DecisionId, long? SourceOrdinal,
     string ContentFingerprint, JsonElement Payload);
+
+/* The coordinator can report projected agreement and genuine observed
+ * differences; native settlement remains uncertified in every result. */
+public sealed record NativeLiveFidelityResult(
+    string Schema, string RunId, long SessionEpoch, long ThroughSequence,
+    string Status, string Reason, int PlayerCheckpointsMatched,
+    int EnemyCheckpointsDeferred, int EmulatorActionsStepped,
+    string? FirstDifferencePath = null, string? FirstDifferenceReason = null)
+{
+    public const string SchemaId = "sts2-native-fidelity-result-v1";
+
+    public static readonly IReadOnlySet<string> AllowedStatuses =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "AWAITING_SOURCE_PRELUDE", "AWAITING_FIRST_PLAYER_CHECKPOINT",
+            "EMULATOR_BOOTSTRAPPED_UNCERTIFIED",
+            "PLAYER_CHECKPOINTS_PROJECTED_AGREEMENT_UNCERTIFIED",
+            "SOURCE_PLAYER_CHECKPOINT_DIFFERENCE_UNCERTIFIED",
+            "BLOCKED_NATIVE_PRELUDE_PAIRING", "BLOCKED_EMULATOR_BOOTSTRAP",
+            "BLOCKED_SOURCE_CHRONOLOGY", "BLOCKED_EMULATOR_LEGAL_ACTION",
+            "BLOCKED_EMULATOR_STEP", "BLOCKED_NESTED_SOURCE_CHOICE",
+            "BLOCKED_SOURCE_AUDIT", "INCOMPLETE_CAPTURE",
+            "BLOCKED_STREAM_INTEGRITY", "EMULATOR_COORDINATOR_ERROR",
+            "SOURCE_TERMINAL_OBSERVED_UNCERTIFIED"
+        };
+}
