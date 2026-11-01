@@ -349,6 +349,78 @@ def _native_first_combat_identity_diagnosis(native_room, emulator_snapshot,
     }
 
 
+def _direct_first_combat_route(source):
+    """Return (source combat RoomEntered, emulator map floor), or None.
+
+    The pinned native v111 run enters Neow at map row zero / native act
+    floor one, THEN the first traversed map room at row one / native
+    act floor two. The emulator's map node 1:1:column represents that
+    first *traversed* room. Synthetic legacy bootstraps have one
+    explicitly emulator-derived room and retain their old convention.
+    """
+    identity = source.get("run_identity") or {}
+    rooms = source.get("source_room_arrivals") or []
+    link = source.get("first_combat_link") or {}
+    choices = source.get("source_event_choice_requests") or []
+    returns = source.get("source_event_choice_returns") or []
+
+    def matches_link(room):
+        return (room.get("act_index") == link.get("act_index")
+                and room.get("map_column") == link.get("map_column")
+                and room.get("map_row") == link.get("map_row"))
+
+    if has_pinned_native_build(identity):
+        if len(rooms) != 2 or len(choices) != 1 or len(returns) != 1:
+            return None
+        neow, combat = rooms
+        if not (
+            neow.get("act_index") == 0
+            and neow.get("act_floor") == 1
+            and neow.get("total_floor") == 1
+            and neow.get("room_type") == "Event"
+            and neow.get("room_model_id") == "NEOW"
+            and neow.get("map_column") == 3
+            and neow.get("map_row") == 0
+            and neow.get("ordinal", -1) < choices[0].get("ordinal", -1)
+            and choices[0].get("ordinal", -1) <
+                returns[0].get("ordinal", -1)
+            and returns[0].get("ordinal", -1) <
+                combat.get("ordinal", -1)
+            and combat.get("act_index") == 0
+            and combat.get("act_floor") == 2
+            and combat.get("total_floor") == 2
+            and combat.get("room_type") == "Monster"
+            and type(combat.get("map_column")) is int
+            and 0 <= combat["map_column"] <= 6
+            and combat.get("map_row") == 1
+            and matches_link(combat)):
+            return None
+        # An observed native map-move request can support the destination
+        # identification, but its queue-return alone does not prove causation.
+        moves = [r for r in source.get("source_map_requests", [])
+                 if r.get("kind") == "map_move"]
+        if (not moves or any(
+                r.get("target_column") != combat["map_column"]
+                or r.get("target_row") != 1
+                or r.get("ordinal", -1) >= combat["ordinal"]
+                for r in moves)):
+            return None
+        return combat, 1
+
+    # Existing explicitly emulator-derived synthetic source fixtures.
+    if len(rooms) != 1:
+        return None
+    room = rooms[0]
+    if (room.get("act_index") == 0
+        and room.get("act_floor") == 1
+        and room.get("room_type") == "Monster"
+        and type(room.get("map_column")) is int
+        and room.get("map_row") == 0
+        and matches_link(room)):
+        return room, 1
+    return None
+
+
 def _source_preflight(source):
     if not isinstance(source, dict) or source.get("schema") != "native-run-prelude-audit-v1":
         return "BLOCKED_UNAUDITED_SOURCE", "Expected independent prelude auditor output"
@@ -381,19 +453,11 @@ def _source_preflight(source):
         return "BLOCKED_SOURCE_EVENT_SEQUENCE", "Neow source request/return mismatch"
     if not (choices[0].get("ordinal", -1) < returned[0].get("ordinal", -1)):
         return "BLOCKED_SOURCE_EVENT_SEQUENCE", "Neow request/return order invalid"
-    rooms = source.get("source_room_arrivals") or []
-    coords = [r for r in rooms if r.get("map_column") is not None]
-    matches = [r for r in coords if (
-        r.get("act_index") == linked.get("act_index")
-        and r.get("map_column") == linked.get("map_column")
-        and r.get("map_row") == linked.get("map_row"))]
-    if len(coords) != 1 or len(matches) != 1:
+    if _direct_first_combat_route(source) is None:
         return "BLOCKED_COMPLEX_PRECOMBAT_ROUTE", (
-            "First slice requires a single source-observed destination leading directly to combat")
-    if matches[0].get("act_index") != 0 or (
-            type(matches[0].get("act_floor")) is not int
-            or matches[0]["act_floor"] < 1):
-        return "BLOCKED_SOURCE_MAP_IDENTITY", "Unusable native room act/floor"
+            "Direct first combat requires a source-linked first map room; "
+            "pinned native v111 must show Neow row zero followed by one "
+            "monster at map row one/native act floor two")
     if not any(s.get("site") == "run_started" for s in
                source.get("source_run_rng_snapshots", [])):
         return "BLOCKED_SOURCE_RNG_CHECKPOINT", "Missing source run-start RNG checkpoint"
@@ -419,8 +483,7 @@ def run_bootstrap(source: dict, session):
         return _block(*blocked)
     ident = source["run_identity"]
     neow = source["source_event_choice_requests"][0]
-    room = next(r for r in source["source_room_arrivals"]
-                if r.get("map_column") is not None)
+    room, map_floor = _direct_first_combat_route(source)
     steps = []
     opening_profile = _emulator_opening_profile(ident)
     checks = {
@@ -428,6 +491,11 @@ def run_bootstrap(source: dict, session):
         "source_combat_room": {
             k: room.get(k) for k in ("act_index", "act_floor", "total_floor",
                                       "map_column", "map_row", "room_type")},
+        "emulator_first_map_floor": map_floor,
+        "native_neow_floor_offset": (
+            "NATIVE_NEOW_ACT_FLOOR_ONE_MAP_ROW_ZERO"
+            if has_pinned_native_build(ident)
+            else "EXPLICIT_EMULATOR_DERIVED_SYNTHETIC_SINGLE_ROOM"),
         "source_event_rng_counter": neow.get("event_rng", {}).get("counter"),
         "emulator_rng_provider": (
             "NATIVE_NEOW_AND_ACT1_MAP_LOCAL_ONLY"
@@ -604,14 +672,10 @@ def run_bootstrap(source: dict, session):
             return _report("BLOCKED_NEOW_CONTINUATION",
                            "Source Neow effect requires further observed macro choices",
                            steps=steps, checks=checks)
-        if room["act_floor"] != 1:
-            return _report("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
-                           "Direct-first-combat adapter supports only first map floor",
-                           steps=steps, checks=checks)
-        candidate_node = f"1:{room['act_floor']}:{room['map_column']}"
+        candidate_node = f"1:{map_floor}:{room['map_column']}"
         nodes = [n for n in frame.get("map", []) if n.get("node_id") == candidate_node]
         if len(nodes) != 1 or nodes[0].get("act") != 1 or (
-                nodes[0].get("floor") != room["act_floor"]):
+                nodes[0].get("floor") != map_floor):
             return _report(
                 "SOURCE_MAP_NODE_DIFFERENCE",
                 "Native visited coordinate has no matching emulator map node",
