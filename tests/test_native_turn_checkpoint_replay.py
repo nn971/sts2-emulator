@@ -1,6 +1,8 @@
 """Source checkpoint replay: independent emulator state, never parity certification."""
+import base64
 import copy
 import json
+import struct
 import sys
 import unittest
 from pathlib import Path
@@ -8,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_turn_checkpoint_replay import (
     derive_crosswalk, first_difference, replay, _native_rng_window,
-    _selected_choice,
+    _selected_choice, _check_rng,
 )
 
 
@@ -221,6 +223,27 @@ class NativeTurnCheckpointReplayTests(unittest.TestCase):
         rng, status = _native_rng_window([row(1, 4), row(4, 5)], 2)
         self.assertIsNone(rng)
         self.assertEqual("SOURCE_RNG_BRACKET_CHANGED", status)
+
+    def test_exact_xoshiro_words_and_counter_are_compared(self):
+        names = ["run.stream_" + str(i) for i in range(15)]
+        cursors = {
+            name: {"Counter": 7, "State0": 11, "State1": 13,
+                   "State2": 17, "State3": 19}
+            for name in names}
+        emu = {"state": {"native_run_rng": {"streams": [
+            {"stream_id": name,
+             "codec": "sts2-v111-xoshiro256-starstar-v1",
+             "state_bytes": base64.b64encode(
+                 struct.pack("<QQQQ", 11, 13, 17, 19)).decode("ascii"),
+             "call_count": 7}
+            for name in names]}}}
+        self.assertEqual(
+            "SOURCE_BRACKETED_15_STREAMS_AGREE",
+            _check_rng(cursors, emu)["status"])
+        emu["state"]["native_run_rng"]["streams"][4]["call_count"] = 8
+        delta = _check_rng(cursors, emu)
+        self.assertEqual("RNG_STREAM_DIFFERENCE", delta["status"])
+        self.assertEqual(names[4], delta["stream_id"])
 
     def test_nested_choice_requires_exactly_one_emulator_selection(self):
         crosswalk = {"cards": {"10": 101}}
