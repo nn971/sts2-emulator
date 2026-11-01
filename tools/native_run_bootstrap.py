@@ -170,7 +170,8 @@ def run_bootstrap(source: dict, session):
             k: room.get(k) for k in ("act_index", "act_floor", "total_floor",
                                       "map_column", "map_row", "room_type")},
         "source_event_rng_counter": neow.get("event_rng", {}).get("counter"),
-        "emulator_rng_provider": "PROTOTYPE_NOT_NATIVE_VERIFIED",
+        "emulator_rng_provider": "NATIVE_NEOW_LOCAL_ONLY_MAP_PROTOTYPE",
+        "emulator_fidelity_id": "v111-experimental-native-neow-opening-v1",
         "map_destination_basis": "NATIVE_ROOM_ENTERED_NOT_MAP_VOTE",
     }
     # This verifies the source event-local RNG independently of Neow's
@@ -230,7 +231,8 @@ def run_bootstrap(source: dict, session):
                        checks=checks)
     try:
         root = session.reset(ident["seed"], mode="v111", character="silent",
-                             first_act="Overgrowth", ascension=ident["ascension"])
+                             first_act="Overgrowth", ascension=ident["ascension"],
+                             fidelity_id="v111-experimental-native-neow-opening-v1")
         exact = json.loads(root.save_snapshot())
         if (exact.get("schema") != "sts2-exact-snapshot-v1"
             or exact.get("state", {}).get("run_seed") != ident["seed"]
