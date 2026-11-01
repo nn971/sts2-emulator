@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "bindings" / "python"))
 
 from native_action_envelope_audit import load as load_sidecar
+from native_lockstep_source_journal import build as build_source_journal
 from native_lockstep_shadow import _resolve
 from native_run_bootstrap import run_bootstrap
 from native_run_prelude_audit import load as load_prelude, audit as audit_prelude
@@ -404,6 +405,16 @@ def main():
         sidecar, error = load_sidecar(args.sidecar)
         if error:
             parser.error("Native sidecar could not be parsed: " + error)
+        regenerated = build_source_journal(sidecar)
+        if (regenerated.get("status") != "SOURCE_ACTION_CHRONOLOGY_OBSERVED"
+            or regenerated.get("run_id") != journal.get("run_id")
+            or regenerated.get("source_linked_commands") !=
+                journal.get("source_linked_commands")
+            or regenerated.get("source_turn_checkpoint_candidates") !=
+                journal.get("source_turn_checkpoint_candidates")
+            or regenerated.get("native_choice_results") !=
+                journal.get("native_choice_results")):
+            parser.error("Source sidecar and journal do not describe the same audited run")
     from sts2_emulator import Session
     with Session([args.dotnet, str(args.cli_dll), "prototype-ai-jsonl"]) as session:
         if args.prelude:
@@ -413,7 +424,8 @@ def main():
                 report = _report("BLOCKED_NATIVE_PRELUDE", source["status"])
             else:
                 bootstrap, snapshot = run_bootstrap(source, session)
-                if snapshot is None:
+                if (snapshot is None
+                    or bootstrap["status"] != "CANDIDATE_COMBAT_REACHED_UNCERTIFIED"):
                     report = _report("BLOCKED_EMULATOR_BOOTSTRAP",
                                      bootstrap["status"] + ": " + bootstrap["reason"])
                 else:
