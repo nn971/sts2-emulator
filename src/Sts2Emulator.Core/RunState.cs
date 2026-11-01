@@ -102,6 +102,14 @@ public sealed partial record RunState(
     ReferenceNatureStateV111? ReferenceNatureState = null)
 {
     /// <summary>
+    /// Experimental AI-only compact multi-card choices. Native and fidelity
+    /// runs retain exact atomic action enumeration by default.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ExperimentalCompactCardSelection { get; init; }
+
+    /// <summary>
     /// Atomic mechanics/provider envelope for the complete run. Existing
     /// snapshot fields remain flattened projections.
     /// </summary>
