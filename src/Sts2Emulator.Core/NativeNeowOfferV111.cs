@@ -12,7 +12,6 @@ namespace Sts2Emulator.Core;
 public static class NativeNeowOfferV111
 {
     public const string Schema = "sts2-v111-native-neow-rng-probe-v1";
-    private const string StreamId = "event.neow";
 
     public sealed record Prediction(
         bool KaleidoscopeAllowed,
@@ -34,14 +33,13 @@ public static class NativeNeowOfferV111
         string runSeed, bool kaleidoscopeAllowed, bool scrollBoxesAllowed)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(runSeed);
-        // Singleplayer slot zero, a nonshared Neow event and no modifiers.
-        // EventModel.BeginEvent seeds new Rng(runSeed + hash("NEOW")).
-        var eventStream = NativeRngV111.CreateContentStream(
-            StreamId, NativeRngV111.RunSeed(runSeed), "NEOW");
-        var random = new RngBundle([eventStream]);
+        // Neow uses the same EventModel.BeginEvent ownership as other events:
+        // its independent local stream is seeded by the native event entry.
+        var random = NativeEventRngV111.Begin(runSeed, "NEOW");
+        var streamId = random.Streams.Single().StreamId;
 
         var curses = PrototypeNativeOvergrowthEvents.NeowCursedRelicNames;
-        var curse = curses[NativeRngV111.NextInt(random, StreamId, curses.Length)];
+        var curse = curses[NativeRngV111.NextInt(random, streamId, curses.Length)];
 
         // Neow's canonical order matters: UnstableShuffle depends on it.
         // MassiveScroll.IsAllowed requires multiplayer.
@@ -72,15 +70,15 @@ public static class NativeNeowOfferV111
         }
 
         if (curse != "LargeCapsule")
-            positives.Add(NativeRngV111.NextBool(random, StreamId)
+            positives.Add(NativeRngV111.NextBool(random, streamId)
                 ? "LavaRock" : "SmallCapsule");
-        positives.Add(NativeRngV111.NextBool(random, StreamId)
+        positives.Add(NativeRngV111.NextBool(random, streamId)
             ? "NutritiousOyster" : "StoneHumidifier");
-        positives.Add(NativeRngV111.NextBool(random, StreamId)
+        positives.Add(NativeRngV111.NextBool(random, streamId)
             ? "NeowsTalisman" : "Pomander");
 
         int positiveCount = positives.Count;
-        NativeRngV111.Shuffle(random, StreamId, positives);
+        NativeRngV111.Shuffle(random, streamId, positives);
 
         string[] offers = positives.Take(2).Append(curse)
             .Select(PrototypeNativeOvergrowthEvents.NeowRelicId)

@@ -29,11 +29,12 @@ public sealed class NativeNeowOfferV111Tests
             Assert.Equal(result.PositivePoolSize +
                 (result.CursedRelicId == "proto.native.neow.largecapsule" ? 2 : 3),
                 result.EventRng.Counter);
-            var initial = NativeRngV111.CreateContentStream(
-                "event.neow", NativeRngV111.RunSeed(seed), "NEOW");
-            var replay = new RngBundle([initial]);
+            var replay = NativeEventRngV111.Begin(seed, "NEOW");
+            var streamId = Assert.Single(replay.Streams).StreamId;
+            Assert.Equal(NativeRngV111Contexts.ForEvent(seed, "NEOW").StreamId,
+                streamId);
             for (int i = 0; i < result.EventRng.Counter; i++)
-                NativeRngV111.NextUInt64(replay, "event.neow");
+                NativeRngV111.NextUInt64(replay, streamId);
             Assert.Equal(result.EventRng, NativeRngV111.ToSnapshot(replay.Streams[0]));
         }
     }
