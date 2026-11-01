@@ -169,6 +169,49 @@ public sealed class NativeStandardActMapV111Tests
     }
 
     [Fact]
+    public void NativeMapRoomEntryRecordsSourceQueuePredictionWithoutOverridingCombat()
+    {
+        const string seed = "6JK8MD0VQQTA";
+        var configuration = RunConfiguration.Create("silent", 10) with
+        {
+            FidelityId = V111Build.NativeStandardMapOpeningFidelityId
+        };
+        var engine = new PrototypeGameEngine();
+        var root = V111RunFactory.Create(seed, configuration);
+        var started = engine.Step(root, GameAction.Empty("start_run")).State;
+        var upfront = NativeRngV111.ToSnapshot(
+            started.NativeRunRng!.Streams.Single(x => x.StreamId == "run.up_front"));
+        var atMap = started;
+        for (var i = 0;
+            i < 30 && atMap.Phase is RunPhase.Event or RunPhase.Reward;
+            i++)
+            atMap = engine.Step(atMap, engine.GetLegalActions(atMap)[0]).State;
+        Assert.Equal(RunPhase.MapChoice, atMap.Phase);
+        var move = engine.GetLegalActions(atMap)
+            .First(a => a.Kind == "choose_map_node");
+        var entered = engine.Step(atMap, move).State;
+        Assert.Equal(RunPhase.Combat, entered.Phase);
+        var trace = Assert.NotNull(entered.NativeStartupQueueTrace);
+        var comparison = Assert.Single(trace.Comparisons);
+        Assert.Equal(1, comparison.Act);
+        Assert.Equal(PrototypeRoomType.Combat, comparison.RoomType);
+        Assert.Equal(0, comparison.QueueIndex);
+        Assert.Equal("SlimesWeak", comparison.SourceEncounterId);
+        Assert.Equal(entered.World!.EncounterIds.Last(),
+            comparison.ActualEmulatorEncounterId);
+        Assert.Equal(comparison.ActualEmulatorEncounterId ==
+            comparison.ExpectedEmulatorEncounterId
+                ? "MATCHED_SOURCE_PREDICTION"
+                : "DIFFERS_FROM_SOURCE_PREDICTION", comparison.Status);
+        Assert.Equal(upfront, NativeRngV111.ToSnapshot(
+            entered.NativeRunRng!.Streams.Single(x => x.StreamId == "run.up_front")));
+        var restored = RunSnapshot.Load(RunSnapshot.Save(entered));
+        Assert.Equal(CanonicalJson.Sha256(entered),
+            CanonicalJson.Sha256(restored));
+        Assert.NotSame(trace, restored.NativeStartupQueueTrace);
+    }
+
+    [Fact]
     public void OrdinaryAndNeowOnlyProfilesRetainPrototypeMapBehavior()
     {
         const string seed = "native-map-opt-in-isolation";
