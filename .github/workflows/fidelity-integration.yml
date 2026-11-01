@@ -22,7 +22,7 @@ jobs:
         run: |
           dotnet build tools/NativeV111MetadataProbe/NativeV111MetadataProbe.csproj -c Release --nologo
           set +e
-          dotnet tools/NativeV111MetadataProbe/bin/Release/net9.0/NativeV111MetadataProbe.dll src/Sts2Emulator.Core/bin/Release/net9.0/Sts2Emulator.Core.dll > /tmp/native-metadata-negative-fixture.json
+          dotnet run --project tools/NativeV111MetadataProbe/NativeV111MetadataProbe.csproj -c Release --verbosity quiet -- src/Sts2Emulator.Core/bin/Release/net9.0/Sts2Emulator.Core.dll > /tmp/native-metadata-negative-fixture.json
           result=$?
           set -e
           test "$result" -eq 2
