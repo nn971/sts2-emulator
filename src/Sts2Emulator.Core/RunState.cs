@@ -100,7 +100,9 @@ public sealed record RunState(
     RngBundle? NativeMapRng = null,
     // Exact source relic bag prefix only; native UpFront room pre-generation
     // is a distinct, still-unverified continuation after this checkpoint.
-    NativeUpFrontRelicBagsV111.Result? NativeStartupRelicBags = null)
+    NativeUpFrontRelicBagsV111.Result? NativeStartupRelicBags = null,
+    // Source-ordered UpFront event/encounter/boss/Ancient pre-generation.
+    NativeUpFrontRoomsV111.Result? NativeStartupRooms = null)
 {
     public RunState Fork() => this with
     {
@@ -110,6 +112,7 @@ public sealed record RunState(
         NativeEventRng = NativeEventRng?.Fork(),
         NativeMapRng = NativeMapRng?.Fork(),
         NativeStartupRelicBags = NativeStartupRelicBags?.Fork(),
+        NativeStartupRooms = NativeStartupRooms?.Fork(),
         ExtensionState = ExtensionState.Clone(),
         World = World?.Fork(),
         Configuration = Configuration?.Fork()
