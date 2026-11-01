@@ -1370,6 +1370,30 @@ unsupported. To certify full turn-boundary parity, establish native
 settlement, align both engines' RNG and complete state there, and
 test diverse encounters/seeds.
 
+### Neow source probe action/relic namespace correction (2026-11-02)
+
+The first rerun after fixing native floor normalization reached the Neow
+event-local RNG probe but reported
+`INVALID_NATIVE_NEOW_RNG_PROBE`, with zero emulator steps. The source
+probe itself was rejected by the adapter's input schema: the source
+choice helper `_neow_native_id` returns the **emulator action choice ID**
+(`take_proto.native.neow.phialholster`), whereas
+`native_neow_rng_probe_audit.compare` requires an unprefixed **relic
+model ID** (`proto.native.neow.phialholster`). The adapter now removes
+`take_` solely for comparison with the pure Neow offer/RNG probe.
+Full action IDs are retained for later matching against emulator Neow
+legal options. Independent seed/counter and exact RNG-word equality
+remain enforced.
+
+Added a focused ID-namespace regression and a real JSONL probe smoke
+using the observed v111 source seed `6JK8MD0VQQTA`, the three captured
+relic offers Phial Holster / Lost Coffer / Silver Crucible, and the
+captured event RNG counter/words. This source-pinned check tests native
+Neow offer reconstruction without changing the original game or
+claiming complete run/combat parity. A subsequent complete checkpoint
+replay is still necessary to establish whether independent emulator
+combat initialization succeeds.
+
 ### Native Neow room-entry versus first navigable map row (2026-11-02)
 
 The first real execution of `native_turn_checkpoint_replay.py` against
