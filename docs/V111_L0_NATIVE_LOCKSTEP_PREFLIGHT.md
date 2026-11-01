@@ -1370,6 +1370,38 @@ unsupported. To certify full turn-boundary parity, establish native
 settlement, align both engines' RNG and complete state there, and
 test diverse encounters/seeds.
 
+### Native Neow room-entry versus first navigable map row (2026-11-02)
+
+The first real execution of `native_turn_checkpoint_replay.py` against
+the new source prelude initially returned:
+
+```text
+BLOCKED_EMULATOR_BOOTSTRAP:
+  BLOCKED_COMPLEX_PRECOMBAT_ROUTE
+emulator_canonical_actions_stepped: 0
+player_checkpoints: []
+```
+
+This was a bootstrap **source-coordinate classification error**, not an
+emulator combat-state divergence. The pinned native prelude has two
+`RunManager.RoomEntered` records: Neow, an `Event` on act floor 1,
+map row 0, column 3 (ordinal 5); then the first `Monster`,
+`FUZZY_WURM_CRAWLER_WEAK`, on act floor 2, map row 1, column 0
+(ordinal 13). The observed Neow selection occurs between them and the
+map-move request targets native row 1, column 0. The emulator maps the
+first navigable native row 1 to map node `1:1:0` (emulator floor 1).
+
+`_direct_first_combat_route` now recognizes that **exact direct route**
+for SHA-pinned native source captures, selecting the second
+`RoomEntered` as the source combat identity and mapping its native
+floor 2 to emulator floor 1. Extra rooms, mismatched source links or
+map-move destinations, and incorrect Neow/monster ordinal/floor
+relationships still block before any emulator step. Legacy explicitly
+emulator-derived synthetic bootstraps retain their original single-room
+format. This repair only advances the offline precombat bootstrap;
+native/emulator combat checkpoint parity remains untested until the
+replay reaches and compares the checkpoints.
+
 ### Persistent JSONL emulator comparison at native player-turn starts
 
 `tools/native_turn_checkpoint_replay.py` independently bootstraps combat
