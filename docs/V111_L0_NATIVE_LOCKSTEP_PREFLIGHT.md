@@ -1171,6 +1171,27 @@ are unchanged. This journal can isolate the first observed mechanics gap
 and guide a later mapped emulator replay; source callback agreement
 alone cannot certify native state settlement, RNG parity, or human input.
 
+**Observed source-history reset:** The 2026-11-01 native first-combat sidecar
+has a terminal status of `OBSERVED` with 0 unfinished actions, but its
+strict source auditor reports one `Native history reset outside terminal
+cleanup`. The strict auditor requires the reset to occur directly before
+the `Combat ended` terminal callback. In a source-only journal, if this
+is the *only* audit flag, exactly one well-formed history reset occurred
+outside all active executor actions, and the native terminal is observed,
+the journal retains the executor snapshots with status
+`SOURCE_ACTION_CHRONOLOGY_HISTORY_RESET_UNRESOLVED`. The reset ordinal
+and original counts are reported in `source_history_resets` and
+`source_audit` remains `INCOMPLETE_CAPTURE`. An active-action reset,
+malformed counts, missing terminal or any other audit failure still blocks
+extraction. The unchanged emulator shadow gate accepts only the original
+fully consistent `SOURCE_ACTION_CHRONOLOGY_OBSERVED` status.
+
+This permits inspection of callback projections beyond decision 9 without
+asserting a trustworthy history-continuity/decision boundary or upgrading
+the source capture's strict provenance. The next offline step is to locate
+the reset ordinal and inspect its neighboring source events; do not alter
+the original sidecar.
+
 **Next acceptance gate:** expand the independently checked first-combat
 prefix beyond its first two end-turn boundaries; then add a source-verified
 event-driven decision boundary for overlapping UI actions. The strict
