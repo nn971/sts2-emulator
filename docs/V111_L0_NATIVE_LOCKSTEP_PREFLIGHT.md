@@ -959,29 +959,43 @@ profile, so Fuzzy Wurm Crawler's **59/59 HP** is sampled from
 including all four state words of each, match the native source
 capture in `NativeObservedMapV111Tests`.
 
-**Remaining persistent RNG discrepancies:**
+**Full-unlock Phial Holster RNG is now matched; UpFront is a staged prefix.**
 
-- `run.up_front`: source **412** at `RunStarted`, emulator
-  **0**. The native code calls `RelicGrabBag.Populate` on the
-  shared and player relic lists and `RunManager.GenerateRooms`
-  across all planned acts *before* `RunManager.Launch` publishes
-  `RunStarted`. Exact RNG use depends on unlocked content, rarity
-  bag composition, shared Ancients and the act-specific room generators.
-  This cannot be repaired by replaying 412 anonymous draws.
-- `run.combat_potion_generation`: source **4** at first
-  combat entry, emulator **0**. Native
-  `PhialHolster.AfterObtained` calls
-  `PotionFactory.CreateRandomPotionsOutOfCombat` for two
-  potions: each uses one `Rng.NextFloat` rarity roll and one
-  `Rng.NextItem` from the source unlocked rarity pool,
-  removing the selected item between rolls. Our emulator's
-  current generic Neow potion reward still draws its own
-  prototype event stream. Implementing this needs the correct
-  unlock-dependent native potion pool and identity crosswalk.
-- First combat HP, map, encounter, opening draw are verified;
-  native precombat *all-stream* parity, potion identities,
-  actual action-by-action combat transitions and postcombat
-  content remain separate acceptance gates.
+- `run.combat_potion_generation`: native first combat **4** and
+  emulator first combat **4**, including **all four identical
+  xoshiro state words**. The source's `PhialHolster.AfterObtained`
+  uses `PotionFactory.CreateRandomPotionsOutOfCombat` on the three
+  `Silent4Epoch` models followed by the 45 shared potion models.
+  The newly implemented source-ordered 48-model selection makes a
+  rarity float roll and one bounded choice per potion, then removes
+  that potion before the next selection. On this seed the predicted
+  rarities are Uncommon and Common, and the resulting potions are
+  **Fortifier** and **Vulnerable Potion**. The native passive trace
+  did not record potion IDs: **the cursor is source-observed parity,
+  while those two identities are source-derived predictions**.
+- `run.up_front`: native at `RunStarted` **412**. Its initial
+  source-owned `RelicGrabBag.Populate` phase is now independently
+  implemented and retained in the experimental run snapshot:
+  the shared grab bag has 115 eligible relics (118 source models,
+  excluding 2 Ancient and 1 Event relic), and the fully unlocked
+  Silent personal bag has 122 (shared 115 plus seven eligible
+  Silent-specific models). Four rarity buckets produce
+  **111** and **118** Fisher–Yates swaps respectively, hence
+  `run.up_front` is at **229** after these two real source phases.
+  This prefix is deterministic but lacks a native intermediate
+  checkpoint; the capture observed only the final 412.
+- The remaining **183 source draws** occur after relic-bag
+  population, as `RunManager.GenerateRooms` distributes shared
+  Ancients and builds pre-generated event/encounter/elite/boss
+  pools across all three acts (plus applicable ascension effects).
+  Implement their source order and preserve their generated output
+  instead of advancing the RNG with 183 anonymous samples.
+  **Native run-start all-stream parity remains unverified**.
+- The first combat HP, map, Neow, encounter, opening hand/draw pile,
+  `run.shuffle`, `run.niche`, and Phial Holster's native potion
+  RNG are verified against original-game observations. Native potion
+  identities, startup room/Ancient allocations, per-action combat
+  transitions and postcombat rewards remain separate acceptance gates.
 
 **Capture limitations and later trace coverage:**
 
@@ -1002,11 +1016,11 @@ capture in `NativeObservedMapV111Tests`.
   emulator.
 
 **Next no-launch development gate:** reconstruct the source
-run-initialization relic/act allocation calls on `run.up_front` with
-explicit unlock-state provenance and reproduce Phial Holster's
-rarity-filtered potion sampling on `run.combat_potion_generation`.
-Then compare all 15 persistent cursors and potion instances at the
-same first-combat boundary, followed by per-action combat lockstep.
-Retain this observed run as the offline acceptance fixture; another
-game launch can wait for substantive fixes.
-
+`RunManager.GenerateRooms` call sequence (shared Ancient subset,
+pre-generated encounter queues and boss assignments for Overgrowth,
+Hive and Glory), then compare the complete `run.up_front` cursor
+against the observed counter **412** and its four source RNG words.
+Preserve generated room/relic queues for later macro fidelity; avoid
+counter-only synchronization. Exact potion inventory needs an
+additional native passive observation when future game validation is
+worth the launch. Existing capture already suffices for the RNG gates.
