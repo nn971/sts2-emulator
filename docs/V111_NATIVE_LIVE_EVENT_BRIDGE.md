@@ -199,7 +199,7 @@ separately pass the six-turn gate before a live game launch is requested.
 ## One-command offline acceptance of an existing native capture
 
 The offline-only `tools/native_live_m1_acceptance.py` scans the
-`/mnt/d/SteamLibrary/sts2-inspector` folder recursively by default,
+`/mnt/d/SteamLibrary/sts2-inspector-traces` folder recursively by default,
 selects the newest complete six-turn original-game capture when available,
 and pairs its `passive-*.actions.jsonl` sidecar with its own
 `run-prelude-*.jsonl` by **native combat run ID, game build, seed, and
@@ -213,7 +213,7 @@ After building the .NET 9 emulator CLI locally, use:
 ```fish
 dotnet build Sts2Emulator.sln -c Release
 python tools/native_live_m1_acceptance.py \
-    --trace-dir /mnt/d/SteamLibrary/sts2-inspector \
+    --trace-dir /mnt/d/SteamLibrary/sts2-inspector-traces \
     --out /tmp/native-live-m1-acceptance.json
 ```
 
