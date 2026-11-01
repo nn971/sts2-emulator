@@ -317,11 +317,10 @@ public static class PrototypeNativeOvergrowthRunFactory
             ? NativeNeowOfferV111.Predict(seed,
                 kaleidoscopeAllowed: true, scrollBoxesAllowed: true)
             : null;
+        // Retain the event's consumed local stream under the common
+        // EventModel context identity; Neow itself owns only offer effects.
         var nativeNeowRng = nativeNeow is null ? null
-            : new RngBundle([
-                NativeRngV111.FromSnapshot(
-                    "context.event.NEOW.player_0", nativeNeow.EventRng)
-            ]);
+            : NativeEventRngV111.Restore(seed, "NEOW", nativeNeow.EventRng);
 
         return state with
         {
