@@ -1322,12 +1322,13 @@ public static class PrototypeNativeUnderdocks
 public static class PrototypeNativeUnderdocksRunFactory
 {
     public static RunState Create(
-        string seed, int ascension = 0, bool useNativeNeowEventRng = false)
+        string seed, int ascension = 0, bool useNativeNeowEventRng = false,
+        bool useNativeStandardMapRng = false)
     {
         // The existing native-shaped Act 1 starter handles Neow, 13-card
         // starter deck, Ascension, potion slots and the shared map geometry.
         var baseState = PrototypeNativeOvergrowthRunFactory.Create(
-            seed, ascension, useNativeNeowEventRng);
+            seed, ascension, useNativeNeowEventRng, useNativeStandardMapRng);
         var world = baseState.World
             ?? throw new InvalidOperationException("Missing Act 1 world.");
         var rng = baseState.Rng.Fork();
@@ -1355,7 +1356,9 @@ public static class PrototypeNativeUnderdocksRunFactory
         var map = world.Map with
         {
             GenerationProfileId =
-                PrototypeNativeUnderdocks.GenerationProfileId
+                useNativeStandardMapRng
+                    ? NativeStandardActMapV111.ProfileId
+                    : PrototypeNativeUnderdocks.GenerationProfileId
         };
         return baseState with
         {

@@ -154,6 +154,18 @@ def _source_preflight(source):
     return None
 
 
+def _emulator_opening_profile(identity: dict) -> str:
+    """Use native source map+Neow for pinned real captures.
+
+    Emulator-derived synthetic fixtures retain the previous Neow-only
+    geometry so existing transport tests cannot masquerade as native map
+    parity. Unrecognized builds are rejected by run_bootstrap before reset.
+    """
+    return ("v111-experimental-native-standard-map-opening-v1"
+            if has_pinned_native_build(identity)
+            else "v111-experimental-native-neow-opening-v1")
+
+
 def run_bootstrap(source: dict, session):
     """Return (diagnostic report, optional *uncertified* exact snapshot)."""
     blocked = _source_preflight(source)
@@ -164,14 +176,20 @@ def run_bootstrap(source: dict, session):
     room = next(r for r in source["source_room_arrivals"]
                 if r.get("map_column") is not None)
     steps = []
+    opening_profile = _emulator_opening_profile(ident)
     checks = {
         "source_seed": ident["seed"], "ascension": ident["ascension"],
         "source_combat_room": {
             k: room.get(k) for k in ("act_index", "act_floor", "total_floor",
                                       "map_column", "map_row", "room_type")},
         "source_event_rng_counter": neow.get("event_rng", {}).get("counter"),
-        "emulator_rng_provider": "NATIVE_NEOW_LOCAL_ONLY_MAP_PROTOTYPE",
-        "emulator_fidelity_id": "v111-experimental-native-neow-opening-v1",
+        "emulator_rng_provider": (
+            "NATIVE_NEOW_AND_ACT1_MAP_LOCAL_ONLY"
+            if has_pinned_native_build(ident)
+            else "NATIVE_NEOW_LOCAL_ONLY_MAP_PROTOTYPE_SYNTHETIC"),
+        "emulator_fidelity_id": opening_profile,
+        "native_map_rng_alignment": "NOT_TESTED",
+        "native_map_topology_parity": "NOT_TESTED",
         "map_destination_basis": "NATIVE_ROOM_ENTERED_NOT_MAP_VOTE",
     }
     # This verifies the source event-local RNG independently of Neow's
@@ -232,7 +250,7 @@ def run_bootstrap(source: dict, session):
     try:
         root = session.reset(ident["seed"], mode="v111", character="silent",
                              first_act="Overgrowth", ascension=ident["ascension"],
-                             fidelity_id="v111-experimental-native-neow-opening-v1")
+                             fidelity_id=opening_profile)
         exact = json.loads(root.save_snapshot())
         if (exact.get("schema") != "sts2-exact-snapshot-v1"
             or exact.get("state", {}).get("run_seed") != ident["seed"]
