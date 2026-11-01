@@ -818,3 +818,36 @@ fidelity are still unverified. The original prototype-only
 legacy training/research consumers. Runtime tests assert the *actual*
 v111 `start_run` event menu equals native-algorithm offer reconstruction,
 including the native RNG named-stream nonmutation invariant.
+
+### Native first-event ownership in the actual v111 transition
+
+The v111 `start_run` path generates Neow's options **inside**
+`PrototypeNativeOvergrowthRunFactory.Create(..., useNativeNeowEventRng: true)`.
+This uses the same pinned `NativeRngV111` event seed and source draw
+sequence as the independent predictor. It skips the prototype `event`
+generator completely for Neow, rather than generating and discarding
+an alternative event menu. The post-offer local xoshiro state is retained
+as `RunState.NativeEventRng` (deep-forked and included in exact snapshots)
+until the Neow event instance exits. All native named run/player streams
+are independently retained in `RunState.NativeRunRng`; local Neow
+generation must not advance those persistent counters. The explicit
+legacy `PrototypeNativeOvergrowthRunFactory.Create(seed, ascension)` path
+keeps its original prototype behavior for research compatibility.
+
+**Map RNG ownership correction.** Pinned source
+`StandardActMap.CreateFor` constructs `new Rng(runState.Rng.Seed,
+"act_{CurrentActIndex+1}_map")`. This is a separate *content-local
+act-map stream*, already modeled by
+`NativeRngV111Contexts.ForActMap(seed, actNumber)`, not
+`RunRngSet.UpFront`. Exact map geometry and RNG draw/call-order still
+need native source-equivalent integration. The existing
+`PrototypeNativeOvergrowthMap.Generate` uses prototype RNG; simply
+changing its stream name would not establish map parity. The inspector
+must report the first native-vs-emulator map divergence before entering
+first combat and never infer native success from synthetic data.
+
+**Remaining boundaries.** Source Neow unlock availability is assumed
+fully unlocked for the current v111 simulation profile; the source
+capture/probe continues to test four unlock hypotheses independently.
+Native mod runtime nonperturbation, map generator, settled event effects,
+and first-combat parity are not yet certified.
