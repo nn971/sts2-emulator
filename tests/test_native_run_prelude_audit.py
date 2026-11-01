@@ -129,6 +129,52 @@ def combat():
 
 
 class RunPreludeAuditTests(unittest.TestCase):
+    def test_read_only_native_startup_queues_are_audited(self):
+        rows = prelude()
+        acts = []
+        for i, count in enumerate((15, 14, 13)):
+            acts.append({
+                "act_index": i,
+                "act_id": ("OVERGROWTH", "HIVE", "GLORY")[i],
+                "events": ["EVENT_ONE", "EVENT_TWO"],
+                "normal_encounters": ["ENCOUNTER_" + str(j) for j in range(count)],
+                "elite_encounters": ["ELITE_" + str(j) for j in range(15)],
+                "boss_encounter": "BOSS",
+                "second_boss_encounter": "SECOND_BOSS" if i == 2 else None,
+                "ancient": "ANCIENT",
+                "events_visited": 0, "normal_encounters_visited": 0,
+                "elite_encounters_visited": 0, "boss_encounters_visited": 0,
+            })
+        data = {
+            "acts": acts,
+            "source": "ActModel._rooms after RunManager.GenerateRooms",
+            "source_rng_consumed_by_inspector": False,
+            "native_queue_emulator_parity": "NOT_TESTED"
+        }
+        rows.insert(2, {"type": "startup_room_queues", "data": data,
+                        "run_id": "run-uuid"})
+        rows[-1]["data"]["startup_room_queues_recorded"] = True
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        result = audit(rows)
+        self.assertEqual("RUN_PRELUDE_SOURCE_OBSERVED", result["status"],
+                         result["errors"])
+        self.assertEqual(data, result["source_startup_room_queues"])
+
+        rows[2]["data"]["acts"][0]["normal_encounters"].pop()
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+        rows[2]["data"]["acts"][0]["normal_encounters"].append("ENCOUNTER_14")
+        rows[2]["data"]["source_rng_consumed_by_inspector"] = True
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+        rows[2]["data"]["source_rng_consumed_by_inspector"] = False
+        rows[-1]["data"]["startup_room_queues_recorded"] = False
+        self.assertEqual("INVALID_PRELUDE", audit(rows)["status"])
+
+        rows = prelude()
+        self.assertEqual("RUN_PRELUDE_SOURCE_OBSERVED", audit(rows)["status"])
+        self.assertIsNone(audit(rows)["source_startup_room_queues"])
+
+
     @staticmethod
     def with_full_source_map():
         rows = prelude()
