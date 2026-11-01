@@ -24,8 +24,14 @@ public sealed class NativeUpFrontRelicBagsV111Tests
         Assert.Equal(229, result.AfterPlayerBag.Counter);
         Assert.Equal(result.AfterSharedBag, again.AfterSharedBag);
         Assert.Equal(result.AfterPlayerBag, again.AfterPlayerBag);
-        Assert.Equal(result.SharedBag, again.SharedBag);
-        Assert.Equal(result.PlayerBag, again.PlayerBag);
+        Assert.Equal(result.SharedBag.Common, again.SharedBag.Common);
+        Assert.Equal(result.SharedBag.Uncommon, again.SharedBag.Uncommon);
+        Assert.Equal(result.SharedBag.Rare, again.SharedBag.Rare);
+        Assert.Equal(result.SharedBag.Shop, again.SharedBag.Shop);
+        Assert.Equal(result.PlayerBag.Common, again.PlayerBag.Common);
+        Assert.Equal(result.PlayerBag.Uncommon, again.PlayerBag.Uncommon);
+        Assert.Equal(result.PlayerBag.Rare, again.PlayerBag.Rare);
+        Assert.Equal(result.PlayerBag.Shop, again.PlayerBag.Shop);
 
         static string[] All(NativeUpFrontRelicBagsV111.Bag bag) =>
             bag.Common.Concat(bag.Uncommon).Concat(bag.Rare)
