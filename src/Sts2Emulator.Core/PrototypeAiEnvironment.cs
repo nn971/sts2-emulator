@@ -62,7 +62,11 @@ public sealed record PrototypeAiCombat(
     PrototypeAiEnemy[] Enemies,
     string? PendingChoiceId,
     // Active player powers are visible on the combat HUD.
-    PrototypeAiPower[]? PlayerPowers = null);
+    PrototypeAiPower[]? PlayerPowers = null,
+    // A pending select_cards decision exposes its candidates to the player,
+    // even when the underlying cards came from the draw pile or choice pool.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiCard[]? SelectionCandidates = null);
 
 public sealed record PrototypeAiMapNode(
     string NodeId,
@@ -929,6 +933,10 @@ public sealed class PrototypeAiEnvironment
             PlayerPowers: combat.PlayerPowers
                 .Select(power => new PrototypeAiPower(
                     power.PowerId, power.Stacks))
-                .ToArray());
+                .ToArray(),
+            SelectionCandidates: combat.PendingChoice is null
+                ? null
+                : combat.PendingChoice.CandidateCardInstanceIds
+                    .Select(Card).ToArray());
     }
 }
