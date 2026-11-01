@@ -1029,7 +1029,31 @@ public sealed partial class PrototypeGameEngine
                 throw new InvalidDataException(
                     "Native run.shuffle owner changed during source recycle.");
             persisted.Streams[index] = nativeRecycle.SourceShuffleStream.Fork();
-            next = next with { NativeRunRng = persisted };
+            if (next.World?.Combat?.NativeRng is { } combatOwner)
+            {
+                // ReconcileAfterStep correctly considers combat-owned streams
+                // authoritative. Advance that owner at the same boundary,
+                // otherwise reconciliation would restore the old shuffle
+                // cursor despite having computed the right shuffled cards.
+                var syncedCombat = next.World.Combat with
+                {
+                    NativeRng = combatOwner with { RunStreams = persisted.Fork() }
+                };
+                next = NativeRunRngV111.ReplaceCombat(next, syncedCombat);
+            }
+            else if (state.World?.Combat?.NativeRng is not null)
+            {
+                // A terminal native combat would otherwise reconcile from
+                // the old (now detached) combat-owned RNG. Until source
+                // terminal-shuffle semantics are audited, fail closed.
+                throw new NotSupportedException(
+                    "Native source recycle on the final combat transition " +
+                    "requires an explicit run/combat RNG release boundary.");
+            }
+            else
+            {
+                next = next with { NativeRunRng = persisted };
+            }
         }
 
         if (next.Phase != RunPhase.Combat
