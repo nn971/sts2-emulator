@@ -904,3 +904,11 @@ RNG state/counter at a certified source boundary, postprocessing node
 coordinates, and the first accepted map choice. A matching first visited
 node alone is insufficient. This update does not complete L1, claim
 original-game parity, or require a new game launch.
+
+### Full source-map capture and comparison
+
+The passive reference mod records an initial_map_snapshot containing the finalized native StandardActMap graph (starting ancient, boss, all grid points, types and edges) and the read-only map-local RNG cursor. Capturing the cursor uses ToSerializable and does not advance the generator.
+
+The run-prelude auditor checks provenance and structural consistency. The native_map_fidelity Python comparator checks all nodes, edges, entry choices and map RNG words against an independently generated emulator start_run snapshot. The native prelude bootstrap runs this comparison before replaying any observed Neow or map choice.
+
+The original game and emulator map are not yet proven equal: a fresh v111 source capture and local STS2_NATIVE build are outstanding. Synthetic test data provides regression coverage only.
