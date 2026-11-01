@@ -388,6 +388,14 @@ def build(records: list[dict], error: str | None = None) -> dict:
                 "SINGLE_TEMPORAL_CARD_ID_MATCH" if selected is not None else
                 "AMBIGUOUS_UI_BEGINS" if matching else "UI_BEGIN_NOT_OBSERVED"),
             "source_ui_begin_ordinal": selected_at,
+            "ui_begin_state_observation": (
+                (selected.get("data") or {}).get(
+                    "ui_state_observation", "UNOBSERVED_LEGACY")
+                if selected else "NOT_OBSERVED"),
+            "ui_begin_to_request_state_agreement":
+                _source_snapshot_agreement(
+                    selected.get("state") if selected else None,
+                    request.get("state")),
             "original_native_hand_guards_returned_true": (
                 gates_passed if selected is not None else None),
             "source_ui_guard_ordinals": (
