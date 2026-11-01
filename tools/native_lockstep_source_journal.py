@@ -85,6 +85,7 @@ def build(records: list[dict], error: str | None = None) -> dict:
         # Linked native executor callbacks without a canonical player command.
         "source_linked_noncanonical_executor_actions": [],
         "source_ui_request_windows": [],
+        "source_turn_checkpoint_candidates": [],
         # Includes automatic/uncanonical native executor actions which have
         # no player-decision equivalent. These are source callback snapshots,
         # not necessarily settled state-transition boundaries.
@@ -119,6 +120,27 @@ def build(records: list[dict], error: str | None = None) -> dict:
     if identity is not None:
         result["run_seed"] = identity["seed"]
         result["ascension"] = identity["ascension"]
+
+    # Keep native player/enemy-turn source evidence distinct from certified
+    # emulator comparisons. These checkpoints are provisional until native
+    # queue and phase-handoff settlement have been independently verified.
+    for row in records:
+        if row["type"] != "native_turn_checkpoint":
+            continue
+        details = row.get("data") or {}
+        result["source_turn_checkpoint_candidates"].append({
+            "ordinal": row["ordinal"],
+            "kind": details["kind"],
+            "turn": details["turn"],
+            "source_state": row.get("state"),
+            "native_side": details["native_side"],
+            "player_phase": details["player_phase"],
+            "observation_site": details["observation_site"],
+            "settlement_status": "SETTLEMENT_UNVERIFIED",
+            "native_full_queue_settlement": "NOT_VERIFIED",
+            "emulator_applied": False,
+            "emulator_parity": "NOT_TESTED",
+        })
 
     requests = {}
     source_outcomes = {}
