@@ -75,6 +75,109 @@ class DecisionGapAuditTests(unittest.TestCase):
         self.assertEqual("EXECUTOR_ACTION_TYPE_ONLY_HUMAN_ORIGIN_UNVERIFIED",
                          result["action_origin"])
 
+    def test_native_ui_begin_during_previous_action_explains_stale_frame_gate(self):
+        # Sanitized chronology from 2026-11-01 first combat:
+        # source UI began Defend while Neutralize was still executing;
+        # request+executor arrived after completion, before another stable
+        # frame decision. These are native observations, not a legal menu.
+        strict, rows = pair()
+        previous_done = next(i for i, row in enumerate(rows)
+                             if row.get("type") == "action_completed"
+                             and row.get("action_id") == 1)
+        rows.insert(previous_done, {
+            "type": "native_ui_play_begin",
+            "data": {"combat_card_id": 2,
+                     "card_model_id": "DEFEND_SILENT"}})
+        next_start = next(i for i, row in enumerate(rows)
+                          if row.get("type") == "action_started"
+                          and row.get("action_id") == 2)
+        rows.insert(next_start, {
+            "type": "native_input_request",
+            "canonical_action": action(2),
+            "state": {"combat": {"energy": 2}},
+            "data": {"input_request_id": 12}})
+        next_start += 1
+        rows[next_start]["data"] = {"input_request_id": 12}
+        rows.insert(next_start + 1, {
+            "type": "strict_input_gap", "action_id": 2, "data": {
+                "last_reported_gate": "WAITING_FOR_DECISION:CARD_PLAY_ANIMATION",
+                "decision_generation": 9,
+                "last_captured_generation": 8}})
+        previous = next(row for row in rows
+                        if row.get("type") == "action_completed"
+                        and row.get("action_id") == 1)
+        previous["state"] = {"combat": {"energy": 2}}
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = audit(strict, rows)
+        self.assertEqual("FIRST_UNCAPTURED_EXECUTOR_ACTION_FOUND",
+                         report["status"])
+        self.assertEqual(1, report["matched_actions"])
+        timing = report["first_gap"]["source_timing"]
+        self.assertEqual(
+            "NATIVE_UI_PLAY_BEGIN_OVERLAPPED_PREVIOUS_EXECUTOR_ACTION",
+            timing["classification"])
+        self.assertTrue(timing["ui_begin_before_previous_action_completed"])
+        self.assertTrue(timing["request_after_previous_action_completed"])
+        self.assertTrue(timing[
+            "source_request_executor_action_identity_correlated"])
+        self.assertTrue(timing["request_and_start_state_agree"])
+        self.assertTrue(timing["last_completion_and_request_state_agree"])
+        self.assertEqual("WAITING_FOR_DECISION:CARD_PLAY_ANIMATION",
+                         timing["strict_last_reported_frame_gate"])
+        self.assertEqual(9, timing["strict_decision_generation"])
+        self.assertEqual(8, timing["strict_last_captured_generation"])
+        self.assertFalse(timing["fresh_semantic_legal_menu_verified"])
+        self.assertEqual("NOT_PERFORMED", report["legal_menu_reconstruction"])
+
+    def test_ui_begin_after_prior_completion_does_not_claim_overlap(self):
+        strict, rows = pair()
+        previous_done = next(i for i, row in enumerate(rows)
+                             if row.get("type") == "action_completed"
+                             and row.get("action_id") == 1)
+        rows.insert(previous_done + 1, {
+            "type": "native_ui_play_begin",
+            "data": {"combat_card_id": 2}})
+        next_start = next(i for i, row in enumerate(rows)
+                          if row.get("type") == "action_started"
+                          and row.get("action_id") == 2)
+        rows.insert(next_start, {
+            "type": "native_input_request",
+            "canonical_action": action(2),
+            "data": {"input_request_id": 12}})
+        rows[next_start + 1]["data"] = {"input_request_id": 12}
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        gap = audit(strict, rows)["first_gap"]
+        self.assertEqual("TEMPORAL_CAUSE_UNVERIFIED",
+                         gap["source_timing"]["classification"])
+        self.assertFalse(gap["source_timing"][
+            "ui_begin_before_previous_action_completed"])
+
+    def test_overlapping_ui_with_unlinked_request_does_not_claim_cause(self):
+        strict, rows = pair()
+        previous_done = next(i for i, row in enumerate(rows)
+                             if row.get("type") == "action_completed"
+                             and row.get("action_id") == 1)
+        rows.insert(previous_done, {
+            "type": "native_ui_play_begin",
+            "data": {"combat_card_id": 2}})
+        next_start = next(i for i, row in enumerate(rows)
+                          if row.get("type") == "action_started"
+                          and row.get("action_id") == 2)
+        rows.insert(next_start, {
+            "type": "native_input_request",
+            "canonical_action": action(99),
+            "data": {"input_request_id": 12}})
+        rows[next_start + 1]["data"] = {"input_request_id": 12}
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        timing = audit(strict, rows)["first_gap"]["source_timing"]
+        self.assertEqual("TEMPORAL_CAUSE_UNVERIFIED",
+                         timing["classification"])
+        self.assertFalse(timing[
+            "source_request_executor_action_identity_correlated"])
+
     def test_source_input_and_selected_choice_correlate_with_missing_boundary(self):
         strict, rows = pair(nested=True, frame=True)
         request = {"type": "native_input_request",
