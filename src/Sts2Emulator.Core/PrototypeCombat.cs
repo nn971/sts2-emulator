@@ -890,7 +890,9 @@ public sealed partial class PrototypeGameEngine
         if (combat.PendingKnowledgeDemonChoice is { } enemyChoice)
             return GetKnowledgeDemonChoiceActions(enemyChoice);
         if (combat.PendingChoice is not null)
-            return GetPendingChoiceActions(combat.PendingChoice);
+            return GetPendingChoiceActions(
+                combat.PendingChoice, combat,
+                compact: state.ExperimentalCompactCardSelection);
 
         var actions = new List<GameAction>();
 
@@ -11393,7 +11395,7 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static IReadOnlyList<GameAction> GetPendingChoiceActions(
-        PendingCombatChoiceState pending)
+        PendingCombatChoiceState pending, CombatState combat, bool compact = false)
     {
         if (!StringComparer.Ordinal.Equals(pending.ChoiceId, "select_cards"))
         {
@@ -11401,20 +11403,31 @@ public sealed partial class PrototypeGameEngine
         }
 
         var actions = new List<GameAction>();
-        if (pending.Selection.SequentialOptional)
+        if (pending.Selection.SequentialOptional || compact)
         {
             var selectedCount =
                 pending.SequentialSelectedCardInstanceIds?.Length
                 ?? 0;
-            foreach (var candidate in
-                     pending.CandidateCardInstanceIds)
+            // In compact mode, interchangeable copies share one choice.
+            // The deterministic first representative is resolved to an exact
+            // card instance when the selection is committed. The complete
+            // combat card state (except instance reference) is the signature.
+            var seen = compact ? new HashSet<string>(StringComparer.Ordinal) : null;
+            foreach (var candidate in pending.CandidateCardInstanceIds)
             {
-                if (selectedCount
-                    >= pending.Selection.MaxSelections)
-                {
+                if (selectedCount >= pending.Selection.MaxSelections)
                     break;
+                if (seen is not null)
+                {
+                    var card = RequireCombatCard(combat, candidate);
+                    var key = CanonicalJson.Sha256(card with
+                    {
+                        InstanceId = 0,
+                        PersistentCardInstanceId = null
+                    });
+                    if (!seen.Add(key))
+                        continue;
                 }
-
                 actions.Add(GameAction.Create(
                     "select_cards",
                     new SelectCardsPayload([candidate])));
@@ -11457,6 +11470,21 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
         var pending = combat.PendingChoice
             ?? throw new InvalidOperationException("Combat has no pending choice.");
+
+        // Convert only explicit AI research runs to sequential virtual
+        // choices. The final selection is applied by the existing atomic
+        // ApplyCardSelection, so the card effect and RNG path stay unchanged.
+        if (state.ExperimentalCompactCardSelection
+            && !pending.Selection.SequentialOptional)
+        {
+            pending = pending with
+            {
+                Selection = pending.Selection with { SequentialOptional = true }
+            };
+            combat = combat with { PendingChoice = pending };
+            world = world with { Combat = combat };
+            state = state with { World = world };
+        }
 
         if (!StringComparer.Ordinal.Equals(pending.ChoiceId, "select_cards"))
         {
