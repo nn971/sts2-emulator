@@ -4,8 +4,8 @@ namespace Sts2Emulator.Core.Tests;
 
 /// <summary>
 /// Source-model queue identities and the complete pinned UpFront continuation.
-/// Expected counters come from the source-ordered independent sampler;
-/// native RunStarted currently observes only the final stream, not room queues.
+/// Expected counters and queue contents are checked against the actual
+/// v111 RunStarted startup_room_queues capture (2026-11-01) for the pinned seed.
 /// </summary>
 public sealed class NativeUpFrontRoomsV111Tests
 {
@@ -17,12 +17,12 @@ public sealed class NativeUpFrontRoomsV111Tests
         var rng = NativeRngV111.CreateBundle(Seed);
         var bags = NativeUpFrontRelicBagsV111.Populate(rng);
         var result = NativeUpFrontRoomsV111.Generate(rng, 10);
-        Assert.Equal(229, bags.AfterPlayerBag.Counter);
-        Assert.Equal(231, result.AfterSharedAncients.Counter);
-        Assert.Equal(["Darv"], result.HiveSharedAncients);
-        Assert.Empty(result.GlorySharedAncients);
+        Assert.Equal(230, bags.AfterPlayerBag.Counter);
+        Assert.Equal(232, result.AfterSharedAncients.Counter);
+        Assert.Empty(result.HiveSharedAncients);
+        Assert.Equal(["Darv"], result.GlorySharedAncients);
         Assert.Equal(3, result.Acts.Length);
-        Assert.Equal([261, 322, 379],
+        Assert.Equal([262, 322, 379],
             result.Acts.Select(act => act.AfterEvents.Counter).ToArray());
         Assert.Equal([295, 355, 412],
             result.Acts.Select(act => act.AfterRooms.Counter).ToArray());
@@ -31,10 +31,10 @@ public sealed class NativeUpFrontRoomsV111Tests
         Assert.Equal([15, 14, 13],
             result.Acts.Select(act => act.NormalEncounters.Length).ToArray());
         Assert.All(result.Acts, act => Assert.Equal(15, act.EliteEncounters.Length));
-        Assert.Equal([2, 2, 2],
+        Assert.Equal([1, 2, 2],
             result.Acts.Select(act => act.RejectedCandidateDraws).ToArray());
 
-        Assert.Equal(["SlimesWeak", "FuzzyWurmCrawlerWeak", "ShrinkerBeetleWeak"],
+        Assert.Equal(["FuzzyWurmCrawlerWeak", "SlimesWeak", "NibbitsWeak"],
             result.Acts[0].NormalEncounters[..3]);
         Assert.Equal("TheKinBoss", result.Acts[0].BossEncounter);
         Assert.Equal("Neow", result.Acts[0].Ancient);
@@ -42,7 +42,7 @@ public sealed class NativeUpFrontRoomsV111Tests
         Assert.Equal("KaiserCrabBoss", result.Acts[1].BossEncounter);
         Assert.Equal("Orobas", result.Acts[1].Ancient);
         Assert.Equal("TestSubjectBoss", result.Acts[2].BossEncounter);
-        Assert.Equal("Nonupeipe", result.Acts[2].Ancient);
+        Assert.Equal("Tanx", result.Acts[2].Ancient);
         Assert.Equal("QueenBoss", result.Acts[2].SecondBossEncounter);
 
         // A seeded xoshiro state at call 412, independently recomputed
@@ -110,14 +110,16 @@ public sealed class NativeUpFrontRoomsV111Tests
             stream => stream.StreamId == "run.up_front"));
         var empty = NativeStartupRoomQueueTraceV111.Empty();
 
+        // A deliberately incorrect actual encounter remains a diagnostic
+        // mismatch; the native Fuzzy Wurm first encounter now matches source.
         var first = NativeStartupRoomQueueTraceV111.Observe(
             empty, rooms, 1, PrototypeRoomType.Combat, "1:1:0",
-            "proto.encounter.fuzzy_wurm_crawler_weak");
+            "proto.encounter.slimes_weak");
         var observation = Assert.Single(first.Comparisons);
-        Assert.Equal("SlimesWeak", observation.SourceEncounterId);
-        Assert.Equal("proto.encounter.slimes_weak",
-            observation.ExpectedEmulatorEncounterId);
+        Assert.Equal("FuzzyWurmCrawlerWeak", observation.SourceEncounterId);
         Assert.Equal("proto.encounter.fuzzy_wurm_crawler_weak",
+            observation.ExpectedEmulatorEncounterId);
+        Assert.Equal("proto.encounter.slimes_weak",
             observation.ActualEmulatorEncounterId);
         Assert.Equal("DIFFERS_FROM_SOURCE_PREDICTION",
             observation.Status);
@@ -127,11 +129,11 @@ public sealed class NativeUpFrontRoomsV111Tests
         // Re-entering the same map point is not a second native queue pull.
         Assert.Same(first, NativeStartupRoomQueueTraceV111.Observe(
             first, rooms, 1, PrototypeRoomType.Combat, "1:1:0",
-            "proto.encounter.fuzzy_wurm_crawler_weak"));
+            "proto.encounter.slimes_weak"));
 
         var second = NativeStartupRoomQueueTraceV111.Observe(
             first, rooms, 1, PrototypeRoomType.Combat, "1:2:0",
-            "proto.encounter.fuzzy_wurm_crawler_weak");
+            "proto.encounter.slimes_weak");
         Assert.Equal("MATCHED_SOURCE_PREDICTION",
             second.Comparisons[^1].Status);
         Assert.Equal(1, second.Comparisons[^1].QueueIndex);
@@ -175,13 +177,13 @@ public sealed class NativeUpFrontRoomsV111Tests
         _ = NativeUpFrontRelicBagsV111.Populate(rng);
         var original = NativeUpFrontRoomsV111.Generate(rng, 10);
         var fork = original.Fork();
-        fork.HiveSharedAncients[0] = "Changed";
+        fork.GlorySharedAncients[0] = "Changed";
         fork.Acts[0].Events[0] = "Changed";
         fork.Acts[0].NormalEncounters[0] = "Changed";
         fork.Acts[0].EliteEncounters[0] = "Changed";
-        Assert.Equal("Darv", original.HiveSharedAncients[0]);
+        Assert.Equal("Darv", original.GlorySharedAncients[0]);
         Assert.NotEqual("Changed", original.Acts[0].Events[0]);
-        Assert.Equal("SlimesWeak", original.Acts[0].NormalEncounters[0]);
+        Assert.Equal("FuzzyWurmCrawlerWeak", original.Acts[0].NormalEncounters[0]);
         Assert.NotEqual("Changed", original.Acts[0].EliteEncounters[0]);
     }
 
