@@ -99,7 +99,10 @@ public sealed class NativeNeowOfferV111Tests
     {
         const string seed = "native-neow-underdocks-start";
         var root = V111RunFactory.Create(seed,
-            RunConfiguration.Create("silent", 10, ActIdentity.Underdocks));
+            RunConfiguration.Create("silent", 10, ActIdentity.Underdocks) with
+            {
+                FidelityId = V111Build.NativeNeowOpeningFidelityId
+            });
         var engine = new PrototypeGameEngine();
         var started = engine.Step(root, engine.GetLegalActions(root).Single()).State;
         var predicted = NativeNeowOfferV111.Predict(seed, true, true);
