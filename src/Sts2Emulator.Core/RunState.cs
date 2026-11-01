@@ -98,8 +98,8 @@ public sealed record RunState(
     RngBundle? NativeEventRng = null,
     // Source-owned act map stream, independent of the 15 persistent streams.
     RngBundle? NativeMapRng = null,
-    // Exact source relic bag prefix only; native UpFront room pre-generation
-    // is a distinct, still-unverified continuation after this checkpoint.
+    // The source relic-bag phase ends at UpFront counter 229;
+    // source room pre-generation is retained separately below.
     NativeUpFrontRelicBagsV111.Result? NativeStartupRelicBags = null,
     // Source-ordered UpFront event/encounter/boss/Ancient pre-generation.
     NativeUpFrontRoomsV111.Result? NativeStartupRooms = null)
