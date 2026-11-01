@@ -3380,6 +3380,14 @@ class Session:
         result = self.call("reset_v111" if mode == "v111" else "reset", **payload)
         return State(self, result["stateHandle"])
 
+    def reset_native_overgrowth(self, seed, *, ascension=0, map_profile_id=None):
+        """Open an Act 1 native-structure run; opt into a research map profile."""
+        payload = {"seed": seed, "ascension": ascension}
+        if map_profile_id is not None:
+            payload["map_profile_id"] = map_profile_id
+        result = self.call("reset_native_overgrowth", **payload)
+        return State(self, result["stateHandle"])
+
     def load_snapshot(self, snapshot):
         return State(self, self.call("load_snapshot", snapshot=snapshot)["stateHandle"])
 
