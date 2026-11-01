@@ -30,6 +30,46 @@ public sealed class NativeRunPreludeRecorderTests
     }
 
     [Fact]
+    public async Task SourceGeneratedRoomQueuesAreCapturedOnceWithoutRng()
+    {
+        static NativeStartupActRoomQueueView Act(int index) => new(
+            index, new[] { "OVERGROWTH", "HIVE", "GLORY" }[index],
+            ["SOURCE_EVENT", "ANOTHER_EVENT"],
+            Enumerable.Range(0, new[] { 15, 14, 13 }[index])
+                .Select(i => "SOURCE_NORMAL_" + i).ToArray(),
+            Enumerable.Range(0, 15)
+                .Select(i => "SOURCE_ELITE_" + i).ToArray(),
+            "SOURCE_BOSS", index == 2 ? "SECOND_BOSS" : null,
+            "SOURCE_ANCIENT", 0, 0, 0, 0);
+        var acts = Enumerable.Range(0, 3).Select(Act).ToArray();
+        var rows = await Record(recorder =>
+        {
+            recorder.StartupRoomQueues(acts);
+            Assert.True(recorder.HasStartupRoomQueues);
+            recorder.Finish("Read-only source projection");
+        });
+        var record = Assert.Single(rows, x =>
+            x.GetProperty("type").GetString() == "startup_room_queues");
+        var data = record.GetProperty("data");
+        Assert.Equal("ActModel._rooms after RunManager.GenerateRooms",
+            data.GetProperty("source").GetString());
+        Assert.False(data.GetProperty("source_rng_consumed_by_inspector")
+            .GetBoolean());
+        Assert.Equal("NOT_TESTED", data.GetProperty("native_queue_emulator_parity")
+            .GetString());
+        var projected = data.GetProperty("acts");
+        Assert.Equal(3, projected.GetArrayLength());
+        Assert.Equal(15, projected[0].GetProperty("normal_encounters")
+            .GetArrayLength());
+        Assert.Equal(15, projected[2].GetProperty("elite_encounters")
+            .GetArrayLength());
+        Assert.Equal("SECOND_BOSS", projected[2]
+            .GetProperty("second_boss_encounter").GetString());
+        Assert.True(rows[^1].GetProperty("data")
+            .GetProperty("startup_room_queues_recorded").GetBoolean());
+    }
+
+    [Fact]
     public async Task RunStartToMapMoveAndCombatLinkKeepsIndependentProvenance()
     {
         object move = new();
