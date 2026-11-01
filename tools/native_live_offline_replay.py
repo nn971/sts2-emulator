@@ -34,11 +34,48 @@ class LiveEventError(ValueError):
         self.status = status
 
 
+class _LexicalFloat(float):
+    """Remember the JSON number's exact lexical spelling during SSE parsing."""
+
+    def __new__(cls, source: str):
+        value = super().__new__(cls, source)
+        value.source_lexeme = source
+        return value
+
+
+def _dump_json(value: object, *, sort_keys: bool) -> str:
+    """Match .NET Utf8JsonWriter's canonical JSON, including numeric lexemes.
+
+    System.Text.Json's JsonElement.WriteTo preserves uppercase E exponents
+    from source-native RNG draws. Ordinary json.loads/json.dumps changes them.
+    Retaining raw float tokens also makes re-archived SSE events verifiable.
+    """
+    if isinstance(value, dict):
+        keys = sorted(value) if sort_keys else value
+        return "{" + ",".join(
+            _dump_json(key, sort_keys=sort_keys) + ":" +
+            _dump_json(value[key], sort_keys=sort_keys) for key in keys
+        ) + "}"
+    if isinstance(value, list):
+        return "[" + ",".join(_dump_json(x, sort_keys=sort_keys)
+                              for x in value) + "]"
+    if isinstance(value, str):
+        # .NET's default JavaScriptEncoder escapes HTML-sensitive characters.
+        encoded = json.dumps(value, ensure_ascii=True)
+        for character, escape in (("<", "\\\\u003C"), (">", "\\\\u003E"),
+                                  ("&", "\\\\u0026"), ("'", "\\\\u0027")):
+            encoded = encoded.replace(character, escape)
+        return encoded
+    if isinstance(value, _LexicalFloat):
+        return value.source_lexeme
+    if isinstance(value, (int, float)) or value is None or (
+            isinstance(value, bool)):
+        return json.dumps(value, separators=(",", ":"), allow_nan=False)
+    raise ValueError("Non-JSON type in native fidelity envelope")
+
+
 def _digest(payload: object) -> str:
-    # Matches Sts2Emulator.Core.CanonicalJson for the JSON-compatible v1
-    # envelope: ordinal object-key order, original array order, compact UTF-8.
-    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True,
-                           separators=(",", ":"), allow_nan=False)
+    canonical = _dump_json(payload, sort_keys=True)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -151,18 +188,24 @@ def recover_sidecar(events: list[dict]) -> list[dict]:
 
 
 def load_live(path: Path) -> list[dict]:
-    records, error = load_sidecar(path)
-    if error is not None:
-        raise LiveEventError("LIVE_JOURNAL_READ_FAILED", error)
-    return records
+    try:
+        rows = [json.loads(line, parse_float=_LexicalFloat)
+                for line in path.read_text(encoding="utf-8").splitlines()
+                if line.strip()]
+        if path.with_suffix(path.suffix + ".incomplete").exists():
+            raise ValueError("Live journal writer reported dropped records")
+        if any(not isinstance(row, dict) for row in rows):
+            raise ValueError("Native live journal has non-object row")
+        return rows
+    except (OSError, ValueError) as error:
+        raise LiveEventError("LIVE_JOURNAL_READ_FAILED", str(error)) from error
 
 
 def write_jsonl(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as output:
         for row in rows:
-            output.write(json.dumps(row, separators=(",", ":"),
-                                    ensure_ascii=False) + "\n")
+            output.write(_dump_json(row, sort_keys=False) + "\n")
 
 
 def prepare(events: list[dict], out_dir: Path) -> dict:
