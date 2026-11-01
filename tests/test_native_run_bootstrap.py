@@ -16,7 +16,8 @@ from native_run_bootstrap import (
     _neow_native_id, _source_preflight, _emulator_opening_profile,
     run_bootstrap, _native_upfront_diagnosis,
     _native_upfront_room_prefix_diagnosis,
-    _native_upfront_full_queue_diagnosis, SCHEMA,
+    _native_upfront_full_queue_diagnosis,
+    _native_first_combat_identity_diagnosis, SCHEMA,
 )
 from native_neow_rng_verify import neow_event_rng, verify_neow_event_rng, xxhash64
 
@@ -184,6 +185,45 @@ class NativeUpFrontBoundaryTests(unittest.TestCase):
                          _native_upfront_full_queue_diagnosis(native, snap)["status"])
         self.assertEqual("SOURCE_FULL_ROOM_QUEUES_NOT_CAPTURED",
                          _native_upfront_full_queue_diagnosis({}, snap)["status"])
+
+
+    def test_actual_combat_identity_is_a_separate_native_gate(self):
+        observed = {"room_model_id": "FUZZY_WURM_CRAWLER_WEAK"}
+        snapshot = {"state": {"native_startup_queue_trace": {
+            "comparisons": [{
+                "act": 1, "map_node_id": "1:1:0", "queue_index": 0,
+                "source_encounter_id": "SlimesWeak",
+                "actual_emulator_encounter_id":
+                    "proto.encounter.fuzzy_wurm_crawler_weak",
+                "status": "DIFFERS_FROM_SOURCE_PREDICTION",
+            }]}}}
+        matched = _native_first_combat_identity_diagnosis(
+            observed, snapshot, "1:1:0")
+        self.assertEqual("SOURCE_FIRST_COMBAT_IDENTITY_MATCHED",
+                         matched["status"])
+        self.assertEqual("MATCHED",
+                         matched["actual_encounter_identity_parity"])
+        self.assertEqual("SlimesWeak",
+                         matched["generated_source_queue_prediction"])
+        self.assertEqual("DIFFERS_FROM_SOURCE_PREDICTION",
+                         matched["generated_source_queue_prediction_status"])
+
+        snapshot["state"]["native_startup_queue_trace"]["comparisons"][0][
+            "actual_emulator_encounter_id"] = "proto.encounter.slimes_weak"
+        different = _native_first_combat_identity_diagnosis(
+            observed, snapshot, "1:1:0")
+        self.assertEqual("SOURCE_FIRST_COMBAT_IDENTITY_DIVERGED",
+                         different["status"])
+        self.assertEqual("$.first_combat.encounter_id",
+                         different["first_difference"]["path"])
+
+        del snapshot["state"]["native_startup_queue_trace"]
+        self.assertEqual("BLOCKED_EMULATOR_COMBAT_IDENTITY_TRACE",
+                         _native_first_combat_identity_diagnosis(
+                             observed, snapshot, "1:1:0")["status"])
+        self.assertEqual("BLOCKED_NATIVE_COMBAT_IDENTITY",
+                         _native_first_combat_identity_diagnosis(
+                             {}, snapshot, "1:1:0")["status"])
 
 
 class FakeState:
