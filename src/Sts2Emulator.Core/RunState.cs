@@ -97,7 +97,10 @@ public sealed record RunState(
     // Unlike NativeRunRng, this RNG has a content-derived lifetime.
     RngBundle? NativeEventRng = null,
     // Source-owned act map stream, independent of the 15 persistent streams.
-    RngBundle? NativeMapRng = null)
+    RngBundle? NativeMapRng = null,
+    // Exact source relic bag prefix only; native UpFront room pre-generation
+    // is a distinct, still-unverified continuation after this checkpoint.
+    NativeUpFrontRelicBagsV111.Result? NativeStartupRelicBags = null)
 {
     public RunState Fork() => this with
     {
@@ -106,6 +109,7 @@ public sealed record RunState(
         NativeRunRng = NativeRunRng?.Fork(),
         NativeEventRng = NativeEventRng?.Fork(),
         NativeMapRng = NativeMapRng?.Fork(),
+        NativeStartupRelicBags = NativeStartupRelicBags?.Fork(),
         ExtensionState = ExtensionState.Clone(),
         World = World?.Fork(),
         Configuration = Configuration?.Fork()
