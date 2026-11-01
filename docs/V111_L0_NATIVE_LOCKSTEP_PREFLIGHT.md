@@ -1276,6 +1276,31 @@ Until that hook/settlement evidence exists, emit
 A missing checkpoint is acceptable; an invented checkpoint or a
 post-enemy-action observation labelled `ENEMY_TURN_START` is not.
 
+**Implementation status (2026-11-01):** the reference mod now emits
+`native_turn_checkpoint` **candidate** records:
+`PLAYER_TURN_START` at the first source-observed idle playable frame
+of a turn before any observed player action in that turn, and
+`ENEMY_TURN_START` immediately before the native
+`ReadyToBeginEnemyTurnAction` executor callback. Both continue after
+strict player-input capture stops. Each carries the native state projection,
+turn, phase, and source observation site. The envelope auditor checks
+uniqueness, the native phase/turn fields, and the exact callback ordering
+for the enemy candidate; the source journal exposes these under
+`source_turn_checkpoint_candidates`.
+
+Every current candidate is labelled `SETTLEMENT_UNVERIFIED`,
+`complete_native_queue_verified=false`, and
+`native_phase_handoff_order_verified=false`. These are recorded
+input points for a later source-verified settlement barrier, **not**
+actual emulator state parity results. In particular, source
+`ReadyToBeginEnemyTurnAction` must be verified to occur after all
+player-end effects and before the first enemy effect in the installed
+v111 build before `ENEMY_TURN_START` is eligible for strict comparison.
+If a player acts before the first idle rendered frame of a turn, no
+player-start candidate is fabricated. The old pinned native capture has
+no such records and remains valid. No game launch was required to add
+the hook or offline auditor.
+
 Use executor starts/completions, UI-play-begins, request callbacks and
 RNG checkpoints for **diagnostics**, including locating the first
 mechanical difference after a turn-boundary mismatch; these asynchronous
