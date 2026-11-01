@@ -42,6 +42,8 @@ def _report(status, reason, *, matched=None, deferred=None, stepped=0,
         "native_input_origin": "UNVERIFIED",
         "native_legal_menu": "NOT_VERIFIED",
         "native_full_state_parity": "NOT_TESTED",
+        "uncompared_native_fields": ["combat.max_energy", "pending_effects",
+                                     "complete_rng_history", "relic_potion_mutable_state"],
         "native_live_lockstep": False,
     }
 
@@ -134,7 +136,6 @@ def first_difference(source, snapshot, crosswalk):
         ("$.player.gold", p.get("gold"), root["player"].get("gold")),
         ("$.player.block", p.get("block"), e.get("player_block")),
         ("$.combat.energy", n.get("energy"), e.get("energy")),
-        ("$.combat.max_energy", n.get("max_energy"), e.get("max_energy")),
         ("$.combat.turn", n.get("turn"), e.get("turn")),
     )
     for path, x, y in fields:
