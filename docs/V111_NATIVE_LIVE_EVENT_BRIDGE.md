@@ -110,6 +110,74 @@ first observed difference, using a real captured source prelude. The result
 must continue to report `SETTLEMENT_UNVERIFIED` and incomplete legal-menu
 coverage, even when its projected mechanics and RNG comparisons agree.
 
+## Persistent live coordinator (second M1 slice)
+
+`tools/native_live_fidelity_coordinator.py` consumes the privileged SSE
+stream using Python's standard library, keeps one separate emulator JSONL
+process alive, independently bootstraps from the original run prelude and
+advances its own state as native canonical action completions arrive.
+It reports projected player-turn differences as soon as the corresponding
+native turn-start candidate has been observed. After the native terminal,
+the previously established source journal and full offline replay independently
+audit the incremental result.
+
+For **offline** rehearsal, use an already captured sidecar and prelude:
+
+```fish
+python tools/native_live_fidelity_coordinator.py \
+    --sidecar "/path/to/captured.actions.jsonl" \
+    --prelude "/path/to/run-prelude.jsonl" \
+    --out /tmp/native-live-coordinator-report.json
+```
+
+For an original-game **live** session (only after the game-local safety gate),
+run the Reference Mod on Windows with a *separate* private token and configure
+the bridge. Then start this external command after the original run prelude
+has been captured and is available to the coordinator:
+
+```fish
+set -gx STS2_INSPECTOR_FIDELITY_TOKEN "<unique-private-token>"
+python tools/native_live_fidelity_coordinator.py \
+    --follow \
+    --prelude "/path/to/run-prelude.jsonl" \
+    --bridge http://127.0.0.1:39221 \
+    --out /tmp/native-live-coordinator-report.json
+```
+
+The Windows game exposes loopback HTTP only. A WSL consumer may require
+Windows-side execution or WSL mirrored loopback support; do not expose the
+privileged endpoint on a public network to solve connectivity. The Python
+coordinator will refuse a non-loopback bridge.
+
+The **only** POST performed by the coordinator is
+`POST /v1/fidelity/result`, using the private bearer token. Feedback is
+accepted by the Reference Mod only for its current run ID, session epoch,
+and an observed source sequence. Duplicate results at an identical cursor
+must be byte-equivalent in meaning; stale or conflicting reports are refused.
+F8 displays these as `External emulator` diagnostics and retains the
+`NOT_CERTIFIED` statement.
+
+The current player-turn comparer is deliberately scoped to the existing
+projected mechanics; enemy-turn boundaries remain deferred because the
+fast emulator resolves `end_turn` atomically. Before settlement is audited,
+even an agreement is labelled `PROJECTED_AGREEMENT_UNCERTIFIED`.
+
+### Live integration gates still open
+
+- Run both offline rehearsal programs on the **actual six-turn native
+  sidecar and paired prelude**, checking all six projected checkpoints and
+  independent RNG comparisons.
+- Verify the real game-local `STS2_NATIVE` build and perform one controlled
+  native live capture/no-perturbation test.
+- Persist native journal indexing across Reference Mod process restarts. A
+  reconnect to a currently running server resumes by `Last-Event-ID`;
+  a native server process restart currently requires explicit rebootstrap.
+- Full-run multi-combat rebootstrap and complete macro legal-action coverage
+  remain future M1/M2 work, respectively.
+- Source callback ordering and accepted-player action coverage need further
+  native hook auditing. The coordinator freezes at unsupported or ambiguous
+  source events.
+
 ## Test gates and remaining M1 work
 
 Focused C# tests check authentication separation, SSE cursor replay, disk
@@ -120,15 +188,14 @@ tests.
 
 Remaining M1 scope:
 
-1. Connect an external live coordinator that consumes SSE, drives the persistent
-   emulator as source actions arrive, and returns first-difference results.
-2. Wire returned synchronization status into F8 with authenticated validation.
-3. Verify native-source event/no-perturbation behavior on the exact pinned
-   installed DLL in a controlled game launch after offline acceptance.
-4. Add journal-on-process-restart recovery. Current SSE replay uses in-memory
-   events for an active server process; JSONL is durable for offline recovery.
-5. Broaden the native legal-menu/source-action observer in M2; the current
-   strict decision trace can end during overlapping executor activity.
+1. Validate the new coordinator and feedback endpoints against focused CI
+   and the original recorded six-turn capture.
+2. Verify native-source event/no-perturbation behavior against the pinned
+   installed game DLL in one controlled native launch.
+3. Add journal-on-process-restart recovery. Current live SSE replay uses
+   in-memory events for a running server; JSONL is durable for offline recovery.
+4. Broaden the legal-menu/source-action observer in M2; the current strict
+   decision trace can stop during overlapping executor activity.
 
 This first slice **does not certify** original-game live lockstep, native
 queue settlement, full continuation-state parity or native autoplay.
