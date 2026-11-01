@@ -61,7 +61,8 @@ public sealed class LocalBridgeServer : IAsyncDisposable
 
     /// <summary>
     /// The native game uses spectator-only mode. No transport path can submit
-    /// player actions, request pause/step, or serve privileged event journals.
+    /// player actions or request pause/step. A separate authenticated,
+    /// read-only fidelity channel exposes privileged observations.
     /// </summary>
     public LocalBridgeServer(NativeAgentBoundaryFeed feed, string bearerToken,
         int port = 39221, NativeLiveEventHub? liveEvents = null,
