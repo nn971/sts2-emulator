@@ -231,14 +231,14 @@ public sealed class LocalBridgeServer : IAsyncDisposable
             {
                 var body = JsonSerializer.Serialize(evt, JsonOptions);
                 var frame = Encoding.UTF8.GetBytes(
-                    $"id: {evt.Sequence}\\nevent: native\\ndata: {body}\\n\\n");
+                    $"id: {evt.Sequence}\nevent: native\ndata: {body}\n\n");
                 await context.Response.OutputStream.WriteAsync(frame,
                     _shutdown.Token).ConfigureAwait(false);
                 sequence = evt.Sequence;
             }
             if (batch.Count == 0 && ++polls >= 25)
             {
-                var heartbeat = Encoding.UTF8.GetBytes(": heartbeat\\n\\n");
+                var heartbeat = Encoding.UTF8.GetBytes(": heartbeat\n\n");
                 await context.Response.OutputStream.WriteAsync(heartbeat,
                     _shutdown.Token).ConfigureAwait(false);
                 polls = 0;
