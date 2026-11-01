@@ -421,5 +421,44 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
         Assert.Equal(new long[] { 7, 5, 11, 12, 10 }.Select(id =>
             nativeToEmulatorCard[checked((int)id)]), turnSix.DiscardPile);
         NativeRunRngV111.Validate(state);
+
+        // Native executor #25: Strike at ordinal 877, enemy HP 11 -> 5.
+        var strikeTwentyFive = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId ==
+                nativeToEmulatorCard[0]
+            && action.ReadPayload<PlayCardPayload>().TargetEnemyId ==
+                enemy.InstanceId);
+        state = engine.Step(state, strikeTwentyFive).State;
+        var afterTwentyFive = Assert.IsType<CombatState>(state.World!.Combat);
+        Assert.True(state.Player.Hp == 56 && afterTwentyFive.Turn == 6
+            && afterTwentyFive.Energy == 2
+            && Assert.Single(afterTwentyFive.Enemies).Hp == 5);
+        Assert.Equal(new long[] { 8, 1, 9, 6 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), afterTwentyFive.Hand);
+        Assert.Equal(new long[] { 7, 5, 11, 12, 10, 0 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), afterTwentyFive.DiscardPile);
+
+        // Native executor #26 at ordinal 904 finishes the Fuzzy Wurm
+        // with Strike source instance #6; native terminal 909 reports
+        // Combat ended. The typed emulator independently enters Reward.
+        var lethal = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId ==
+                nativeToEmulatorCard[6]
+            && action.ReadPayload<PlayCardPayload>().TargetEnemyId ==
+                enemy.InstanceId);
+        state = engine.Step(state, lethal).State;
+        Assert.Equal(56, state.Player.Hp);
+        Assert.Equal(RunPhase.Reward, state.Phase);
+        Assert.Null(state.World!.Combat);
+        Assert.NotNull(state.World.Reward);
+        var finalShuffle = Assert.Single(state.NativeRunRng!.Streams,
+            stream => stream.StreamId == "run.shuffle");
+        Assert.Equal(new NativeRngSnapshot(
+            31, 4498395649810740633UL, 12157284108367839612UL,
+            332782078443390178UL, 1557917576211562617UL),
+            NativeRngV111.ToSnapshot(finalShuffle));
+        NativeRunRngV111.Validate(state);
     }
 }
