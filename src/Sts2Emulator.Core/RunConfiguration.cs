@@ -163,8 +163,10 @@ public sealed record RunConfiguration(
                     || (!configuration.UsesNativeStandardActMap
                         && state.NativeStartupRelicBags is not null)
                     || (configuration.UsesNativeStandardActMap
+                        && configuration.Acts[0] == ActIdentity.Overgrowth
                         && state.NativeStartupRooms is null)
-                    || (!configuration.UsesNativeStandardActMap
+                    || ((!configuration.UsesNativeStandardActMap
+                         || configuration.Acts[0] != ActIdentity.Overgrowth)
                         && state.NativeStartupRooms is not null))
                     throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
             }
@@ -276,7 +278,11 @@ public static class V111RunFactory
         var sourceRelicBags = config.UsesNativeStandardActMap
             ? NativeUpFrontRelicBagsV111.Populate(runStreams)
             : null;
+        // Only the pinned Overgrowth -> Hive -> Glory native route has a
+        // source-ordered UpFront room catalogue. The experimental Underdocks
+        // map retains its relic-bag prefix until that distinct act is ported.
         var sourceRooms = config.UsesNativeStandardActMap
+            && config.Acts[0] == ActIdentity.Overgrowth
             ? NativeUpFrontRoomsV111.Generate(runStreams, config.Ascension)
             : null;
         return opening with
