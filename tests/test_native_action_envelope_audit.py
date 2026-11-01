@@ -42,6 +42,71 @@ def sample():
 
 
 class EnvelopeAuditTests(unittest.TestCase):
+    def test_turn_start_candidates_are_provisional_and_source_ordered(self):
+        records = sample()
+        player_state = {"combat": {"turn": 1}, "player": {"hp": 50}}
+        enemy_state = {"combat": {"turn": 1}, "player": {"hp": 50}}
+        def checkpoint(kind, state, site, basis, side, phase):
+            return {"type": "native_turn_checkpoint",
+                    "state": copy.deepcopy(state),
+                    "data": {
+                        "kind": kind, "turn": 1,
+                        "observation_site": site,
+                        "observation_basis": basis,
+                        "native_side": side, "player_phase": phase,
+                        "settlement_status": "SETTLEMENT_UNVERIFIED",
+                        "complete_native_queue_verified": False,
+                        "native_phase_handoff_order_verified": False,
+                        "original_native_legal_menu": "NOT_VERIFIED",
+                        "emulator_parity": "NOT_TESTED",
+                        "rng_draws_performed_by_inspector": 0}}
+        player = checkpoint(
+            "PLAYER_TURN_START", player_state,
+            "NativeV111PassiveBridge.OnFrame",
+            "IDLE_PLAYABLE_PLAYER_FRAME_BEFORE_OBSERVED_INPUT",
+            "Player", "Play")
+        enemy = checkpoint(
+            "ENEMY_TURN_START", enemy_state,
+            "ActionExecutor.BeforeActionExecuted",
+            "PRE_READY_TO_BEGIN_ENEMY_TURN_ACTION", "Player", "End")
+        records[-1:-1] = [
+            player,
+            {"type": "action_started", "action_id": 3,
+             "native_type":
+                 "MegaCrit.Sts2.Core.GameActions.ReadyToBeginEnemyTurnAction",
+             "state": copy.deepcopy(enemy_state)},
+            enemy,
+            {"type": "action_completed", "action_id": 3,
+             "state": copy.deepcopy(enemy_state)},
+        ]
+        def run(rows):
+            for i, row in enumerate(rows, 1):
+                row["ordinal"] = i
+            return audit(rows)
+        report = run(records)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(["PLAYER_TURN_START", "ENEMY_TURN_START"],
+                         [item["kind"] for item in
+                          report["turn_boundary_candidates"]])
+        self.assertTrue(all(item["settlement_status"] ==
+                            "SETTLEMENT_UNVERIFIED"
+                            for item in report["turn_boundary_candidates"]))
+        forged = copy.deepcopy(records)
+        forged[8]["data"]["settlement_status"] = "SETTLEMENT_VERIFIED"
+        self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
+        forged = copy.deepcopy(records)
+        forged[10]["state"]["player"]["hp"] = 49
+        self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
+        forged = copy.deepcopy(records)
+        forged[10]["data"]["observation_basis"] = "AFTER_ENEMY_ACTION"
+        self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
+        forged = copy.deepcopy(records)
+        forged.insert(-1, copy.deepcopy(player))
+        self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
+        forged = copy.deepcopy(records)
+        forged[8]["data"]["complete_native_queue_verified"] = True
+        self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
+
     def test_disabled_and_installed_rng_hooks_remain_distinct(self):
         default = audit(sample())
         self.assertFalse(default["native_rng_hook_installed"])
