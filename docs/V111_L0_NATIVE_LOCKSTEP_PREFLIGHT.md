@@ -1051,6 +1051,58 @@ capture in `NativeObservedMapV111Tests`.
   source draw or mechanical operation has been reproduced by the
   emulator.
 
+### 2026-11-01 strict decision-gap retrospective (source-only)
+
+The newly captured Silent A10 first-combat run for seed
+`6JK8MD0VQQTA` has a **complete 17-record run prelude**,
+**9 strict decisions** (8 complete transitions, decision 9 incomplete)
+and a **909-record native action sidecar**. The sidecar observes
+26 source executor start/completion pairs across six native turns,
+including automatic `ReadyToBeginEnemyTurnAction` entries.
+These are source observations, not emulator lockstep evidence.
+
+The **first strict input gap is action-sidecar ordinal 459**,
+executor action ID 12 (`PlayCardAction`, Defend). Its source timeline is:
+
+| Native ordinal | Observed event |
+| --- | --- |
+| 414 | Strict stable decision 9, starting turn 3 |
+| 417–419 | UI begins Neutralize and native executor action 11 starts |
+| 445–446 | Original native UI card-action gates return allowed |
+| 447 | Native UI begins Defend while action 11 is still running |
+| 453 | Native action 11 completes |
+| 456–457 | Defend's native enqueue request and executor start |
+| 459 | `strict_input_gap`, cached gate `WAITING_FOR_DECISION:CARD_PLAY_ANIMATION` |
+
+The UI-start/predecessor-completion/enqueue order demonstrates a
+**native UI play beginning during the preceding executor action**.
+It explains why a frame-only strict recorder can miss the next fresh
+decision boundary. The game subsequently observed the Defend request,
+execution and manual-play return. This does **not** establish a
+new full legal menu or human-origin proof.
+
+`tools/native_decision_gap_audit.py` now separately reports this
+source-observed overlap, the request-to-executor identity correlation,
+the cached strict frame gate, and observed state-snapshot agreement,
+while keeping the primary gap status
+`FIRST_UNCAPTURED_EXECUTOR_ACTION_FOUND` and
+`legal_menu_reconstruction=NOT_PERFORMED`. Missing or contradictory
+timing evidence is classified `TEMPORAL_CAUSE_UNVERIFIED`.
+`tools/native_lockstep_source_journal.py` now retains **all native
+executor start/complete observations**, including automatic actions,
+with explicit `NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED` provenance.
+It labels request/execute and prior-completion/request state agreement
+without manufacturing an executable decision boundary or asserting
+emulator mechanics parity.
+
+**Next acceptance gate:** use the independent first-combat emulator
+snapshot and action crosswalk to replay a source-linked subset,
+checking observed HP/block/energy/creature states at exact corresponding
+boundaries. An executor callback or coincidentally identical snapshots
+cannot independently certify a post-action settled decision.
+The existing trace is sufficient for this diagnostic; no additional
+original-game launch is required.
+
 ### Offline installed-assembly API check (no game launch)
 
 The v111 preflight now performs **read-only PE metadata inspection**
