@@ -937,22 +937,51 @@ pairs. The minimum public, mechanics-only expectations are retained as
   `FUZZY_WURM_CRAWLER_WEAK`; first combat player HP **56**,
   gold **99**, single Fuzzy Wurm Crawler HP **59/59**.
 
-**First reproducible remaining visible difference: opening combat hand.**
+**First combat's native opening shuffle/HP are now reproduced.**
 
-The native first stable decision shows
-`Strike, Neutralize, Ascender's Bane, Defend, Strike, Defend, Strike`;
-the emulator instead draws
-`Defend, Strike, Neutralize, Strike, Defend, Defend, Survivor`.
-Generic emulator starter-card IDs omit the Silent suffix, so
-the test normalizes names before comparison. The original-game
-pre-combat persistent RNG snapshot reports `run.UpFront=412`,
-`run.Shuffle=12`, `run.Niche=1`, and
-`run.CombatPotionGeneration=4`; the experimental emulator's
-`NativeRunRng` still reports **zero** calls on those streams at
-first combat entry. Accordingly **full native combat-entry RNG parity
-is not established**. Keep the known failure explicitly represented
-by a negative regression, and change it to a positive parity assertion
-once the original-run startup / deck shuffle RNG is correctly modeled.
+The pinned source's `Player.PopulateCombatState` calls
+`CardPile.RandomizeOrderInternal`, which performs
+`UnstableShuffle(run.Shuffle)` across the entire ordered 13-card
+Silent A10 starting deck (including Ascender's Bane). The native
+draw pile exposes its next card at the **front**, whereas the
+emulator's existing engine draws from its **last** internal index.
+The explicit native-map fidelity profile now runs the independent
+native xoshiro stream's Fisher–Yates and reverses only its stored
+post-shuffle array. The ordinary/training profile is untouched.
+
+The source-observed first hand now matches exactly, in order:
+`Strike, Neutralize, Ascender's Bane, Defend, Strike, Defend, Strike`.
+The remaining six-card draw pile also matches in top-first order.
+Additionally, native encounter formation is now enabled for this
+profile, so Fuzzy Wurm Crawler's **59/59 HP** is sampled from
+`run.niche` instead of the prototype combat stream. Persistent
+`run.shuffle` counter **12** and `run.niche` counter **1**,
+including all four state words of each, match the native source
+capture in `NativeObservedMapV111Tests`.
+
+**Remaining persistent RNG discrepancies:**
+
+- `run.up_front`: source **412** at `RunStarted`, emulator
+  **0**. The native code calls `RelicGrabBag.Populate` on the
+  shared and player relic lists and `RunManager.GenerateRooms`
+  across all planned acts *before* `RunManager.Launch` publishes
+  `RunStarted`. Exact RNG use depends on unlocked content, rarity
+  bag composition, shared Ancients and the act-specific room generators.
+  This cannot be repaired by replaying 412 anonymous draws.
+- `run.combat_potion_generation`: source **4** at first
+  combat entry, emulator **0**. Native
+  `PhialHolster.AfterObtained` calls
+  `PotionFactory.CreateRandomPotionsOutOfCombat` for two
+  potions: each uses one `Rng.NextFloat` rarity roll and one
+  `Rng.NextItem` from the source unlocked rarity pool,
+  removing the selected item between rolls. Our emulator's
+  current generic Neow potion reward still draws its own
+  prototype event stream. Implementing this needs the correct
+  unlock-dependent native potion pool and identity crosswalk.
+- First combat HP, map, encounter, opening draw are verified;
+  native precombat *all-stream* parity, potion identities,
+  actual action-by-action combat transitions and postcombat
+  content remain separate acceptance gates.
 
 **Capture limitations and later trace coverage:**
 
@@ -972,10 +1001,12 @@ once the original-run startup / deck shuffle RNG is correctly modeled.
   source draw or mechanical operation has been reproduced by the
   emulator.
 
-**Next no-launch development gate:** implement the native persistent
-run/player stream consumption in run initialization (including
-`UpFront`) and first combat entry, then native shuffle/draw
-semantics. Compare the exact first hand, draw pile and RNG counters
-before attempting per-action combat lockstep. This captured run is
-sufficient to develop against; another costly game launch is reserved
-for validation after substantive fixes.
+**Next no-launch development gate:** reconstruct the source
+run-initialization relic/act allocation calls on `run.up_front` with
+explicit unlock-state provenance and reproduce Phial Holster's
+rarity-filtered potion sampling on `run.combat_potion_generation`.
+Then compare all 15 persistent cursors and potion instances at the
+same first-combat boundary, followed by per-action combat lockstep.
+Retain this observed run as the offline acceptance fixture; another
+game launch can wait for substantive fixes.
+
