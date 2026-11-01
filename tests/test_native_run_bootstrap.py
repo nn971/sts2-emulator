@@ -100,7 +100,7 @@ class NativeUpFrontBoundaryTests(unittest.TestCase):
             for index in (1, 2, 3)]}
         self.assertTrue(_native_upfront_diagnosis(sample, snap)[
             "source_upfront_all_phases_reconstructed"])
-        self.assertEqual("UNOBSERVED_NATIVE_QUEUES",
+        self.assertEqual("OBSERVED_PREFIX_COMPARED_SEPARATELY",
             _native_upfront_diagnosis(sample, snap)[
                 "source_upfront_room_identity_parity"])
         snap["state"]["native_run_rng"]["streams"][0]["state_bytes"] = "bogus"
