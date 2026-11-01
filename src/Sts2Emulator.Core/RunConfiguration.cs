@@ -21,6 +21,10 @@ public static class V111Build
     // Explicit source-replay Neow event RNG; leave default training unchanged.
     public const string NativeNeowOpeningFidelityId =
         "v111-experimental-native-neow-opening-v1";
+    // Map, Neow and their independent content-local RNG owners. This
+    // opt-in profile is for source-prelude replay, not regular training.
+    public const string NativeStandardMapOpeningFidelityId =
+        "v111-experimental-native-standard-map-opening-v1";
     // Explicit opt-in to a deliberately restricted three-act Silent route.
     // Its late-act encounter/event bags and combat RNG are provisional.
     public const string ExperimentalSilentThreeActRouteFidelityId =
@@ -55,7 +59,10 @@ public sealed record RunConfiguration(
     public bool UsesExperimentalNativeWeakCombatEntry =>
         FidelityId == V111Build.NativeWeakCombatEntryFidelityId;
     public bool UsesNativeNeowOpening =>
-        FidelityId == V111Build.NativeNeowOpeningFidelityId;
+        FidelityId == V111Build.NativeNeowOpeningFidelityId
+        || FidelityId == V111Build.NativeStandardMapOpeningFidelityId;
+    public bool UsesNativeStandardActMap =>
+        FidelityId == V111Build.NativeStandardMapOpeningFidelityId;
     public bool UsesExperimentalSilentThreeActRoute =>
         FidelityId == V111Build.ExperimentalSilentThreeActRouteFidelityId;
 
@@ -88,6 +95,7 @@ public sealed record RunConfiguration(
             || FidelityId is not ("v111-mechanics-prototype-rng-v1"
                 or V111Build.NativeWeakCombatEntryFidelityId
                 or V111Build.NativeNeowOpeningFidelityId
+                or V111Build.NativeStandardMapOpeningFidelityId
                 or V111Build.ExperimentalSilentThreeActRouteFidelityId))
             throw new NotSupportedException("Configured runs require the pinned v111 ruleset and fingerprint.");
         if (Acts.Length != 3 || Acts[0] is not (ActIdentity.Overgrowth or ActIdentity.Underdocks)
@@ -138,9 +146,14 @@ public sealed record RunConfiguration(
             {
                 var region = configuration.Acts[0] == ActIdentity.Overgrowth
                     ? PrototypeActOneRegion.Overgrowth : PrototypeActOneRegion.Underdocks;
-                var mapProfile = region == PrototypeActOneRegion.Overgrowth
-                    ? PrototypeNativeOvergrowthMap.GenerationProfileId : PrototypeNativeUnderdocks.GenerationProfileId;
-                if (initialized.ActOneRegion != region || initialized.Map.GenerationProfileId != mapProfile)
+                var mapProfile = configuration.UsesNativeStandardActMap
+                    ? NativeStandardActMapV111.ProfileId
+                    : region == PrototypeActOneRegion.Overgrowth
+                        ? PrototypeNativeOvergrowthMap.GenerationProfileId
+                        : PrototypeNativeUnderdocks.GenerationProfileId;
+                if (initialized.ActOneRegion != region || initialized.Map.GenerationProfileId != mapProfile
+                    || (configuration.UsesNativeStandardActMap && state.NativeMapRng is null)
+                    || (!configuration.UsesNativeStandardActMap && state.NativeMapRng is not null))
                     throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
             }
         }
@@ -217,10 +230,12 @@ public static class V111RunFactory
         var opening = config.Acts[0] == ActIdentity.Overgrowth
             ? PrototypeNativeOvergrowthRunFactory.Create(
                 input.RunSeed, config.Ascension,
-                useNativeNeowEventRng: config.UsesNativeNeowOpening)
+                useNativeNeowEventRng: config.UsesNativeNeowOpening,
+                useNativeStandardMapRng: config.UsesNativeStandardActMap)
             : PrototypeNativeUnderdocksRunFactory.Create(
                 input.RunSeed, config.Ascension,
-                useNativeNeowEventRng: config.UsesNativeNeowOpening);
+                useNativeNeowEventRng: config.UsesNativeNeowOpening,
+                useNativeStandardMapRng: config.UsesNativeStandardActMap);
         // Restlessness is a historical training adapter addition, not a native
         // A0 starter. Keep it only in the explicit legacy factories.
         var deck = config.Ascension < 5
@@ -236,7 +251,9 @@ public static class V111RunFactory
             || nativeChoices is null || nativeChoices.Length != 3
             || nativeChoices.Distinct(StringComparer.Ordinal).Count() != 3
             || (config.UsesNativeNeowOpening && opening.NativeEventRng is null)
-            || (!config.UsesNativeNeowOpening && opening.NativeEventRng is not null))
+            || (!config.UsesNativeNeowOpening && opening.NativeEventRng is not null)
+            || (config.UsesNativeStandardActMap && opening.NativeMapRng is null)
+            || (!config.UsesNativeStandardActMap && opening.NativeMapRng is not null))
             throw new InvalidDataException("Native initial Neow event RNG/choices invariant failed.");
         return opening with
         {

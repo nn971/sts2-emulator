@@ -95,7 +95,9 @@ public sealed record RunState(
     RngBundle? NativeRunRng = null,
     // The native event owns its local RNG across option/page decisions.
     // Unlike NativeRunRng, this RNG has a content-derived lifetime.
-    RngBundle? NativeEventRng = null)
+    RngBundle? NativeEventRng = null,
+    // Source-owned act map stream, independent of the 15 persistent streams.
+    RngBundle? NativeMapRng = null)
 {
     public RunState Fork() => this with
     {
@@ -103,6 +105,7 @@ public sealed record RunState(
         Rng = Rng.Fork(),
         NativeRunRng = NativeRunRng?.Fork(),
         NativeEventRng = NativeEventRng?.Fork(),
+        NativeMapRng = NativeMapRng?.Fork(),
         ExtensionState = ExtensionState.Clone(),
         World = World?.Fork(),
         Configuration = Configuration?.Fork()

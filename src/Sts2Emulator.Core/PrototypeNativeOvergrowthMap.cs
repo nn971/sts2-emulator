@@ -268,7 +268,8 @@ public static class PrototypeNativeOvergrowthMap
 public static class PrototypeNativeOvergrowthRunFactory
 {
     public static RunState Create(
-        string seed, int ascension = 0, bool useNativeNeowEventRng = false)
+        string seed, int ascension = 0, bool useNativeNeowEventRng = false,
+        bool useNativeStandardMapRng = false)
     {
         var engine = new PrototypeGameEngine();
         var state = engine.Step(
@@ -288,7 +289,17 @@ public static class PrototypeNativeOvergrowthRunFactory
             stream.StreamId == "map");
         rng.Streams[index] = clean.Streams[cleanIndex].Fork();
 
-        var map = PrototypeNativeOvergrowthMap.Generate(rng, ascension);
+        var nativeMap = useNativeStandardMapRng
+            ? NativeStandardActMapV111.Generate(seed, ascension) : null;
+        var map = nativeMap?.Map
+            ?? PrototypeNativeOvergrowthMap.Generate(rng, ascension);
+        // Map generation consumes its own content-local context, preserving
+        // both the named native streams and the legacy training map stream.
+        var nativeMapRng = nativeMap is null ? null : new RngBundle([
+            NativeRngV111.FromSnapshot(
+                NativeRngV111Contexts.ForActMap(seed, 1).StreamId,
+                nativeMap.FinalRng)
+        ]);
         // The A5 native curse belongs to run initialization rather
         // than a random reward. Our A0 profile retains the previously
         // captured Restlessness starter for the existing training gate;
@@ -332,6 +343,7 @@ public static class PrototypeNativeOvergrowthRunFactory
             },
             Rng = rng,
             NativeEventRng = nativeNeowRng,
+            NativeMapRng = nativeMapRng,
             World = world with
             {
                 Map = map,
