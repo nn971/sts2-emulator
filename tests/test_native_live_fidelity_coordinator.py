@@ -97,7 +97,7 @@ class LiveCoordinatorTests(unittest.TestCase):
         for row in events[:4]:
             live.consume(row)
         self.assertIsNone(live.consume(events[3]))
-        for row in events[4:8]:
+        for row in events[4:9]:
             live.consume(row)
         self.assertEqual(2, live.stepped)
         self.assertEqual(2, len(live.matched))
