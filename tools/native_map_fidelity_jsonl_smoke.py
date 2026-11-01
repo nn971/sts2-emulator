@@ -100,18 +100,27 @@ def test_jsonl_map(command: list[str]) -> dict:
                     raise AssertionError("No unique emulator start_run")
                 state = root.step(legal[0]["actionId"])
                 snapshot = json.loads(state.save_snapshot())
-                # Native startup's first two source-owned relic bags are
-                # serialized with the actual run RNG prefix, while the
-                # later ActModel.GenerateRooms portion remains pending.
+                # Source relic bags end at 229 calls for both routes.
+                # The pinned Overgrowth route additionally generates all
+                # three acts; its final count varies by seed because tag
+                # rejection sampling can consume extra RNG draws.
                 upfront = next(s for s in snapshot["state"]["native_run_rng"]["streams"]
                                if s["stream_id"] == "run.up_front")
-                if upfront["call_count"] != 229:
-                    raise AssertionError(
-                        "Real JSONL startup lost the 229 source-bag UpFront prefix")
                 bags = snapshot["state"].get("native_startup_relic_bags")
-                if not isinstance(bags, dict):
+                if not isinstance(bags, dict) or (
+                        bags["after_player_bag"]["counter"] != 229):
+                    raise AssertionError("Real JSONL snapshot lost source relic bags")
+                rooms = snapshot["state"].get("native_startup_rooms")
+                if act == "Overgrowth":
+                    if (not isinstance(rooms, dict)
+                        or len(rooms.get("acts", [])) != 3
+                        or rooms["final_rng"]["counter"] != upfront["call_count"]
+                        or upfront["call_count"] <= 229):
+                        raise AssertionError(
+                            "Real JSONL startup lost source three-act UpFront queues")
+                elif rooms is not None or upfront["call_count"] != 229:
                     raise AssertionError(
-                        "Real JSONL snapshot omitted native startup relic bags")
+                        "Underdocks must retain its independent 229-draw prefix")
                 source = synthetic_audit_from_snapshot(snapshot, act)
                 equal = compare_native_map(source, snapshot)
                 if equal["status"] != "SOURCE_MAP_AND_RNG_MATCHED":
