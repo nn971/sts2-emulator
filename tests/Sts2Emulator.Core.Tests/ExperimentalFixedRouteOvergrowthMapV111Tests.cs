@@ -5,7 +5,7 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class ExperimentalFixedRouteOvergrowthMapV111Tests
 {
     [Fact]
-    public void GoldenPathDerivativeHasExactlyOneRouteAndNativeStructureActLength()
+    public void ConfiguredSingleRouteHasExpectedRoomsAndNativeStructureActLength()
     {
         var map = ExperimentalFixedRouteOvergrowthMapV111.Generate();
         Assert.Equal(ExperimentalFixedRouteOvergrowthMapV111.ProfileId,
@@ -17,19 +17,19 @@ public sealed class ExperimentalFixedRouteOvergrowthMapV111Tests
         var expected = new[]
         {
             PrototypeRoomType.Combat,
-            PrototypeRoomType.Unknown,
-            PrototypeRoomType.Rest,
             PrototypeRoomType.Combat,
-            PrototypeRoomType.Rest,
-            PrototypeRoomType.Unknown,
-            PrototypeRoomType.Treasure,
-            PrototypeRoomType.Unknown,
-            PrototypeRoomType.Treasure,
             PrototypeRoomType.Unknown,
             PrototypeRoomType.Shop,
-            PrototypeRoomType.Elite,
+            PrototypeRoomType.Combat,
             PrototypeRoomType.Rest,
             PrototypeRoomType.Elite,
+            PrototypeRoomType.Treasure,
+            PrototypeRoomType.Unknown,
+            PrototypeRoomType.Combat,
+            PrototypeRoomType.Rest,
+            PrototypeRoomType.Combat,
+            PrototypeRoomType.Elite,
+            PrototypeRoomType.Unknown,
             PrototypeRoomType.Rest,
             PrototypeRoomType.Boss
         };
