@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Sts2ReferenceMod.Trace;
 using Sts2ReferenceMod.Transport;
@@ -160,4 +161,86 @@ public sealed class NativeLiveEventHubTests
         }
         Directory.Delete(Path.GetDirectoryName(prefix)!, recursive: true);
     }
+    [Fact]
+    public async Task FidelityResultRequiresCurrentEpochObservedCursorAndIdempotence()
+    {
+        var prefix = NewJournalPrefix();
+        await using (var hub = new NativeLiveEventHub(prefix))
+        {
+            Assert.True(hub.OpenSession("synthetic-combat"));
+            Assert.True(hub.PublishFidelityRecord(new NativeActionEnvelopeRecord(
+                "native_turn_checkpoint", 1)));
+            var result = new NativeLiveFidelityResult(
+                NativeLiveFidelityResult.SchemaId, "synthetic-combat", 1, 2,
+                "PLAYER_CHECKPOINTS_PROJECTED_AGREEMENT_UNCERTIFIED",
+                "Projected checkpoint matches, settlement unverified", 1, 0, 0);
+            Assert.Null(hub.AcceptFidelityResult(result));
+            Assert.Equal(result, hub.LatestFidelityResult);
+            Assert.Null(hub.AcceptFidelityResult(result)); // reconnect retry
+            Assert.Equal("CONFLICTING_FIDELITY_RESULT",
+                hub.AcceptFidelityResult(result with { PlayerCheckpointsMatched = 2 }));
+            Assert.Equal("UNOBSERVED_FIDELITY_CURSOR",
+                hub.AcceptFidelityResult(result with { ThroughSequence = 50 }));
+            Assert.Equal("STALE_FIDELITY_SESSION",
+                hub.AcceptFidelityResult(result with { SessionEpoch = 2 }));
+            Assert.Equal("INVALID_FIDELITY_RESULT",
+                hub.AcceptFidelityResult(result with { Status = "FULL_PARITY_CERTIFIED" }));
+            Assert.True(hub.OpenSession("next-combat"));
+            Assert.Null(hub.LatestFidelityResult);
+            Assert.Equal("STALE_FIDELITY_SESSION", hub.AcceptFidelityResult(result));
+        }
+        Directory.Delete(Path.GetDirectoryName(prefix)!, recursive: true);
+    }
+
+    [Fact]
+    public async Task FidelityFeedbackEndpointUsesPrivateCredentialAndRejectsStaleResults()
+    {
+        int port;
+        using (var holder = new TcpListener(IPAddress.Loopback, 0))
+        {
+            holder.Start();
+            port = ((IPEndPoint)holder.LocalEndpoint).Port;
+        }
+        var prefix = NewJournalPrefix();
+        await using (var hub = new NativeLiveEventHub(prefix))
+        {
+            Assert.True(hub.OpenSession("synthetic-combat"));
+            var result = new NativeLiveFidelityResult(
+                NativeLiveFidelityResult.SchemaId, "synthetic-combat", 1, 1,
+                "EMULATOR_BOOTSTRAPPED_UNCERTIFIED",
+                "Independent startup completed", 0, 0, 0);
+            await using (var server = new LocalBridgeServer(
+                new NativeAgentBoundaryFeed(), PublicToken, port,
+                liveEvents: hub, fidelityToken: FidelityToken))
+            {
+                server.Start();
+                using var http = new HttpClient(new HttpClientHandler { UseProxy = false });
+                var url = "http://127.0.0.1:" + port + "/v1/fidelity/result";
+                var options = new JsonSerializerOptions {
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+                http.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", PublicToken);
+                var denied = await http.PostAsJsonAsync(url, result, options);
+                Assert.Equal(HttpStatusCode.Unauthorized, denied.StatusCode);
+                Assert.Null(hub.LatestFidelityResult);
+
+                http.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", FidelityToken);
+                var accepted = await http.PostAsJsonAsync(url, result, options);
+                Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+                Assert.Equal(result, hub.LatestFidelityResult);
+                var duplicate = await http.PostAsJsonAsync(url, result, options);
+                Assert.Equal(HttpStatusCode.OK, duplicate.StatusCode);
+                var bad = await http.PostAsJsonAsync(url,
+                    result with { SessionEpoch = 22 }, options);
+                Assert.Equal(HttpStatusCode.Conflict, bad.StatusCode);
+                var illegal = await http.PostAsJsonAsync(url,
+                    result with { Status = "FULL_PARITY_CERTIFIED" }, options);
+                Assert.Equal(HttpStatusCode.Conflict, illegal.StatusCode);
+                Assert.Equal(result, hub.LatestFidelityResult);
+            }
+        }
+        Directory.Delete(Path.GetDirectoryName(prefix)!, recursive: true);
+    }
+
 }
