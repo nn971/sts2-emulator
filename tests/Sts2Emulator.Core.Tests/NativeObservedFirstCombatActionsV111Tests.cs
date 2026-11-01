@@ -241,8 +241,8 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
         // ten native bounded choices advance run.shuffle from 12 to 22.
         // This verifies all four xoshiro words independently of card
         // ordering, so a matching hand alone cannot hide RNG drift.
-        var shuffle = Assert.Single(state.NativeRunRng!.Streams
-            .Where(stream => stream.StreamId == "run.shuffle"));
+        var shuffle = Assert.Single(state.NativeRunRng!.Streams,
+            stream => stream.StreamId == "run.shuffle");
         Assert.Equal(new NativeRngSnapshot(
             22, 11424736245114868788UL, 4415749080287556382UL,
             2605170461699982399UL, 2806277323105153668UL),
