@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Sts2Emulator.Core;
 using Sts2Emulator.Trace;
 using Sts2ReferenceMod.Trace;
 
