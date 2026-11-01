@@ -89,9 +89,9 @@ def smoke(session):
         rows = native_source_records(seed, ascension, initial, final)
         envelopes = simulate_sidecar(rows)
         frames = "".join(
-            f"id: {row['sequence']}\\nevent: native\\ndata: "
-            + _dump_json(row, sort_keys=False) + "\\n\\n"
-            for row in envelopes).replace("\\n", "\n")
+            f"id: {row['sequence']}\nevent: native\ndata: "
+            + _dump_json(row, sort_keys=False) + "\n\n"
+            for row in envelopes)
         parsed = list(parse_sse(io.StringIO(frames)))
         if len(parsed) != len(envelopes):
             raise AssertionError("SSE transport lost emulator-derived events")
