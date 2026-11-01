@@ -35,3 +35,5 @@ jobs:
         run: python tools/native_run_bootstrap_jsonl_smoke.py
       - name: Independent native Neow RNG source predictor smoke
         run: python tools/native_neow_rng_probe_smoke.py
+      - name: Real emulator JSONL native-map snapshot schema and RNG-difference smoke (synthetic source only)
+        run: python tools/native_map_fidelity_jsonl_smoke.py
