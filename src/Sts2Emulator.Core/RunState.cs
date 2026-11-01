@@ -102,7 +102,10 @@ public sealed record RunState(
     // source room pre-generation is retained separately below.
     NativeUpFrontRelicBagsV111.Result? NativeStartupRelicBags = null,
     // Source-ordered UpFront event/encounter/boss/Ancient pre-generation.
-    NativeUpFrontRoomsV111.Result? NativeStartupRooms = null)
+    NativeUpFrontRoomsV111.Result? NativeStartupRooms = null,
+    // Diagnostic-only queue cursor; records expected versus actually
+    // entered encounters without changing gameplay or named RNG streams.
+    NativeStartupRoomQueueTraceV111.Snapshot? NativeStartupQueueTrace = null)
 {
     public RunState Fork() => this with
     {
@@ -113,6 +116,7 @@ public sealed record RunState(
         NativeMapRng = NativeMapRng?.Fork(),
         NativeStartupRelicBags = NativeStartupRelicBags?.Fork(),
         NativeStartupRooms = NativeStartupRooms?.Fork(),
+        NativeStartupQueueTrace = NativeStartupQueueTrace?.Fork(),
         ExtensionState = ExtensionState.Clone(),
         World = World?.Fork(),
         Configuration = Configuration?.Fork()
