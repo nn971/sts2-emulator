@@ -981,6 +981,17 @@ public sealed partial class PrototypeGameEngine
         var combat = RequireWorld(state).Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
 
+        // Only the opt-in v111 source-shaped map/combat profile uses the
+        // independently reconstructed native run.shuffle stream for
+        // discard recycling. Scripted diagnostic scopes take precedence.
+        // Ordinary prototype/training profiles keep their existing RNG.
+        using var nativeRecycle = state.Configuration?.UsesNativeStandardActMap == true
+            && !NativeShuffleStepReplayV111.HasActiveReplay
+            ? NativeSourceRecycleShuffleV111.Begin(
+                state.NativeRunRng ?? throw new InvalidDataException(
+                    "Native combat recycle requires the run-owned RNG bundle."))
+            : null;
+
         var next = combat.PendingKnowledgeDemonChoice is not null
             ? ResolveKnowledgeDemonChoice(state, action)
             : combat.PendingChoice is not null
@@ -999,6 +1010,27 @@ public sealed partial class PrototypeGameEngine
                 _ => throw new InvalidOperationException(
                     $"Unknown combat action '{action.Kind}'.")
             };
+
+        if (nativeRecycle is { Recycles: > 0 })
+        {
+            // The native source-shuffle scope advances only run.shuffle.
+            // Preserve all other named native streams from the returned
+            // immutable state and refuse a conflicting shuffle owner.
+            var before = state.NativeRunRng!.Streams.Single(
+                stream => stream.StreamId == "run.shuffle");
+            var persisted = next.NativeRunRng?.Fork()
+                ?? throw new InvalidDataException(
+                    "Native combat lost its source RNG bundle.");
+            var index = Array.FindIndex(persisted.Streams,
+                stream => stream.StreamId == "run.shuffle");
+            if (index < 0 ||
+                NativeRngV111.ToSnapshot(persisted.Streams[index])
+                    != NativeRngV111.ToSnapshot(before))
+                throw new InvalidDataException(
+                    "Native run.shuffle owner changed during source recycle.");
+            persisted.Streams[index] = nativeRecycle.SourceShuffleStream.Fork();
+            next = next with { NativeRunRng = persisted };
+        }
 
         if (next.Phase != RunPhase.Combat
             || next.Player.Hp > 0)
@@ -6719,7 +6751,7 @@ public sealed partial class PrototypeGameEngine
                         {
                             var shuffled =
                                 NativeShuffleStepReplayV111.ShuffleRecycle(
-                                    discard.ToArray(), rng);
+                                    discard.ToArray(), rng, combat);
                             draw.AddRange(NativeShuffleStepReplayV111.CheckPostHook(
                                 ApplyPerfectFitShuffleOrder(
                                     combat, shuffled)));
@@ -13287,7 +13319,7 @@ public sealed partial class PrototypeGameEngine
                 }
 
                 var recycled = NativeShuffleStepReplayV111.ShuffleRecycle(
-                    discard.ToArray(), rng);
+                    discard.ToArray(), rng, combat);
                 discard.Clear();
                 draw.AddRange(NativeShuffleStepReplayV111.CheckPostHook(
                     ApplyPerfectFitShuffleOrder(
