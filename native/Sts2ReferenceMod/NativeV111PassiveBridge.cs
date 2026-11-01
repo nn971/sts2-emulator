@@ -650,6 +650,8 @@ internal static class NativeV111PassiveBridge
             bool f8Down = Godot.Input.IsKeyPressed(Godot.Key.F8);
             if (f8Down && !_f8WasDown) _panel?.Toggle();
             _f8WasDown = f8Down;
+            _panel?.SetFidelityResult(_liveEvents?.LatestFidelityResult,
+                _liveEvents?.Failure);
             _panel?.Tick();
             TryCaptureInitialNativeMap();
 
