@@ -538,7 +538,8 @@ public sealed class PrototypeAiEnvironment
                     state.Player.Relics.Any(relic =>
                         PrototypeContent.Relic(
                             relic.RelicId)
-                            .HideEnemyIntents)),
+                            .HideEnemyIntents),
+                    state.ExperimentalCompactCardSelection),
             Reward: world?.Reward is null
                 ? null
                 : new PrototypeAiReward(
@@ -942,7 +943,8 @@ public sealed class PrototypeAiEnvironment
         CombatState combat,
         int act,
         int ascension,
-        bool hideEnemyIntents)
+        bool hideEnemyIntents,
+        bool exposeCompactSelection)
     {
         var byId = combat.Cards.ToDictionary(card => card.InstanceId);
 
@@ -999,10 +1001,12 @@ public sealed class PrototypeAiEnvironment
                 .Select(power => new PrototypeAiPower(
                     power.PowerId, power.Stacks))
                 .ToArray(),
-            SelectionCandidates: combat.PendingChoice is null
+            SelectionCandidates: !exposeCompactSelection
+                || combat.PendingChoice is null
                 ? null : combat.PendingChoice.CandidateCardInstanceIds
                     .Select(Card).ToArray(),
-            SelectionSelectedCards: combat.PendingChoice?.SequentialSelectedCardInstanceIds
+            SelectionSelectedCards: exposeCompactSelection
+                && combat.PendingChoice?.SequentialSelectedCardInstanceIds
                 is { } selected ? selected.Select(Card).ToArray() : null);
     }
 }
