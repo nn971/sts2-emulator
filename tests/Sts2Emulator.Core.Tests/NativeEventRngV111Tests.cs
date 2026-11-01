@@ -45,9 +45,13 @@ public sealed class NativeEventRngV111Tests
             NativeRngV111.ToSnapshot(shared3.Streams[0]));
         Assert.NotEqual(NativeRngV111.ToSnapshot(shared0.Streams[0]),
             NativeRngV111.ToSnapshot(other.Streams[0]));
-        Assert.NotEqual(shared0.Streams[0].StreamId, shared3.Streams[0].StreamId);
-        // Native shared-event seed ignores owner slot even though both
-        // context identities explicitly record the shared scope.
+        Assert.Equal(shared0.Streams[0].StreamId, shared3.Streams[0].StreamId);
+        // Shared event RNG is keyed to its event identity, not a player.
+        var nonshared3 = NativeEventRngV111.Begin(seed, "TRIAL", 3);
+        Assert.NotEqual(NativeRngV111.ToSnapshot(shared0.Streams[0]),
+            NativeRngV111.ToSnapshot(nonshared3.Streams[0]));
+        Assert.NotEqual(shared0.Streams[0].StreamId,
+            nonshared3.Streams[0].StreamId);
     }
 
     [Fact]
