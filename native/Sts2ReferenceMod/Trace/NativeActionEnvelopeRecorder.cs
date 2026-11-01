@@ -432,7 +432,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     /// Native hand input was initiated from click or shortcut and passed
     /// NPlayerHand's existing UI guards. Drag/targeting may still cancel it.
     /// </summary>
-    public void NativeUiPlayBegin(long? cardId, string modelId, bool shortcut)
+    public void NativeUiPlayBegin(long? cardId, string modelId, bool shortcut,
+        JsonElement? uiState = null)
     {
         if (_closed) return;
         if (string.IsNullOrWhiteSpace(modelId) || cardId is < 0)
@@ -441,9 +442,12 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
             return;
         }
         Write(new NativeActionEnvelopeRecord(
-            "native_ui_play_begin", Next(),
+            "native_ui_play_begin", Next(), State: Snapshot(uiState),
             Data: JsonSerializer.SerializeToElement(new
             {
+                ui_state_observation = uiState.HasValue
+                    ? "SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT"
+                    : "UNOBSERVED",
                 combat_card_id = cardId,
                 card_model_id = modelId,
                 started_via_shortcut = shortcut,
