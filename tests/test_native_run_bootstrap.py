@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_run_bootstrap import (
     _neow_native_id, _source_preflight, _emulator_opening_profile,
-    run_bootstrap, _native_upfront_diagnosis,
+    run_bootstrap, _direct_first_combat_route, _native_upfront_diagnosis,
     _native_upfront_room_prefix_diagnosis,
     _native_upfront_full_queue_diagnosis,
     _native_first_combat_identity_diagnosis, SCHEMA,
@@ -401,6 +401,71 @@ class BootstrapTests(unittest.TestCase):
         result, _ = run_bootstrap(source, session)
         self.assertEqual("BLOCKED_OPAQUE_PRECOMBAT_ACTIONS", result["status"])
         self.assertEqual(0, session.reset_count)
+
+    def test_pinned_native_neow_and_first_monster_route_is_first_map_floor(self):
+        # Historical original v111 run: RoomEntered Neow at act floor 1,
+        # then first Monster on map row 1/native floor 2. The emulator's
+        # map node remains 1:1:0 (first navigable map row).
+        source = fixture()
+        source["run_identity"]["game_build"] = (
+            "assembly=0.1.0.0;mvid=73b63ee06c0a47bbb0d1b21f6d94222e;"
+            "sha256=0861bfa1df347538d932f22d580e75420f08082792eb914e53b4882764acdbe9")
+        source["source_event_choice_requests"][0]["ordinal"] = 7
+        source["source_event_choice_returns"][0]["ordinal"] = 8
+        source["source_room_arrivals"] = [
+            {"ordinal": 5, "act_index": 0, "act_floor": 1,
+             "total_floor": 1, "map_column": 3, "map_row": 0,
+             "room_type": "Event", "room_model_id": "NEOW"},
+            {"ordinal": 13, "act_index": 0, "act_floor": 2,
+             "total_floor": 2, "map_column": 0, "map_row": 1,
+             "room_type": "Monster",
+             "room_model_id": "FUZZY_WURM_CRAWLER_WEAK",
+             "player_hp": 56, "player_gold": 99},
+        ]
+        source["first_combat_link"] = {
+            "act_index": 0, "map_column": 0, "map_row": 1}
+        source["source_map_requests"] = [
+            {"ordinal": 9, "kind": "map_vote",
+             "target_column": 0, "target_row": 1},
+            {"ordinal": 10, "kind": "map_move",
+             "target_column": 0, "target_row": 1},
+        ]
+        self.assertIsNone(_source_preflight(source))
+        room, floor = _direct_first_combat_route(source)
+        self.assertEqual(13, room["ordinal"])
+        self.assertEqual(2, room["act_floor"])
+        self.assertEqual(1, floor)
+        self.assertEqual("1:1:0", f"1:{floor}:{room['map_column']}")
+
+        # Retaining an extra intervening room would require a multi-room
+        # transcript; that remains explicitly unsupported.
+        extra = copy.deepcopy(source)
+        extra["source_room_arrivals"].insert(1, dict(
+            extra["source_room_arrivals"][0],
+            ordinal=6, room_model_id="OTHER"))
+        self.assertEqual("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
+                         _source_preflight(extra)[0])
+        # A source map request to a different destination cannot silently
+        # be translated into the first-combat node.
+        wrong = copy.deepcopy(source)
+        wrong["source_map_requests"][-1]["target_column"] = 4
+        self.assertEqual("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
+                         _source_preflight(wrong)[0])
+        # Neow's room must precede the observed option selection.
+        wrong = copy.deepcopy(source)
+        wrong["source_room_arrivals"][0]["ordinal"] = 9
+        self.assertEqual("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
+                         _source_preflight(wrong)[0])
+        # Native floor/row mapping is source constrained.
+        wrong = copy.deepcopy(source)
+        wrong["source_room_arrivals"][1]["act_floor"] = 3
+        self.assertEqual("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
+                         _source_preflight(wrong)[0])
+        # The source-combat link binds the navigated destination.
+        wrong = copy.deepcopy(source)
+        wrong["first_combat_link"]["map_column"] = 2
+        self.assertEqual("BLOCKED_COMPLEX_PRECOMBAT_ROUTE",
+                         _source_preflight(wrong)[0])
 
     def test_unobserved_extra_room_blocks_complex_routes(self):
         source = fixture()
