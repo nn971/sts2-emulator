@@ -140,8 +140,12 @@ def main():
                 if action["kind"] != "event_choice":
                     continue
                 next_state = neow.step(action["actionId"])
-                next_frame = next_state.observe()
-                if next_frame.get("event_id") is not None:
+                continuation = next_state.actions()
+                if (len(continuation) == 1
+                    and continuation[0]["kind"] == "continue_event"):
+                    next_state = next_state.step(continuation[0]["actionId"])
+                if not any(x["kind"] == "choose_map_node"
+                           for x in next_state.actions()):
                     continue
                 for move in next_state.actions():
                     if move["kind"] != "choose_map_node":

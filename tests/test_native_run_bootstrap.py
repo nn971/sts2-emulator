@@ -68,6 +68,9 @@ class FakeState:
                      "actionId": "neow-" + str(i)}
                     for i, x in enumerate(self.root["offers"])]
         if self.stage == 2:
+            return [{"kind": "continue_event",
+                     "payloadJson": "{}", "actionId": "proceed"}]
+        if self.stage == 3:
             return [{"kind": "choose_map_node",
                      "payloadJson": '{"NodeId":"1:1:3"}',
                      "actionId": "map"}]
@@ -77,6 +80,9 @@ class FakeState:
             return {"event_id": "proto.native.event.neow",
                     "event": {"offered_choice_ids": self.root["offers"]}}
         if self.stage == 2:
+            return {"event_id": "proto.native.event.neow", "phase": "event",
+                    "event": {"terminal_page": True}}
+        if self.stage == 3:
             return {"event_id": None, "phase": "map_choice",
                     "map": [{"node_id": "1:1:3", "act": 1, "floor": 1}]}
         return {"combat": {"turn": 1}, "current_map_node_id": "1:1:3",
@@ -85,7 +91,8 @@ class FakeState:
     def step(self, action_id):
         if (self.stage == 0 and action_id == "start"
             or self.stage == 1 and action_id.startswith("neow-")
-            or self.stage == 2 and action_id == "map"):
+            or self.stage == 2 and action_id == "proceed"
+            or self.stage == 3 and action_id == "map"):
             return FakeState(self.stage + 1, self.root)
         raise ValueError("Unexpected or invented emulator action")
 
@@ -135,7 +142,8 @@ class BootstrapTests(unittest.TestCase):
         session = FakeSession()
         result, snapshot = run_bootstrap(fixture(), session)
         self.assertEqual("CANDIDATE_COMBAT_REACHED_UNCERTIFIED", result["status"])
-        self.assertEqual(["start_run", "event_choice", "choose_map_node"],
+        self.assertEqual(["start_run", "event_choice", "continue_event",
+                          "choose_map_node"],
                          [x["kind"] for x in result["emulator_steps"]])
         self.assertEqual(1, session.reset_count)
         self.assertIsInstance(snapshot, str)

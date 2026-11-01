@@ -719,3 +719,12 @@ first-floor source-shaped journal, passes the strict source auditor, then
 replays it through a fresh *real emulator JSONL process*. This exercises
 transport, source identity mapping, legal Neow/map actions and actual
 combat snapshot export; by construction it proves **no native parity**.
+
+For Neow's finished event page, pinned emulator `GetEventActions`
+exposes a unique empty-payload `continue_event` before map choice.
+The adapter steps this **only when it is the sole legal action**, and
+records `native_proceed_ui=NOT_CAPTURED`: the native `NEventRoom.Proceed`
+click is a distinct UI path, not recorded in the source event-choice
+prelude. Nested deck/card/potion selection and any nonunique terminal
+menu still fail closed. This extra transport step retains the
+`CANDIDATE_*_UNCERTIFIED` status.

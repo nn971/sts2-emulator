@@ -233,11 +233,27 @@ def run_bootstrap(source: dict, session):
             return _report("BLOCKED_PREMATURE_COMBAT",
                            "First combat occurred before source map traversal",
                            steps=steps, checks=checks)
+        # Native Neow's finished page has a separate UI Proceed action.
+        # In the emulator it is represented by exactly one deterministic
+        # continue_event action. This is an *uncertified* transport step:
+        # the native Proceed click itself was not observed by the prelude.
+        continuation = state.actions()
+        if len(continuation) == 1 and continuation[0].get("kind") == "continue_event":
+            if _typed_payload(continuation[0]) != {}:
+                return _report("BLOCKED_NEOW_CONTINUATION",
+                               "Emulator terminal-page acknowledgement has payload",
+                               steps=steps, checks=checks)
+            state = state.step(continuation[0]["actionId"])
+            steps.append({"kind": "continue_event",
+                          "action_id": continuation[0]["actionId"],
+                          "native_proceed_ui": "NOT_CAPTURED",
+                          "basis": "UNIQUE_EMULATOR_TERMINAL_PAGE_ACK"})
+            checks["native_neow_proceed_ui"] = "NOT_CAPTURED"
+            frame = state.observe()
         # A Neow relic may trigger a nested deck/card/relic choice. We have
         # no certified source-to-emulator crosswalk for its continuation yet.
-        if frame.get("event_id") is not None or (
-                not any(a.get("kind") == "choose_map_node"
-                        for a in state.actions())):
+        if not any(a.get("kind") == "choose_map_node"
+                   for a in state.actions()):
             return _report("BLOCKED_NEOW_CONTINUATION",
                            "Source Neow effect requires further observed macro choices",
                            steps=steps, checks=checks)
