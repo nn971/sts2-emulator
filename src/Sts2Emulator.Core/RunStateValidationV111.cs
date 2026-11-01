@@ -115,7 +115,6 @@ public sealed partial record RunState
                 PrototypeNativeOvergrowthMap.BossFloor,
             PrototypeNativeOvergrowthMap.GenerationProfileId
                 or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
-                or ExperimentalFixedRouteOvergrowthMapV111.ProfileId
                 or PrototypeNativeUnderdocks.GenerationProfileId =>
                 PrototypeNativeOvergrowthMap.BossFloor,
             PrototypeNativeLaterActMap.HiveProfileId
