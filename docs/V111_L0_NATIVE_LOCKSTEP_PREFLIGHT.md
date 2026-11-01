@@ -1249,11 +1249,30 @@ match through lethal on turn 6. The emulator enters Reward afterwards.
 This establishes the tested source-observable projection, not full
 native-state or legal-decision parity.
 
-**Next acceptance gate:** event-driven capture of uniquely identified,
-source-verified legal decision boundaries during overlapping card animations.
-The strict recorder remains fail-closed at decision 9. The existing
-capture suffices for the completed first-combat replay; no new native
-game launch is needed for further offline analysis.
+**Next acceptance gate — settled-state parity:** collect and compare
+independent *turn-boundary* snapshots only after native mechanics and UI
+callbacks have settled. A comparison checkpoint requires source-observed
+quiescence: no action-executor work (including queued/suspended operations),
+no active card-play animation or targeting, no unresolved native player
+choice/overlay, and completion of the associated automatic effects. In
+particular, an `EndPlayerTurnAction` request is **not** a settled turn-end
+boundary. Prefer the first fully idle `PlayerTurnPhase.Play` frame after
+the previous enemy turn has finished (turn start), then optionally a
+similarly certified post-turn-end/pre-enemy-action state if the engine exposes
+an atomic boundary.
+
+Use executor starts/completions, UI-play-begins, request callbacks and
+RNG checkpoints for **diagnostics**, including locating the first
+mechanical difference after a turn-boundary mismatch; these asynchronous
+observations are not parity checkpoints. If source evidence of quiescence
+is incomplete, report `SETTLEMENT_UNVERIFIED` and defer the parity
+comparison rather than interpreting a transient animation state as a
+divergence. The strict player-decision trace remains fail-closed at its
+decision-9 gap; independent turn checkpoints can resume after that gap
+without claiming the missing intermediate decisions or a complete legal
+menu. The pinned first-combat golden replay still tests its source-observed
+mechanical projections independently of this future native settlement
+contract. No original-game launch is required for the present offline work.
 
 ### Offline installed-assembly API check (no game launch)
 
