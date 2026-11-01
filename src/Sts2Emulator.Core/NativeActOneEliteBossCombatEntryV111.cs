@@ -96,7 +96,7 @@ public static class NativeActOneEliteBossCombatEntryV111
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(encounter);
-        if (state.Configuration?.UsesExperimentalNativeWeakCombatEntry != true)
+        if (state.Configuration?.UsesNativeActOneCombatEntry != true)
             throw new InvalidOperationException(
                 "Native elite/boss entry requires the experimental fidelity opt-in.");
         if (!Entries.TryGetValue(encounter.Id, out var entry)
@@ -107,9 +107,11 @@ public static class NativeActOneEliteBossCombatEntryV111
             throw new NotSupportedException(
                 $"Experimental native elite/boss entry does not support '{encounter.Id}'.");
 
-        var mapProfile = entry.Region == PrototypeActOneRegion.Overgrowth
-            ? PrototypeNativeOvergrowthMap.GenerationProfileId
-            : PrototypeNativeUnderdocks.GenerationProfileId;
+        var mapProfile = state.Configuration?.UsesNativeStandardActMap == true
+            ? NativeStandardActMapV111.ProfileId
+            : entry.Region == PrototypeActOneRegion.Overgrowth
+                ? PrototypeNativeOvergrowthMap.GenerationProfileId
+                : PrototypeNativeUnderdocks.GenerationProfileId;
         if (world.ActOneRegion != entry.Region
             || world.Map.GenerationProfileId != mapProfile)
             throw new NotSupportedException(
