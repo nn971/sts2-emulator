@@ -157,6 +157,27 @@ public sealed class NativeObservedMapV111Tests
             && Token(enemies[0].EnemyId) == "FUZZYWURMCRAWLER"
             && enemies[0].Hp == 59,
             "Native observed first-combat boundary differs from emulator: " + report);
+
+        // Native passive decision 1, *after* the first combat's opening draw.
+        // Identifiers are normalized across game and emulator namespaces.
+        var nativeHand = new[] {
+            "STRIKE_SILENT", "NEUTRALIZE", "ASCENDERS_BANE",
+            "DEFEND_SILENT", "STRIKE_SILENT", "DEFEND_SILENT",
+            "STRIKE_SILENT" };
+        var nativeDraw = new[] {
+            "STRIKE_SILENT", "STRIKE_SILENT", "SURVIVOR",
+            "DEFEND_SILENT", "DEFEND_SILENT", "DEFEND_SILENT" };
+        var byInstance = combat!.Cards.ToDictionary(card => card.InstanceId);
+        var actualHand = combat.Hand.Select(id => Token(byInstance[id].CardId)).ToArray();
+        var actualDraw = combat.DrawPile.Select(id => Token(byInstance[id].CardId)).ToArray();
+        Assert.True(actualHand.SequenceEqual(nativeHand.Select(Token)),
+            "First native/emulator hand divergence; source=" +
+            string.Join(",", nativeHand) + "; emulator=" +
+            string.Join(",", actualHand) + "; " + report);
+        Assert.True(actualDraw.SequenceEqual(nativeDraw.Select(Token)),
+            "First native/emulator draw-pile divergence; source=" +
+            string.Join(",", nativeDraw) + "; emulator=" +
+            string.Join(",", actualDraw) + "; " + report);
     }
 
 }
