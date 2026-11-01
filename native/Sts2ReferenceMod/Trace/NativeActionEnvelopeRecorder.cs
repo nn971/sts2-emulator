@@ -29,6 +29,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     // ActionExecutor callback proves execution of the same action object.
     private readonly Dictionary<object, long> _requested =
         new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<(string Kind, int Turn)> _turnCheckpoints = [];
     private long _nextInputRequestId;
     private long _nextHandMenuId;
     private sealed class HandMenuLifetime
@@ -880,6 +881,51 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 }).ToArray(),
                 complete_native_rng_inventory = false,
                 exact_rng_parity = "NOT_TESTED"
+            })));
+    }
+
+    /// <summary>
+    /// Source-observed turn-boundary candidate, captured without advancing
+    /// game state. Neither a rendered idle frame nor a pre-executor callback
+    /// proves that all native queue/animation hooks have settled. The source
+    /// gate can later upgrade this only through an independently audited
+    /// settlement contract; this event always remains provisional.
+    /// </summary>
+    public void TurnBoundaryCandidate(
+        string kind, int turn, JsonElement state, string nativeSide,
+        string playerPhase)
+    {
+        if (_closed) return;
+        bool playerStart = kind == "PLAYER_TURN_START";
+        bool enemyStart = kind == "ENEMY_TURN_START";
+        if ((!playerStart && !enemyStart) || turn <= 0
+            || string.IsNullOrWhiteSpace(nativeSide)
+            || string.IsNullOrWhiteSpace(playerPhase)
+            || !_turnCheckpoints.Add((kind, turn)))
+        {
+            ObservationFailure("turn_boundary_candidate",
+                "INVALID_OR_DUPLICATE_TURN_BOUNDARY");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_turn_checkpoint", Next(), State: Snapshot(state),
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                kind, turn,
+                observation_site = playerStart
+                    ? "NativeV111PassiveBridge.OnFrame"
+                    : "ActionExecutor.BeforeActionExecuted",
+                observation_basis = playerStart
+                    ? "IDLE_PLAYABLE_PLAYER_FRAME_BEFORE_OBSERVED_INPUT"
+                    : "PRE_READY_TO_BEGIN_ENEMY_TURN_ACTION",
+                native_side = nativeSide,
+                player_phase = playerPhase,
+                settlement_status = "SETTLEMENT_UNVERIFIED",
+                complete_native_queue_verified = false,
+                native_phase_handoff_order_verified = false,
+                original_native_legal_menu = "NOT_VERIFIED",
+                emulator_parity = "NOT_TESTED",
+                rng_draws_performed_by_inspector = 0
             })));
     }
 
