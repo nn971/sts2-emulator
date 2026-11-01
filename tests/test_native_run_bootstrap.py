@@ -3,8 +3,10 @@
 Synthetic source is explicitly constructed from emulator choices; never
 interpreted as parity evidence from the installed game.
 """
+import base64
 import copy
 import json
+import struct
 import sys
 import unittest
 from pathlib import Path
@@ -12,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_run_bootstrap import (
     _neow_native_id, _source_preflight, _emulator_opening_profile,
-    run_bootstrap, SCHEMA,
+    run_bootstrap, _native_upfront_diagnosis, SCHEMA,
 )
 from native_neow_rng_verify import neow_event_rng, verify_neow_event_rng, xxhash64
 
@@ -52,6 +54,45 @@ def fixture(seed="synthetic-bootstrap", choice="take_proto.native.neow.heftytabl
              "player_hp": 56, "player_gold": 99}],
         "first_combat_link": {"act_index": 0, "map_column": 3, "map_row": 0},
     }
+
+
+class NativeUpFrontBoundaryTests(unittest.TestCase):
+    def test_real_source_run_started_counter_is_reported_as_first_rng_gap(self):
+        source = {"source_run_rng_snapshots": [{
+            "site": "run_started", "streams": [{
+                "scope": "run", "stream_id": "UpFront",
+                "counter": 412, "s0": 10, "s1": 20, "s2": 30, "s3": 40,
+            }]}]}
+        snapshot = {"state": {"native_run_rng": {"streams": [{
+            "stream_id": "run.up_front", "call_count": 229,
+            "state_bytes": base64.b64encode(struct.pack(
+                "<QQQQ", 11, 21, 31, 41)).decode(),
+        }]}}}
+        result = _native_upfront_diagnosis(source, snapshot)
+        self.assertEqual("SOURCE_UPFRONT_DIVERGED", result["status"])
+        self.assertEqual(412, result["source_counter"])
+        self.assertEqual(229, result["emulator_counter"])
+        self.assertEqual(183, result["remaining_source_draws"])
+        self.assertEqual("$.native_run_rng.run.up_front.counter",
+                         result["first_difference"]["path"])
+        self.assertFalse(result["source_cursor_words_match"])
+
+    def test_source_cursor_requires_exact_words_and_encoding(self):
+        sample = {"source_run_rng_snapshots": [{
+            "site": "run_started", "streams": [{
+                "scope": "run", "stream_id": "UpFront",
+                "counter": 229, "s0": 11, "s1": 21, "s2": 31, "s3": 41,
+            }]}]}
+        snap = {"state": {"native_run_rng": {"streams": [{
+            "stream_id": "run.up_front", "call_count": 229,
+            "state_bytes": base64.b64encode(struct.pack(
+                "<QQQQ", 11, 21, 31, 41)).decode(),
+        }]}}}
+        self.assertEqual("SOURCE_UPFRONT_MATCHED",
+                         _native_upfront_diagnosis(sample, snap)["status"])
+        snap["state"]["native_run_rng"]["streams"][0]["state_bytes"] = "bogus"
+        self.assertEqual("BLOCKED_UPFRONT_CURSOR_ENCODING",
+                         _native_upfront_diagnosis(sample, snap)["status"])
 
 
 class FakeState:
