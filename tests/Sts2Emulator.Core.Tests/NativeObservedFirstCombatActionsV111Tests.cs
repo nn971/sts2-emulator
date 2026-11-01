@@ -384,5 +384,42 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
             332782078443390178UL, 1557917576211562617UL),
             NativeRngV111.ToSnapshot(shuffleFive));
         NativeRunRngV111.Validate(state);
+
+        // Source executor #22: turn-five Strike, completed at ordinal 793.
+        var fifthTurnStrike = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId ==
+                nativeToEmulatorCard[7]
+            && action.ReadPayload<PlayCardPayload>().TargetEnemyId ==
+                enemy.InstanceId);
+        state = engine.Step(state, fifthTurnStrike).State;
+        var afterTwentyTwo = Assert.IsType<CombatState>(state.World!.Combat);
+        Assert.True(state.Player.Hp == 56 && afterTwentyTwo.Energy == 2
+            && Assert.Single(afterTwentyTwo.Enemies).Hp == 11);
+        Assert.Equal(new long[] { 5, 11, 12, 10 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), afterTwentyTwo.Hand);
+        Assert.Equal(new long[] { 7 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), afterTwentyTwo.DiscardPile);
+
+        // Source executor #25 pre-action snapshot (ordinal 851):
+        // fifth end-turn resolves another Inhale; Strength grows to 14.
+        state = engine.Step(state, engine.GetLegalActions(state)
+            .Single(action => action.Kind == "end_turn")).State;
+        var turnSix = Assert.IsType<CombatState>(state.World!.Combat);
+        var targetSix = Assert.Single(turnSix.Enemies);
+        Assert.True(state.Player.Hp == 56 && turnSix.Turn == 6
+            && turnSix.Energy == 3 && turnSix.PlayerBlock == 0
+            && targetSix.Hp == 11 && targetSix.Block == 0);
+        Assert.True(targetSix.Powers?.Any(power =>
+            Token(power.PowerId) == "STRENGTH"
+            && power.Stacks == 14) == true,
+            $"Native turn-six Strength(14) differs");
+        Assert.Equal(new long[] { 8, 1, 9, 0, 6 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), turnSix.Hand);
+        Assert.Equal(new long[] { 3, 4 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), turnSix.DrawPile.Reverse());
+        Assert.Equal(new long[] { 7, 5, 11, 12, 10 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), turnSix.DiscardPile);
+        NativeRunRngV111.Validate(state);
     }
 }
