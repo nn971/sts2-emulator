@@ -672,11 +672,13 @@ internal static class NativeV111PassiveBridge
             // Executor callbacks must stay attached even when the stricter
             // decision trace has stopped due to an unsupported player prompt.
             AttachActionExecutor();
+            JsonElement? frameState = null;
             if (_actionEnvelopes is not null && _adapter is not null)
             {
-                // Changed-state frame samples continue after the strict player
-                // decision trace reaches an unsupported nested UI choice.
-                var frameState = TryActionSnapshot("frame_state");
+                // Reuse the single source frame snapshot for a provisional
+                // player-turn candidate, keeping its chronology and cost
+                // identical to the existing diagnostic frame observation.
+                frameState = TryActionSnapshot("frame_state");
                 if (frameState.HasValue)
                     _actionEnvelopes.ObserveFrame(frameState.Value);
             }
@@ -690,17 +692,14 @@ internal static class NativeV111PassiveBridge
                 && playerState.TurnNumber > 0
                 && !ObservedPlayerInputTurns.Contains(playerState.TurnNumber)
                 && !ObservedPlayerStartTurns.Contains(playerState.TurnNumber)
+                && frameState.HasValue
                 && StableDecisionBlocker(combat) is null)
             {
-                var checkpointState = TryOptionalUiBeginSnapshot();
-                if (checkpointState.HasValue)
-                {
-                    _actionEnvelopes.TurnBoundaryCandidate(
-                        "PLAYER_TURN_START", playerState.TurnNumber,
-                        checkpointState.Value, combat.CurrentSide.ToString(),
-                        playerState.Phase.ToString());
-                    ObservedPlayerStartTurns.Add(playerState.TurnNumber);
-                }
+                _actionEnvelopes.TurnBoundaryCandidate(
+                    "PLAYER_TURN_START", playerState.TurnNumber,
+                    frameState.Value, combat.CurrentSide.ToString(),
+                    playerState.Phase.ToString());
+                ObservedPlayerStartTurns.Add(playerState.TurnNumber);
             }
             if (_recording is null || _adapter is null || _choiceInterrupted) return;
             string? blocker = StableDecisionBlocker(combat);
