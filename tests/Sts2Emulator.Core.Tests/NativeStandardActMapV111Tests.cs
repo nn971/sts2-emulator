@@ -32,7 +32,7 @@ public sealed class NativeStandardActMapV111Tests
         Assert.True(result.AfterTypes.Counter > result.AfterPaths.Counter);
         Assert.True(result.AfterPruning.Counter >= result.AfterTypes.Counter);
         Assert.Equal(result.FinalRng, result.AfterPruning);
-        Assert.Equal(7, result.RestQuota is 6 or 7 ? 7 : 0);
+        Assert.InRange(result.RestQuota, 6, 7);
         Assert.InRange(result.UnknownQuota, 10, 14);
         Assert.Equal(ascension >= 1 ? 8 : 5, result.EliteQuota);
         Assert.NotEqual(NativeRngV111.ToSnapshot(initial), result.FinalRng);
@@ -69,7 +69,8 @@ public sealed class NativeStandardActMapV111Tests
         var pending = new Queue<string>(reachable);
         while (pending.Count > 0)
         {
-            var node = nodes.Single(n => n.NodeId == pending.Dequeue());
+            var nextId = pending.Dequeue();
+            var node = nodes.Single(n => n.NodeId == nextId);
             foreach (var child in node.NextNodeIds ?? [])
                 if (reachable.Add(child))
                     pending.Enqueue(child);

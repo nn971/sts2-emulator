@@ -2658,7 +2658,9 @@ public static class PrototypeStateInvariants
         if (world.Map.GenerationProfileId
                 == PrototypeNativeOvergrowthMap.GenerationProfileId
             || world.Map.GenerationProfileId
-                == PrototypeNativeUnderdocks.GenerationProfileId)
+                == PrototypeNativeUnderdocks.GenerationProfileId
+            || world.Map.GenerationProfileId
+                == NativeStandardActMapV111.ProfileId)
         {
             ValidateNativeOvergrowthMap(world);
             return;
