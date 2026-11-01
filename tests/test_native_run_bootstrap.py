@@ -177,7 +177,8 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(0, session.reset_count)
 
     def test_missing_legacy_source_rng_is_explicit_blocker(self):
-        source = fixture(seed="oldlegacy")
+        source = fixture()
+        source["run_identity"]["seed"] = "oldlegacy"
         session = FakeSession()
         report, _ = run_bootstrap(source, session)
         self.assertEqual("BLOCKED_NATIVE_NEOW_RNG_RECONSTRUCTION", report["status"])
