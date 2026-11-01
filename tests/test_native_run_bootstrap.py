@@ -34,6 +34,7 @@ def fixture(seed="synthetic-bootstrap", choice="take_proto.native.neow.heftytabl
         "schema": "native-run-prelude-audit-v1",
         "status": "RUN_PRELUDE_SOURCE_OBSERVED",
         "run_identity": {"seed": seed, "ascension": 10,
+                         "game_build": "EMULATOR-DERIVED-SYNTHETIC-NOT-NATIVE",
                          "character_id": "SILENT",
                          "first_act_id": "OVERGROWTH", "run_id": "synthetic"},
         "source_run_rng_snapshots": [{"site": "run_started"}],

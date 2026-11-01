@@ -750,3 +750,34 @@ RNG or offer parity. The current verifier deliberately blocks legacy
 `old...` seed hashing, excessive counters, and unknown event IDs.
 Testing includes standard xxHash64 vectors and deliberately perturbed
 source words, with no installed-game launch.
+
+### Pinned Neow event-local RNG verification
+
+`NativeNeowOfferV111` reuses the independently implemented
+`NativeRngV111` SplitMix64/xoshiro256** codec and derives its
+standalone event-local seed as `RunSeed(seed) + xxHash64("NEOW")`.
+The pinned `Neow.GenerateInitialOptions` call graph is implemented
+without affecting the emulator's prototype RNG, including conditional
+positive groups and order-dependent Fisher–Yates shuffle.
+
+The source's `Kaleidoscope` and `ScrollBoxes` availability depends
+on unlocked card pools, so the predictor enumerates all four hypotheses.
+Two hypotheses yield the **same RNG state** (equal positive-pool sizes)
+and may yield different offers. Consequently the verifier checks the
+**entire ordered offer AND all five RNG snapshot fields**, never inferring
+an unlock status from the counter alone.
+
+A read-only `native_neow_rng_probe` JSONL operation returns those four
+hypotheses. The strict `native_neow_rng_probe_audit.py` checks source
+offer/model IDs and the original `event_rng` snapshot against the
+predicted source RNG. The bootstrap now requires a single matching
+hypothesis for captures whose `game_build` has the pinned native
+assembly/mvid/SHA-256 format. It stops before emulator reset if source
+Neow reproduction differs, or if the build format is unrecognized.
+Only explicitly `EMULATOR-DERIVED-SYNTHETIC-NOT-NATIVE` data bypass
+this verification, retaining the explicit skip indicator.
+
+This is **source Neow RNG reconstruction only**, not native/emulator
+Neow-menu parity, map RNG parity or runtime Harmony validation.
+A matched hypothesis means its unlock filter is *consistent with*
+the capture, rather than independently observed unlock state.

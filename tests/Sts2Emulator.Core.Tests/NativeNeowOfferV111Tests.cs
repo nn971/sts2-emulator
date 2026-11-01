@@ -39,10 +39,12 @@ public sealed class NativeNeowOfferV111Tests
     }
 
     [Fact]
-    public void UnlockGatesYieldDistinctPostOfferRngStates()
+    public void UnlockGatesCanSharePostOfferRngStates()
     {
         var variants = NativeNeowOfferV111.PredictAll("source-availability-v111");
-        Assert.Equal(4, variants.Select(v => (
+        // Both single-allowed hypotheses have the same shuffle length:
+        // identical RNG cursors do NOT prove identical offered options.
+        Assert.Equal(3, variants.Select(v => (
             v.EventRng.Counter, v.EventRng.State0,
             v.EventRng.State1, v.EventRng.State2, v.EventRng.State3
         )).Distinct().Count());

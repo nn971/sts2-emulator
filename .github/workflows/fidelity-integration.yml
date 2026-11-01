@@ -33,3 +33,5 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_native_run_bootstrap.py' -v
       - name: Independent run-start to first-combat emulator JSONL smoke (synthetic source only)
         run: python tools/native_run_bootstrap_jsonl_smoke.py
+      - name: Independent native Neow RNG source predictor smoke
+        run: python tools/native_neow_rng_probe_smoke.py
