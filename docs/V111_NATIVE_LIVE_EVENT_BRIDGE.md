@@ -196,6 +196,53 @@ persistent coordinator has not yet been exercised on this private native
 capture with an executable emulator in the current environment. It must
 separately pass the six-turn gate before a live game launch is requested.
 
+## One-command offline acceptance of an existing native capture
+
+The offline-only `tools/native_live_m1_acceptance.py` pairs the newest
+complete original-game `passive-*.actions.jsonl` sidecar with its own
+`run-prelude-*.jsonl` by **native combat run ID, game build, seed, and
+ascension**. It requires observed terminal records and contiguous source
+ordinals. It invokes the persistent coordinator against the pre-existing
+capture, using the independently bootstrapped emulator, and writes a small
+final acceptance report without copying private trace data to GitHub.
+
+After building the .NET 9 emulator CLI locally, use:
+
+```fish
+dotnet build Sts2Emulator.sln -c Release
+python tools/native_live_m1_acceptance.py \
+    --trace-dir /mnt/d/SteamLibrary/sts2-inspector-traces \
+    --out /tmp/native-live-m1-acceptance.json
+```
+
+This defaults to **at least six observed projected player-turn comparisons**,
+a terminal full-source replay, and no first detected difference. The result
+`M1_SIX_TURN_OFFLINE_AGREEMENT_UNCERTIFIED` carries the usual
+`native_settlement_certified: false` and `native_live_lockstep: false`.
+If local `dotnet` or the release CLI DLL is missing, the acceptance script
+reports `BLOCKED_EMULATOR_EXECUTABLE_UNAVAILABLE`, rather than claiming
+mechanics agreement.
+
+For a specific pair, pass both `--sidecar /path/to/capture.actions.jsonl`
+and `--prelude /path/to/run-prelude.jsonl`; source identities are verified
+even when files are specified explicitly. The command never launches the
+original game and does not require a new native capture.
+
+### CI evidence for the new coordinator
+
+The dedicated M1 Python tests (**22/22**) and the emulator-derived
+**real JSONL-process** smoke passed in the focused GitHub Actions gate on
+the 2026-11-02 M1 branch. The latter matched two projected player-turn
+checkpoints and correctly froze an injected HP mismatch at `$.player.hp`.
+Its source was explicitly **EMULATOR_DERIVED_SYNTHETIC_ONLY**; it is a
+coordinator/process test, not new original-game parity evidence.
+
+The original six-turn independent replay report from the prior fidelity
+branch had 6/6 projected checkpoints with no first difference, and native
+RNG checkpoint comparisons of four 15-stream agreements plus two
+source-uncomparable windows. That report is the reference for the new M1
+acceptance command.
+
 ## Test gates and remaining M1 work
 
 Focused C# tests check authentication separation, SSE cursor replay, disk
