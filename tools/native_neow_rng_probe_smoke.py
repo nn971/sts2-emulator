@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "bindings" / "python"))
 from sts2_emulator import Session
 from native_neow_rng_probe_audit import compare
+from native_neow_rng_verify import verify_neow_event_rng
 
 
 def main():
@@ -33,6 +34,16 @@ def main():
             tuple(p["eventRng"].values()) for p in result["predictions"]
         }) == 3, "Shared call-count hypotheses must share the exact RNG state"
         assert state.exact_hash() == before
+        for prediction in result["predictions"]:
+            words = prediction["eventRng"]
+            observed = {"counter": words["counter"],
+                        **{"s" + str(i): words["state" + str(i)]
+                           for i in range(4)}}
+            independent = verify_neow_event_rng(
+                "native-neow-probe-smoke-v1", observed)
+            assert independent["status"] == "SOURCE_EVENT_RNG_RECONSTRUCTED", (
+                "C# and independently implemented Python xoshiro disagree: "
+                + repr(independent))
         chosen = result["predictions"][0]
         state_rng = chosen["eventRng"]
         source_rng = {"counter": state_rng["counter"],
@@ -44,7 +55,7 @@ def main():
         print(json.dumps({
             "status": "NATIVE_NEOW_RNG_SOURCE_PROBE_SMOKE_PASS",
             "real_emulator_jsonl_process": True,
-            "source_data": "EMULATOR_PREDICTOR_SELF_TEST_ONLY",
+            "source_data": "C_SHARP_PREDICTION_VERIFIED_BY_INDEPENDENT_PYTHON_CODEC",
             "native_game_parity": "NOT_TESTED"
         }, sort_keys=True))
 
