@@ -198,8 +198,8 @@ separately pass the six-turn gate before a live game launch is requested.
 
 ## One-command offline acceptance of an existing native capture
 
-The offline-only `tools/native_live_m1_acceptance.py` pairs the newest
-complete original-game `passive-*.actions.jsonl` sidecar with its own
+The offline-only `tools/native_live_m1_acceptance.py` selects the newest
+complete six-turn original-game capture when available, and pairs its `passive-*.actions.jsonl` sidecar with its own
 `run-prelude-*.jsonl` by **native combat run ID, game build, seed, and
 ascension**. It requires observed terminal records and contiguous source
 ordinals. It invokes the persistent coordinator against the pre-existing
@@ -230,7 +230,14 @@ original game and does not require a new native capture.
 
 ### CI evidence for the new coordinator
 
-The dedicated M1 Python tests (**22/22**) and the emulator-derived
+The focused v111-fidelity-integration workflow successfully built the
+repository and passed **177/177 targeted C# tests**, **26/26 dedicated M1
+Python tests**, and the real emulator JSONL process smoke. The wider existing
+native audit suite still has two pre-existing Neow source-route expectation
+failures from the underlying PR #231; they are tracked separately and are
+not M1 transport failures.
+
+The dedicated M1 Python tests (**26/26**) and the emulator-derived
 **real JSONL-process** smoke passed in the focused GitHub Actions gate on
 the 2026-11-02 M1 branch. The latter matched two projected player-turn
 checkpoints and correctly froze an injected HP mismatch at `$.player.hp`.
