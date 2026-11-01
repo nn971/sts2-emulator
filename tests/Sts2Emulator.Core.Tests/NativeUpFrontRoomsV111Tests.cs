@@ -157,10 +157,10 @@ public sealed class NativeUpFrontRoomsV111Tests
         var current = NativeStartupRoomQueueTraceV111.Empty();
         current = NativeStartupRoomQueueTraceV111.Observe(current,
             rooms, 3, PrototypeRoomType.Boss, "3:16:3",
-            "proto.encounter.test_subject_boss");
+            PrototypeNativeGloryBosses.TestSubjectEncounterId);
         current = NativeStartupRoomQueueTraceV111.Observe(current,
             rooms, 3, PrototypeRoomType.Boss, "3:17:3",
-            "proto.encounter.queen_boss");
+            PrototypeNativeGloryBosses.QueenEncounterId);
         Assert.Equal(2, current.BossVisits[2]);
         Assert.Equal(["TestSubjectBoss", "QueenBoss"],
             current.Comparisons.Select(x => x.SourceEncounterId).ToArray());
