@@ -33,7 +33,16 @@ internal static class Program
         new("MegaCrit.Sts2.Core.Runs.RunManager", "event", "RoomEntered"),
         new("MegaCrit.Sts2.Core.Runs.RunState", "property", "Acts"),
         new("MegaCrit.Sts2.Core.Runs.RunState", "property", "Rng"),
-        new("MegaCrit.Sts2.Core.Runs.RunState", "property", "Players")
+        new("MegaCrit.Sts2.Core.Runs.RunState", "property", "Players"),
+        // Turn-boundary checkpoint support: API existence only. Method
+        // ordering and queue settlement require native execution evidence.
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "IsInProgress"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "DebugOnlyGetState"),
+        new("MegaCrit.Sts2.Core.Combat.CombatState", "property", "CurrentSide"),
+        new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "event", "BeforeActionExecuted"),
+        new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "event", "AfterActionExecuted"),
+        new("MegaCrit.Sts2.Core.GameActions.ReadyToBeginEnemyTurnAction", "type", ""),
+        new("MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction", "type", "")
     ];
 
     private static bool Exists(MetadataReader reader, Member requested)
@@ -47,6 +56,12 @@ internal static class Program
 
             switch (requested.Kind)
             {
+                case "type":
+                    return true;
+                case "method":
+                    return type.GetMethods().Any(item =>
+                        reader.GetString(reader.GetMethodDefinition(item).Name)
+                            == requested.Name);
                 case "field":
                     return type.GetFields().Any(item =>
                         reader.GetString(reader.GetFieldDefinition(item).Name)
