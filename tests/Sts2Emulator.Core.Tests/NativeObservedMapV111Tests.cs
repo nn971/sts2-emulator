@@ -209,8 +209,10 @@ public sealed class NativeObservedMapV111Tests
         // population (up_front=412 in this trace). Phial Holster's
         // pre-combat potion generation also consumed four calls in the
         // original game and is an independent pending semantic gate.
-        Assert.Equal(0UL, state.NativeRunRng.Streams.Single(
+        Assert.Equal(229UL, state.NativeRunRng.Streams.Single(
             stream => stream.StreamId == "run.up_front").CallCount);
+        Assert.Equal(229,
+            state.NativeStartupRelicBags!.AfterPlayerBag.Counter);
         Assert.Equal(new NativeRngSnapshot(
             4, 247483884377393130UL, 5718769650147259872UL,
             2262233218431618893UL, 7728349850348698365UL),
