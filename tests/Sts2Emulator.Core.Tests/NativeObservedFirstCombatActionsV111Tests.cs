@@ -243,9 +243,14 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
         // ordering, so a matching hand alone cannot hide RNG drift.
         var shuffle = Assert.Single(state.NativeRunRng!.Streams,
             stream => stream.StreamId == "run.shuffle");
-        Assert.Equal(new NativeRngSnapshot(
+        var expectedShuffle = new NativeRngSnapshot(
             22, 11424736245114868788UL, 4415749080287556382UL,
-            2605170461699982399UL, 2806277323105153668UL),
-            NativeRngV111.ToSnapshot(shuffle));
+            2605170461699982399UL, 2806277323105153668UL);
+        Assert.Equal(expectedShuffle, NativeRngV111.ToSnapshot(shuffle));
+        var combatShuffle = Assert.Single(turnThree.NativeRng!.RunStreams.Streams,
+            stream => stream.StreamId == "run.shuffle");
+        Assert.Equal(expectedShuffle, NativeRngV111.ToSnapshot(combatShuffle));
+        // The combat and persistent run owners must agree across all streams.
+        NativeRunRngV111.Validate(state);
     }
 }
