@@ -3,7 +3,7 @@ namespace Sts2Emulator.Core;
 public sealed partial class PrototypeGameEngine
 {
     private static bool UsesNativeActOneSystems(RunWorldState world) =>
-        world.Act == 1 && (PrototypeNativeOvergrowthMap.IsGenerationProfile(
+        world.Act == 1 && (PrototypeNativeOvergrowthMap.UsesOvergrowthGameplay(
                 world.Map.GenerationProfileId)
             || world.Map.GenerationProfileId == PrototypeNativeUnderdocks.GenerationProfileId);
 
