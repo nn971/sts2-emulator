@@ -129,6 +129,70 @@ def combat():
 
 
 class RunPreludeAuditTests(unittest.TestCase):
+    @staticmethod
+    def with_full_source_map():
+        rows = prelude()
+        points = []
+        for row in range(17):
+            point_type = ("Ancient" if row == 0 else "Boss" if row == 16
+                          else "Treasure" if row == 9 else "RestSite"
+                          if row == 15 else "Monster")
+            points.append({
+                "column": 3, "row": row, "point_type": point_type,
+                "can_be_modified": row not in (0, 16),
+                "children": [] if row == 16 else [
+                    {"column": 3, "row": row + 1}],
+            })
+        data = {
+            "act_index": 0, "act_id": "OVERGROWTH",
+            "map_type": "StandardActMap", "points": points,
+            "map_rng": {"counter": 90, "s0": 1,
+                        "s1": 2, "s2": 3, "s3": 4},
+            "source": "RunState.Map (after RunManager.GenerateMap)",
+            "map_rng_source": "StandardActMap._rng.ToSerializable",
+            "source_rng_consumed_by_inspector": False,
+            "source_map_mutation_history_complete": False,
+            "native_map_emulator_alignment": "NOT_TESTED",
+        }
+        insertion = next(i for i, record in enumerate(rows)
+                         if record["type"] == "map_action_request")
+        rows.insert(insertion, {"type": "initial_map_snapshot",
+                                "data": data})
+        rows[-1]["data"]["initial_map_snapshot_recorded"] = True
+        for n, record in enumerate(rows, 1):
+            record["ordinal"] = n
+            record["run_id"] = "run-uuid"
+        return rows
+
+    def test_full_native_map_and_local_rng_are_audited_separately(self):
+        result = audit(self.with_full_source_map())
+        self.assertEqual("RUN_PRELUDE_SOURCE_OBSERVED", result["status"])
+        self.assertTrue(result["source_map_rng_observed"])
+        self.assertEqual("NOT_TESTED", result["native_map_topology_parity"])
+        native = result["source_initial_map_snapshot"]
+        self.assertEqual(17, len(native["points"]))
+        self.assertEqual(90, native["map_rng"]["counter"])
+
+    def test_malformed_duplicate_or_late_map_snapshots_are_rejected(self):
+        for case in ("corrupt", "duplicate", "late", "terminal_lie"):
+            rows = self.with_full_source_map()
+            idx = next(i for i, record in enumerate(rows)
+                       if record["type"] == "initial_map_snapshot")
+            if case == "corrupt":
+                rows[idx]["data"]["points"][1]["point_type"] = "SECRET"
+            elif case == "duplicate":
+                rows.insert(idx + 1, copy.deepcopy(rows[idx]))
+            elif case == "late":
+                item = rows.pop(idx)
+                pos = next(i for i, record in enumerate(rows)
+                           if record["type"] == "map_action_outcome")
+                rows.insert(pos + 1, item)
+            else:
+                rows[-1]["data"]["initial_map_snapshot_recorded"] = False
+            for n, record in enumerate(rows, 1):
+                record["ordinal"] = n
+            self.assertEqual("INVALID_PRELUDE", audit(rows)["status"], case)
+
     def test_verified_source_and_room_arrival_is_not_complete_macro(self):
         result = audit(prelude())
         self.assertEqual("RUN_PRELUDE_SOURCE_OBSERVED", result["status"])
