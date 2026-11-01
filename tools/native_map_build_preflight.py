@@ -52,7 +52,9 @@ def require_separate_stage(game_root: Path, data_dir: Path, stage: Path) -> Path
             raise ValueError(
                 "Stage directory resolves inside the original game installation"
             )
-    if destination == REPO_ROOT or destination in REPO_ROOT.parents:
+    if (destination == REPO_ROOT
+        or destination in REPO_ROOT.parents
+        or REPO_ROOT in destination.parents):
         raise ValueError("Stage directory resolves to the repository root or parent")
     return destination
 
