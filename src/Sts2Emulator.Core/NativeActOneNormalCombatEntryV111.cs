@@ -71,7 +71,7 @@ public static class NativeActOneNormalCombatEntryV111
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(encounter);
-        if (state.Configuration?.UsesExperimentalNativeWeakCombatEntry != true)
+        if (state.Configuration?.UsesNativeActOneCombatEntry != true)
             throw new InvalidOperationException(
                 "Native normal combat entry requires the experimental fidelity opt-in.");
         if (!Entries.TryGetValue(encounter.Id, out var entry)
@@ -80,9 +80,11 @@ public static class NativeActOneNormalCombatEntryV111
             || encounter.RoomType != PrototypeRoomType.Combat)
             throw new NotSupportedException(
                 $"Experimental normal combat entry does not support '{encounter.Id}'.");
-        var profile = entry.Region == PrototypeActOneRegion.Overgrowth
-            ? PrototypeNativeOvergrowthMap.GenerationProfileId
-            : PrototypeNativeUnderdocks.GenerationProfileId;
+        var profile = state.Configuration?.UsesNativeStandardActMap == true
+            ? NativeStandardActMapV111.ProfileId
+            : entry.Region == PrototypeActOneRegion.Overgrowth
+                ? PrototypeNativeOvergrowthMap.GenerationProfileId
+                : PrototypeNativeUnderdocks.GenerationProfileId;
         if (world.ActOneRegion != entry.Region
             || world.Map.GenerationProfileId != profile)
             throw new NotSupportedException(
