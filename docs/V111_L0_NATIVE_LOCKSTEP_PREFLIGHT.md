@@ -959,7 +959,7 @@ profile, so Fuzzy Wurm Crawler's **59/59 HP** is sampled from
 including all four state words of each, match the native source
 capture in `NativeObservedMapV111Tests`.
 
-**Full-unlock Phial Holster RNG is now matched; UpFront is a staged prefix.**
+**Full-unlock Phial Holster RNG and source-ordered UpFront startup reconstruction.**
 
 - `run.combat_potion_generation`: native first combat **4** and
   emulator first combat **4**, including **all four identical
@@ -982,19 +982,26 @@ capture in `NativeObservedMapV111Tests`.
   Silent-specific models). Four rarity buckets produce
   **111** and **118** Fisher–Yates swaps respectively, hence
   `run.up_front` is at **229** after these two real source phases.
-  This prefix is deterministic but lacks a native intermediate
-  checkpoint; the capture observed only the final 412. The
-  independent run bootstrap now records this as
-  `checks.native_upfront_startup=SOURCE_UPFRONT_DIVERGED`
-  (412 source versus 229 emulator), while continuing separate map
-  and Neow comparisons instead of hiding the earliest RNG gap.
-- The remaining **183 source draws** occur after relic-bag
-  population, as `RunManager.GenerateRooms` distributes shared
-  Ancients and builds pre-generated event/encounter/elite/boss
-  pools across all three acts (plus applicable ascension effects).
-  Implement their source order and preserve their generated output
-  instead of advancing the RNG with 183 anonymous samples.
-  **Native run-start all-stream parity remains unverified**.
+  The next phase, `NativeUpFrontRoomsV111.Generate`, translates
+  `RunManager.GenerateRooms` in source order using actual model
+  registrations: a two-draw shared Ancient assignment, event shuffles,
+  three separate refillable encounter grab bags per act, source
+  tag-based rejection sampling, and the A10 second-boss draw. Both
+  relic bags and all three generated room/encounter/Ancient queues
+  are retained in deep-forkable run snapshots.
+- For seed `6JK8MD0VQQTA`, the independently calculated UpFront
+  checkpoints are: **229** after relic bags, **231** after Ancient
+  distribution, **261** after Act 1 events, **295** after Act 1
+  completion, **355** after Act 2, and **412** after Act 3. The final
+  183 calls include **six rejected grab-bag candidates** (two in
+  each act). The independent recurrence predicts the 412-call RNG
+  words `[14133024965363381498, 3052595882297166200,
+  14908445774459425184, 16826779579573568376]`.
+  `native_run_bootstrap.py` compares the actual native checkpoint
+  with the emulator cursor, including all four words. The source's
+  room queues were **not captured**, so queue-content parity remains
+  unverified and the prototype world is not yet driven by the
+  pre-generated source queues.
 - The first combat HP, map, Neow, encounter, opening hand/draw pile,
   `run.shuffle`, `run.niche`, and Phial Holster's native potion
   RNG are verified against original-game observations. Native potion
@@ -1019,12 +1026,10 @@ capture in `NativeObservedMapV111Tests`.
   source draw or mechanical operation has been reproduced by the
   emulator.
 
-**Next no-launch development gate:** reconstruct the source
-`RunManager.GenerateRooms` call sequence (shared Ancient subset,
-pre-generated encounter queues and boss assignments for Overgrowth,
-Hive and Glory), then compare the complete `run.up_front` cursor
-against the observed counter **412** and its four source RNG words.
-Preserve generated room/relic queues for later macro fidelity; avoid
-counter-only synchronization. Exact potion inventory needs an
-additional native passive observation when future game validation is
-worth the launch. Existing capture already suffices for the RNG gates.
+**Next no-launch development gate:** execute the native run-prelude
+bootstrap against the existing source capture and check full UpFront
+counter/state parity at `RunStarted`. Then determine the minimal
+mapping from the retained source room queues to actual emulator room
+entry while preserving the ordinary training profile. Exact potion
+inventory and source-generated room/Ancient identities require an
+expanded passive capture only when a new game launch is worthwhile.
