@@ -666,3 +666,49 @@ share only selected sanitized captures and summaries.
 stable decisions to one separately maintained `Native` emulator session.
 The original-game state/cursors are diagnostic inputs to the comparator,
 never a replacement for emulator-predicted outcomes. 
+
+### Independent run-start to first-combat bootstrap (first offline slice)
+
+`tools/native_run_bootstrap.py` now accepts the **independently audited**
+`run-prelude-*.jsonl` and starts a fresh persistent `reset_v111` session
+using the exact native seed/ascension and Silent/Overgrowth identity. It
+requires the unique `start_run` action, then independently observes
+Neow's three offered choices. The recorded native Neow `relic_model_id`
+and original `NEOW.pages.INITIAL.options.RELIC_ID` text keys are matched
+against the pinned supported Neow relic catalogue and translated into
+emulator `take_proto.native.neow.<name>` IDs. The **entire ordered offer**
+must match both the emulator observation and its legal menu before the
+observed selected option is executed.
+
+The first slice supports exactly one Neow selection and a single
+source-observed first-floor room arrival leading directly into combat.
+It uses the actual native `RoomEntered` coordinate as the destination
+evidence; matching a `map_vote` request is insufficient. The emulator
+map node must be present in the generated map and in the unique legal
+`choose_map_node` action. It then steps into actual emulator combat,
+compares source room-callback HP/gold with the emulator initial combat
+observation **as an uncertified temporal comparison**, and can export a
+candidate **emulator-produced** exact snapshot:
+
+```fish
+python tools/native_run_bootstrap.py \\
+    --prelude "$trace/run-prelude-<timestamp>-<run-id>.jsonl" \\
+    --cli-dll ./src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll \\
+    --candidate-snapshot-out "$trace/candidate-emulator-first-combat.json" \\
+    --out "$trace/native-first-combat-bootstrap-report.json"
+```
+
+The adapter stops on unaudited prelude, other queued actions, unresolved
+nested choices, unhandled multi-room routes, missing native identities,
+disagreeing Neow offers, unsupported post-Neow choice continuation,
+missing/legal-map-node divergence, or unexpected combat transition. It
+never selects a substitute card, route, or event action. Results include
+`SOURCE_NEOW_OFFER_DIFFERENCE` and
+`CANDIDATE_COMBAT_REACHED_UNCERTIFIED`; neither is a certified
+native/emulator parity verdict. The native event-local xoshiro state
+and emulator prototype RNG **are not directly comparable** under the
+current stochastic provider. Source RNG history, async Neow effect
+settlement, native mechanics, identity crosswalk and lockstep alignment
+remain unverified. A candidate snapshot must not be supplied to
+`native_lockstep_shadow.py` as an aligned checkpoint without a separate
+fidelity proof.
