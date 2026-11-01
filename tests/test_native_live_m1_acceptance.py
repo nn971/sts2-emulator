@@ -1,7 +1,9 @@
 """M1 acceptance source pairing and no-emulator fail-closed contracts."""
 from __future__ import annotations
 
+import copy
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -54,6 +56,32 @@ class M1AcceptanceTests(unittest.TestCase):
             write(prelude, startup)
             with self.assertRaisesRegex(AcceptanceError, "identities disagree"):
                 inspect_pair(sidecar, prelude)
+
+    def test_discovery_prefers_six_turn_capture_over_newer_short_session(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            older, newer = root / "older", root / "newer"
+            older.mkdir()
+            newer.mkdir()
+            old_side, old_pre, old, old_start, write = sample(older)
+            new_side, new_pre, recent, recent_start, _ = sample(newer)
+            old[0]["data"]["run_id"] = "older-six-turn-combat"
+            old_start[1]["data"]["combat_run_id"] = "older-six-turn-combat"
+            old = old[:-1] + [
+                {**copy.deepcopy(old[2]), "ordinal": i,
+                 "data": {"kind": "PLAYER_TURN_START", "turn": i - 2}}
+                for i in range(4, 9)] + [
+                {**old[-1], "ordinal": 9}]
+            write(old_side, old)
+            write(old_pre, old_start)
+            recent[0]["data"]["run_id"] = "newer-one-turn-combat"
+            recent_start[1]["data"]["combat_run_id"] = "newer-one-turn-combat"
+            write(new_side, recent)
+            write(new_pre, recent_start)
+            os.utime(old_side, (1_700_000_000, 1_700_000_000))
+            os.utime(new_side, (1_700_000_100, 1_700_000_100))
+            self.assertEqual((old_side, old_pre),
+                             discover_pair(root, min_player_turns=6))
 
     def test_missing_ordinal_and_incomplete_terminal_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
