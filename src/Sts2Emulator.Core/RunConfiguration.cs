@@ -164,10 +164,12 @@ public sealed record RunConfiguration(
                         && state.NativeStartupRelicBags is not null)
                     || (configuration.UsesNativeStandardActMap
                         && configuration.Acts[0] == ActIdentity.Overgrowth
-                        && state.NativeStartupRooms is null)
+                        && (state.NativeStartupRooms is null
+                            || state.NativeStartupQueueTrace is null))
                     || ((!configuration.UsesNativeStandardActMap
                          || configuration.Acts[0] != ActIdentity.Overgrowth)
-                        && state.NativeStartupRooms is not null))
+                        && (state.NativeStartupRooms is not null
+                            || state.NativeStartupQueueTrace is not null)))
                     throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
             }
         }
@@ -293,6 +295,8 @@ public static class V111RunFactory
             NativeRunRng = runStreams,
             NativeStartupRelicBags = sourceRelicBags,
             NativeStartupRooms = sourceRooms,
+            NativeStartupQueueTrace = sourceRooms is null
+                ? null : NativeStartupRoomQueueTraceV111.Empty(),
             World = opening.World! with
             {
                 RulesetId = config.RulesetId,
