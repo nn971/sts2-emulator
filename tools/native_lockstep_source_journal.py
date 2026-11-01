@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 
 from native_action_envelope_audit import audit as audit_sidecar
+from native_action_envelope_audit import diff_scalars
 from native_action_envelope_audit import load as load_sidecar
 
 
@@ -22,6 +23,13 @@ def _source_snapshot_agreement(left, right) -> str:
         return "UNOBSERVED"
     return ("SOURCE_OBSERVED_EQUAL" if left == right
             else "SOURCE_OBSERVED_DIFFERENT")
+
+
+def _observed_delta(left, right) -> dict | None:
+    """Source-only measured differences, with missing snapshots explicit."""
+    if not isinstance(left, dict) or not isinstance(right, dict):
+        return None
+    return diff_scalars(left, right)
 
 
 def build(records: list[dict], error: str | None = None) -> dict:
@@ -76,32 +84,67 @@ def build(records: list[dict], error: str | None = None) -> dict:
         elif kind == "action_completed":
             completions[record["action_id"]] = record
 
-    # Every executor start/complete pair is directly observed; include
-    # automatic actions as well as candidate human commands. An action
-    # completion can be followed by additional native effects, so none of
-    # these snapshots is promoted to a settled semantic decision.
-    for action_id, started in sorted(
-            starts.items(), key=lambda pair: pair[1]["ordinal"]):
+    # Compare source executor callbacks in chronological order. The
+    # completion closest to a new start need not belong to the previously
+    # started action (nested executors can overlap). Both relationships are
+    # retained separately. Frames/UI may mutate state between callbacks.
+    ordered_starts = sorted(starts.items(),
+                            key=lambda pair: pair[1]["ordinal"])
+    sorted_completions = sorted(
+        completions.values(), key=lambda row: row["ordinal"])
+    for action_id, started in ordered_starts:
         completed = completions.get(action_id)
         if completed is None:
             result["errors"].append(
                 f"Native executor action {action_id} has no observed completion")
             continue
+        start_at = started["ordinal"]
+        preceding = next(
+            (row for row in reversed(sorted_completions)
+             if row["ordinal"] < start_at), None)
+        active_before_start = [
+            prior_id for prior_id, prior_start in ordered_starts
+            if prior_start["ordinal"] < start_at
+            and (prior_id not in completions
+                 or completions[prior_id]["ordinal"] > start_at)
+        ]
+        prior_state = preceding.get("state") if preceding else None
+        start_state = started.get("state")
+        # The interval between callbacks can contain asynchronous effects.
+        # Listing observed intervening records makes those gaps inspectable,
+        # without asserting that an absent record proves no effects occurred.
+        between = [
+            row for row in records
+            if preceding is not None
+            and preceding["ordinal"] < row["ordinal"] < start_at
+        ]
         result["source_executor_observed_transitions"].append({
             "executor_action_id": action_id,
             "native_type": started.get("native_type"),
             "canonical_action_candidate": started.get("canonical_action"),
-            "start_ordinal": started["ordinal"],
+            "start_ordinal": start_at,
             "complete_ordinal": completed["ordinal"],
-            "pre_execution_state": started.get("state"),
+            "pre_execution_state": start_state,
             "post_execution_state": completed.get("state"),
+            "source_executor_observed_delta": _observed_delta(
+                start_state, completed.get("state")),
+            "preceding_completed_executor_action_id": (
+                preceding.get("action_id") if preceding else None),
+            "preceding_completion_ordinal": (
+                preceding["ordinal"] if preceding else None),
+            "preceding_completion_to_start_state_agreement":
+                _source_snapshot_agreement(prior_state, start_state),
+            "preceding_completion_to_start_observed_delta":
+                _observed_delta(prior_state, start_state),
+            "active_prior_executor_action_ids": active_before_start,
+            "observed_intervening_record_types": sorted({
+                row["type"] for row in between
+            }),
+            "source_comparison": "NATIVE_CALLBACK_PROJECTIONS_ONLY",
             "source_boundary": "NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED",
             "human_input_origin": "UNVERIFIED",
             "emulator_applied": False,
         })
-
-    sorted_completions = sorted(
-        completions.values(), key=lambda row: row["ordinal"])
 
     linked_request_ids = set()
     for action_id, started in sorted(
