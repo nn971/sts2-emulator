@@ -343,5 +343,46 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
         Assert.Equal(new long[] { 1, 11, 12, 0, 6, 8, 4, 9 }.Select(id =>
             nativeToEmulatorCard[checked((int)id)]), afterSurvivor.DiscardPile);
         NativeRunRngV111.Validate(state);
+
+        // Source executor #19: Defend completes at ordinal 655.
+        var lastDefend = engine.GetLegalActions(state).Single(action =>
+            action.Kind == "play_card"
+            && action.ReadPayload<PlayCardPayload>().CardInstanceId ==
+                nativeToEmulatorCard[3]);
+        state = engine.Step(state, lastDefend).State;
+        var afterNineteen = Assert.IsType<CombatState>(state.World!.Combat);
+        Assert.True(state.Player.Hp == 56 && afterNineteen.Energy == 0
+            && afterNineteen.PlayerBlock == 13
+            && Assert.Single(afterNineteen.Enemies).Hp == 17);
+        Assert.Equal(new long[] { 10 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), afterNineteen.Hand);
+        Assert.Equal(new long[] { 1, 11, 12, 0, 6, 8, 4, 9, 3 }
+            .Select(id => nativeToEmulatorCard[checked((int)id)]),
+            afterNineteen.DiscardPile);
+
+        // Source executor #22 pre-action at ordinal 767, after the
+        // second observed discard-recycle shuffle: counter 22 -> 31.
+        state = engine.Step(state, engine.GetLegalActions(state)
+            .Single(action => action.Kind == "end_turn")).State;
+        var turnFive = Assert.IsType<CombatState>(state.World!.Combat);
+        var targetFive = Assert.Single(turnFive.Enemies);
+        Assert.True(state.Player.Hp == 56 && turnFive.Turn == 5
+            && turnFive.Energy == 3 && turnFive.PlayerBlock == 0
+            && targetFive.Hp == 17 && targetFive.Block == 0,
+            $"Native turn-five callback differs: hp={state.Player.Hp}, " +
+            $"turn={turnFive.Turn}, energy={turnFive.Energy}, " +
+            $"block={turnFive.PlayerBlock}, enemy_hp={targetFive.Hp}");
+        Assert.Equal(new long[] { 7, 5, 11, 12, 10 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), turnFive.Hand);
+        Assert.Equal(new long[] { 8, 1, 9, 0, 6, 3, 4 }.Select(id =>
+            nativeToEmulatorCard[checked((int)id)]), turnFive.DrawPile.Reverse());
+        Assert.Empty(turnFive.DiscardPile);
+        var shuffleFive = Assert.Single(state.NativeRunRng!.Streams,
+            stream => stream.StreamId == "run.shuffle");
+        Assert.Equal(new NativeRngSnapshot(
+            31, 4498395649810740633UL, 12157284108367839612UL,
+            332782078443390178UL, 1557917576211562617UL),
+            NativeRngV111.ToSnapshot(shuffleFive));
+        NativeRunRngV111.Validate(state);
     }
 }
