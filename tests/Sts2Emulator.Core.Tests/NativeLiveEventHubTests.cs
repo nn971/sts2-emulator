@@ -152,6 +152,8 @@ public sealed class NativeLiveEventHubTests
                 Assert.Equal("event: native", await privateReader.ReadLineAsync(cts.Token));
                 Assert.Contains("ONLY_FOR_FIDELITY_971",
                     await privateReader.ReadLineAsync(cts.Token));
+                http.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", PublicToken);
                 var post = await http.PostAsync(root + "/v1/step", null, cts.Token);
                 Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
             }
