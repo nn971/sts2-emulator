@@ -84,8 +84,8 @@ public sealed class NativeTurnBoundaryCandidateTests
             recorder.TurnBoundaryCandidate(
                 "PLAYER_TURN_START", 1, state, "Player", "Play");
         });
-        Assert.Single(rows.Where(row =>
-            row.GetProperty("type").GetString() == "native_turn_checkpoint"));
+        Assert.Single(rows, row =>
+            row.GetProperty("type").GetString() == "native_turn_checkpoint");
         Assert.Contains(rows, row =>
             row.GetProperty("type").GetString() == "observation_failure");
         Assert.Equal("INCOMPLETE_CAPTURE", rows[^1].GetProperty("data")
