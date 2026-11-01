@@ -15,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_run_bootstrap import (
     _neow_native_id, _source_preflight, _emulator_opening_profile,
     run_bootstrap, _native_upfront_diagnosis,
-    _native_upfront_room_prefix_diagnosis, SCHEMA,
+    _native_upfront_room_prefix_diagnosis,
+    _native_upfront_full_queue_diagnosis, SCHEMA,
 )
 from native_neow_rng_verify import neow_event_rng, verify_neow_event_rng, xxhash64
 
@@ -149,6 +150,40 @@ class NativeUpFrontBoundaryTests(unittest.TestCase):
         source["source_room_arrivals"][0]["room_model_id"] = ""
         self.assertEqual("BLOCKED_NATIVE_ROOM_IDENTITY",
             _native_upfront_room_prefix_diagnosis(source, snapshot)["status"])
+
+
+    def test_complete_native_startup_queue_comparison_is_separate(self):
+        acts = []
+        for i in range(3):
+            acts.append({
+                "act_index": i, "events": ["A", "B"],
+                "normal_encounters": ["FuzzyWurmCrawlerWeak"],
+                "elite_encounters": ["ByrdonisElite"],
+                "boss_encounter": "TheKinBoss",
+                "second_boss_encounter": None,
+                "ancient": "Neow"})
+        native = {"source_startup_room_queues": {"acts": acts}}
+        snap = {"state": {"native_startup_rooms": {"acts": [
+            {"act": i + 1, "events": ["A", "B"],
+             "normal_encounters": ["SlimesWeak"],
+             "elite_encounters": ["ByrdonisElite"],
+             "boss_encounter": "TheKinBoss",
+             "second_boss_encounter": None,
+             "ancient": "Neow"}
+            for i in range(3)]}}}
+        result = _native_upfront_full_queue_diagnosis(native, snap)
+        self.assertEqual("SOURCE_FULL_ROOM_QUEUES_DIVERGED", result["status"])
+        self.assertEqual(
+            "$.native_startup_rooms.acts[0].normal_encounters[0]",
+            result["first_difference"]["path"])
+        snap["state"]["native_startup_rooms"]["acts"][0][
+            "normal_encounters"] = ["FuzzyWurmCrawlerWeak"]
+        for act in snap["state"]["native_startup_rooms"]["acts"][1:]:
+            act["normal_encounters"] = ["FuzzyWurmCrawlerWeak"]
+        self.assertEqual("SOURCE_FULL_ROOM_QUEUES_MATCHED",
+                         _native_upfront_full_queue_diagnosis(native, snap)["status"])
+        self.assertEqual("SOURCE_FULL_ROOM_QUEUES_NOT_CAPTURED",
+                         _native_upfront_full_queue_diagnosis({}, snap)["status"])
 
 
 class FakeState:
