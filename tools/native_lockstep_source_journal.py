@@ -16,6 +16,14 @@ from native_action_envelope_audit import audit as audit_sidecar
 from native_action_envelope_audit import load as load_sidecar
 
 
+def _source_snapshot_agreement(left, right) -> str:
+    """Compare captured native states without declaring a decision boundary."""
+    if not isinstance(left, dict) or not isinstance(right, dict):
+        return "UNOBSERVED"
+    return ("SOURCE_OBSERVED_EQUAL" if left == right
+            else "SOURCE_OBSERVED_DIFFERENT")
+
+
 def build(records: list[dict], error: str | None = None) -> dict:
     result: dict = {
         "schema": "native-source-action-journal-v1",
@@ -26,6 +34,10 @@ def build(records: list[dict], error: str | None = None) -> dict:
         "run_seed": None,
         "ascension": None,
         "source_linked_commands": [],
+        # Includes automatic/uncanonical native executor actions which have
+        # no player-decision equivalent. These are source callback snapshots,
+        # not necessarily settled state-transition boundaries.
+        "source_executor_observed_transitions": [],
         "source_unlinked_canonical_executor_actions": [],
         "source_requests_without_executor_start": [],
         "native_choice_results": [],
@@ -64,6 +76,33 @@ def build(records: list[dict], error: str | None = None) -> dict:
         elif kind == "action_completed":
             completions[record["action_id"]] = record
 
+    # Every executor start/complete pair is directly observed; include
+    # automatic actions as well as candidate human commands. An action
+    # completion can be followed by additional native effects, so none of
+    # these snapshots is promoted to a settled semantic decision.
+    for action_id, started in sorted(
+            starts.items(), key=lambda pair: pair[1]["ordinal"]):
+        completed = completions.get(action_id)
+        if completed is None:
+            result["errors"].append(
+                f"Native executor action {action_id} has no observed completion")
+            continue
+        result["source_executor_observed_transitions"].append({
+            "executor_action_id": action_id,
+            "native_type": started.get("native_type"),
+            "canonical_action_candidate": started.get("canonical_action"),
+            "start_ordinal": started["ordinal"],
+            "complete_ordinal": completed["ordinal"],
+            "pre_execution_state": started.get("state"),
+            "post_execution_state": completed.get("state"),
+            "source_boundary": "NATIVE_EXECUTOR_CALLBACKS_NOT_SETTLED",
+            "human_input_origin": "UNVERIFIED",
+            "emulator_applied": False,
+        })
+
+    sorted_completions = sorted(
+        completions.values(), key=lambda row: row["ordinal"])
+
     linked_request_ids = set()
     for action_id, started in sorted(
             starts.items(), key=lambda pair: pair[1]["ordinal"]):
@@ -96,6 +135,11 @@ def build(records: list[dict], error: str | None = None) -> dict:
             result["errors"].append(
                 f"Source request {request_id} was not observed before execution")
             continue
+        # Pre-execution callbacks may happen synchronously inside
+        # RequestEnqueue. Equality of observed states is useful for later
+        # replay alignment but cannot certify a fresh native legal menu.
+        prior = next((row for row in reversed(sorted_completions)
+                      if row["ordinal"] < request["ordinal"]), None)
         result["source_linked_commands"].append({
             "input_request_id": request_id,
             "request_ordinal": request["ordinal"],
@@ -111,6 +155,16 @@ def build(records: list[dict], error: str | None = None) -> dict:
             "pre_request_state": request.get("state"),
             "pre_execution_state": started.get("state"),
             "post_execution_state": completed.get("state"),
+            "request_to_execution_state_agreement":
+                _source_snapshot_agreement(
+                    request.get("state"), started.get("state")),
+            "last_native_completion_before_request": (
+                prior.get("action_id") if prior else None),
+            "last_native_completion_to_request_state_agreement":
+                _source_snapshot_agreement(
+                    prior.get("state") if prior else None,
+                    request.get("state")),
+            "source_boundary": "NATIVE_CALLBACKS_NOT_FULL_LEGAL_MENU",
             "native_executor_object_identity": "SOURCE_OBSERVED",
             "originating_human_input": "UNVERIFIED",
             "emulator_applied": False,
