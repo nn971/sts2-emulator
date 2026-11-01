@@ -306,6 +306,49 @@ def _native_upfront_full_queue_diagnosis(source, emulator_snapshot):
             "first_difference": None}
 
 
+def _native_first_combat_identity_diagnosis(native_room, emulator_snapshot,
+                                             node_id):
+    """Compare actual selected emulator combat to native RoomEntered identity.
+
+    This is independent of pre-generated UpFront source-queue predictions,
+    which are separately audited and may diverge while the actual combat
+    still agrees with the observed native room.
+    """
+    native_id = native_room.get("room_model_id")
+    if not isinstance(native_id, str) or not native_id:
+        return {"status": "BLOCKED_NATIVE_COMBAT_IDENTITY"}
+    trace = emulator_snapshot.get("state", {}).get("native_startup_queue_trace")
+    entries = trace.get("comparisons") if isinstance(trace, dict) else None
+    if not isinstance(entries, list) or len(entries) != 1:
+        return {"status": "BLOCKED_EMULATOR_COMBAT_IDENTITY_TRACE"}
+    item = entries[0]
+    if (not isinstance(item, dict) or item.get("map_node_id") != node_id
+        or item.get("act") != 1 or item.get("queue_index") != 0):
+        return {"status": "BLOCKED_EMULATOR_COMBAT_IDENTITY_TRACE"}
+    actual = item.get("actual_emulator_encounter_id")
+    predicted = item.get("source_encounter_id")
+    if not isinstance(actual, str) or ".encounter." not in actual:
+        return {"status": "BLOCKED_EMULATOR_COMBAT_IDENTITY_TRACE"}
+
+    def token(value):
+        return "".join(ch.upper() for ch in value if ch.isalnum())
+    actual_source = actual.split(".encounter.", 1)[1]
+    matched = token(native_id) == token(actual_source)
+    return {
+        "status": ("SOURCE_FIRST_COMBAT_IDENTITY_MATCHED" if matched
+                   else "SOURCE_FIRST_COMBAT_IDENTITY_DIVERGED"),
+        "native_observed_encounter": native_id,
+        "emulator_entered_encounter": actual,
+        "generated_source_queue_prediction": predicted,
+        "generated_source_queue_prediction_status": item.get("status"),
+        "actual_encounter_identity_parity": ("MATCHED" if matched
+                                             else "DIVERGED"),
+        "first_difference": (None if matched else {
+            "path": "$.first_combat.encounter_id",
+            "native": native_id, "emulator": actual}),
+    }
+
+
 def _source_preflight(source):
     if not isinstance(source, dict) or source.get("schema") != "native-run-prelude-audit-v1":
         return "BLOCKED_UNAUDITED_SOURCE", "Expected independent prelude auditor output"
@@ -600,6 +643,19 @@ def run_bootstrap(source: dict, session):
             return _report("SOURCE_COMBAT_MAP_ID_DIFFERENCE",
                            "Emulator first combat is not at selected node",
                            steps=steps, checks=checks)
+        if has_pinned_native_build(ident):
+            combat_snapshot = json.loads(state.save_snapshot())
+            checks["native_first_combat_identity"] = (
+                _native_first_combat_identity_diagnosis(
+                    room, combat_snapshot, candidate_node))
+            identity_comparison = checks["native_first_combat_identity"]
+            if identity_comparison["status"] != "SOURCE_FIRST_COMBAT_IDENTITY_MATCHED":
+                return _report(
+                    "SOURCE_COMBAT_IDENTITY_DIFFERENCE",
+                    "Native RoomEntered encounter identity and actual emulator encounter differ or cannot be verified",
+                    first=identity_comparison.get("first_difference") or {
+                        "reason": identity_comparison["status"]},
+                    steps=steps, checks=checks)
         checks["emulator_first_combat_hp"] = frame.get("hp")
         checks["emulator_first_combat_gold"] = frame.get("gold")
         checks["native_room_callback_hp"] = room.get("player_hp")
