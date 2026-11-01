@@ -2,6 +2,7 @@
 import copy
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
@@ -117,7 +118,12 @@ class NativeNeowProbeTests(unittest.TestCase):
         s = Stub()
         # The synthetic fixture event RNG does not match the source
         # reconstruction; no emulator start/Neow action is attempted.
-        result, snap = run_bootstrap(native, s)
+        # This test isolates the Neow probe stage. The preceding named
+        # run/player stream gate is covered by its own strict tests.
+        with patch("native_run_bootstrap.verify_run_streams",
+                   return_value={"status": "SOURCE_RNG_CHECKPOINTS_RECONSTRUCTED",
+                                 "first_difference": None}):
+            result, snap = run_bootstrap(native, s)
         self.assertEqual("SOURCE_NEOW_NATIVE_RNG_DIVERGENCE", result["status"])
         self.assertEqual(0, s.reset_count)
         self.assertIsNone(snap)
