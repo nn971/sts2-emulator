@@ -205,14 +205,20 @@ public sealed class NativeObservedMapV111Tests
             string.Join(",", nativeDraw) + "; emulator=" +
             string.Join(",", actualDraw.Reverse()) + "; " + report);
 
-        // Run initialization still lacks the source relic-grab-bag
-        // population (up_front=412 in this trace). Phial Holster's
-        // pre-combat potion generation also consumed four calls in the
-        // original game and is an independent pending semantic gate.
-        Assert.Equal(229UL, state.NativeRunRng.Streams.Single(
+        // Native RunStarted UpFront counter 412 is reconstructed by
+        // source relic bags and three-act pre-generated room queues.
+        // Their contents have not been observed in the passive source.
+        Assert.Equal(412UL, state.NativeRunRng.Streams.Single(
             stream => stream.StreamId == "run.up_front").CallCount);
         Assert.Equal(229,
             state.NativeStartupRelicBags!.AfterPlayerBag.Counter);
+        Assert.Equal(412, state.NativeStartupRooms!.FinalRng.Counter);
+        Assert.Equal(3, state.NativeStartupRooms.Acts.Length);
+        Assert.Equal(new NativeRngSnapshot(
+            412, 14133024965363381498UL, 3052595882297166200UL,
+            14908445774459425184UL, 16826779579573568376UL),
+            NativeRngV111.ToSnapshot(state.NativeRunRng.Streams.Single(
+                stream => stream.StreamId == "run.up_front")));
         Assert.Equal(new NativeRngSnapshot(
             4, 247483884377393130UL, 5718769650147259872UL,
             2262233218431618893UL, 7728349850348698365UL),
