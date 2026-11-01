@@ -1006,6 +1006,19 @@ capture in `NativeObservedMapV111Tests`.
   for the first combat. Existing prototype combat selection matches
   the observed native encounter and remains authoritative until the
   source registration/order discrepancy is diagnosed.
+- Native map combat entry now records a forkable, diagnostic-only
+  `native_startup_queue_trace`: source queue index, source encounter ID,
+  uniquely crosswalked prototype encounter ID, actual entered encounter ID,
+  and a match/difference status. This leaves encounter selection, training
+  profiles and all RNG streams unchanged. Crosswalking supports both
+  `proto.encounter.*` and region-qualified `proto.native.<region>.encounter.*`,
+  with fail-closed act/room/uniqueness checks. The first pinned seed's
+  generated source queue predicts `SlimesWeak`; an emulator entry can
+  still independently choose the native-observed `FuzzyWurmCrawlerWeak`.
+- Native prelude replay now separately checks the **actual** emulator
+  encounter identity against the original game's `RoomEntered.room_model_id`
+  after entering combat; a different or missing identity blocks that
+  comparison even if RNG/HP/gold happened to agree.
 - `native_run_bootstrap.py` now reports the first source-observed
   encounter-prefix mismatch independently from the RNG checkpoint.
   A new read-only `startup_room_queues` record at native RunStarted
@@ -1042,11 +1055,10 @@ capture in `NativeObservedMapV111Tests`.
   source draw or mechanical operation has been reproduced by the
   emulator.
 
-**Next gate:** verify the pinned source pool registration/order
-against the local game assembly when convenient and resolve the first
-weak-queue identity discrepancy before making generated source queues
-authoritative at room entry. The read-only full three-act queue
-instrumentation and its auditor are ready for the next **necessary**
-native capture; compile the reference mod against the installed game
-assembly before that launch. Exact potion inventory remains a separate
-unobserved native output.
+**Next gate:** verify generated weak-pool identities against the
+installed game's `ActModel._rooms` before making source queues authoritative.
+The read-only three-act queue capture and its auditor are ready for the next
+**necessary** native validation; compile the reference mod against the
+installed game assembly before that launch. Until then, the source queue
+cursor reports differences but does not change combat selection.
+Exact potion inventory remains a separate unobserved native output.
