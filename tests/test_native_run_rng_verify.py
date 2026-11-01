@@ -35,6 +35,16 @@ class NativeRunStreamVerifyTests(unittest.TestCase):
         self.assertEqual("$.source_run_rng_snapshots[0].streams[0].s3",
                          r["first_difference"]["path"])
 
+    def test_multiple_source_checkpoints_are_reconstructed(self):
+        snapshots = source_fixture()
+        second = source_fixture()[0]
+        second["site"] = "combat_attach"
+        snapshots.append(second)
+        report = verify_run_streams("native-stream-fixture", snapshots)
+        self.assertEqual("SOURCE_RNG_CHECKPOINTS_RECONSTRUCTED", report["status"])
+        self.assertEqual(2, report["checked_checkpoints"])
+        self.assertEqual(30, report["checked_stream_states"])
+
     def test_player_seed_mismatch_is_reported(self):
         s = source_fixture()
         s[0]["player_rng_seed"] ^= 1

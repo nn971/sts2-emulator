@@ -781,3 +781,19 @@ This is **source Neow RNG reconstruction only**, not native/emulator
 Neow-menu parity, map RNG parity or runtime Harmony validation.
 A matched hypothesis means its unlock filter is *consistent with*
 the capture, rather than independently observed unlock state.
+
+### Native named-stream source reconstruction
+
+`tools/native_run_rng_verify.py` independently checks the 12 pinned
+`RunRngType` streams and 3 `PlayerRngType` streams. It derives each
+seed using the native source's UTF-8 xxHash64, snake-case name hash,
+SplitMix64 and xoshiro256**. It validates source `player_rng_seed`,
+stream identity, counter, and all four state words at the recorded
+run-start/room/combat checkpoints. The first mismatch has an exact path.
+
+On pinned native source builds, the independent bootstrap now checks these
+streams **before emulator reset**, and blocks on a mismatch. Synthetic
+fixtures are explicitly excluded from the native-source verification.
+This check certifies source-algorithm consistency of captured native
+checkpoints only. The emulator's prototype map generation and native RNG
+parity remain separately unverified.
