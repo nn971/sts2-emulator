@@ -42,7 +42,7 @@ public sealed class NativeUpFrontRelicBagsV111Tests
             shared.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(personal.Length,
             personal.Distinct(StringComparer.Ordinal).Count());
-        Assert.True(shared.All(personal.Contains));
+        Assert.All(shared, id => Assert.Contains(id, personal));
         Assert.Contains("HelicalDart", result.PlayerBag.Rare);
         Assert.Contains("SneckoSkull", result.PlayerBag.Common);
         Assert.DoesNotContain("RingOfTheSnake", personal);
