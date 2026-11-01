@@ -270,6 +270,21 @@ def run_bootstrap(source: dict, session):
                            checks=checks)
         state = root.step(initial[0]["actionId"])
         steps.append({"kind": "start_run", "action_id": initial[0]["actionId"]})
+        if has_pinned_native_build(ident):
+            map_check = compare_native_map(
+                source, json.loads(state.save_snapshot()))
+            checks["native_map_comparison"] = map_check
+            checks["native_map_rng_alignment"] = (
+                map_check["native_map_rng_alignment"])
+            checks["native_map_topology_parity"] = (
+                map_check["native_map_topology_parity"])
+            if map_check["status"] != "SOURCE_MAP_AND_RNG_MATCHED":
+                return _report(
+                    "SOURCE_NATIVE_MAP_DIFFERENCE",
+                    "The emulator opening map or local RNG cursor differs",
+                    first=map_check.get("first_difference") or {
+                        "reason": map_check["status"]},
+                    steps=steps, checks=checks)
         frame = state.observe()
         if frame.get("event_id") != "proto.native.event.neow" or (
                 not isinstance(frame.get("event"), dict)):
