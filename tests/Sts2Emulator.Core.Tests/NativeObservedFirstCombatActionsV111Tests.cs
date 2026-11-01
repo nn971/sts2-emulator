@@ -127,8 +127,14 @@ public sealed class NativeObservedFirstCombatActionsV111Tests
                 nativeToEmulatorCard[checked((int)id)]), combat.Hand);
             Assert.Equal(observed.DiscardNativeIds.Select(id =>
                 nativeToEmulatorCard[checked((int)id)]), combat.DiscardPile);
-            Assert.Equal(1, currentEnemy.Powers?.Count(power =>
-                Token(power.PowerId) == "WEAK" && power.Stacks == 1) ?? 0);
+            // Source serializes Weak as a power, whereas this emulator
+            // represents its temporary combat effect as proto.status.weak.
+            Assert.True(currentEnemy.Statuses.TryGetValue(
+                    "proto.status.weak", out var weak) && weak == 1,
+                $"Native Weak(1) differs after executor {observed.NativeExecutorActionId} " +
+                $"at source ordinal {observed.SourceCompleteOrdinal}; " +
+                $"emulator statuses={string.Join(",", currentEnemy.Statuses.Select(
+                    pair => pair.Key + ":" + pair.Value))}");
         }
     }
 }
