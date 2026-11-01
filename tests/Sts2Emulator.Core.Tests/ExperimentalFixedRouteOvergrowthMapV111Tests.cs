@@ -81,9 +81,9 @@ public sealed class ExperimentalFixedRouteOvergrowthMapV111Tests
             CanonicalJson.Sha256(b.World!.Map));
 
         var engine = new PrototypeGameEngine();
-        var neowAction = engine.GetLegalActions(a)[0];
-        var afterNeow = engine.Step(a, neowAction).State;
-        Assert.Equal(RunPhase.MapChoice, afterNeow.Phase);
+        // Neow relic choices can have follow-up event decisions; finish
+        // those before asserting that the fixed map becomes selectable.
+        var afterNeow = CompleteNeow(engine, a);
         var mapActions = engine.GetLegalActions(afterNeow);
         Assert.Single(mapActions);
         var combat = engine.Step(afterNeow, mapActions[0]).State;
@@ -98,8 +98,34 @@ public sealed class ExperimentalFixedRouteOvergrowthMapV111Tests
     {
         var opening = ExperimentalFixedRouteOvergrowthMapV111.Create("invalid-map-change");
         var engine = new PrototypeGameEngine();
-        var next = engine.Step(opening, engine.GetLegalActions(opening)[0]).State;
+        var afterNeow = CompleteNeow(engine, opening);
         Assert.Throws<InvalidOperationException>(() =>
-            ExperimentalFixedRouteOvergrowthMapV111.OverrideOpening(next));
+            ExperimentalFixedRouteOvergrowthMapV111.OverrideOpening(afterNeow));
+
+        // A room must really be entered before testing the late-override
+        // guard: one Neow choice may leave the game in RunPhase.Event.
+        var entered = engine.Step(
+            afterNeow, Assert.Single(engine.GetLegalActions(afterNeow))).State;
+        Assert.Equal(RunPhase.Combat, entered.Phase);
+        Assert.Equal(1, entered.World!.Floor);
+        Assert.Throws<InvalidOperationException>(() =>
+            ExperimentalFixedRouteOvergrowthMapV111.OverrideOpening(entered));
+    }
+
+    private static RunState CompleteNeow(PrototypeGameEngine engine, RunState state)
+    {
+        for (var step = 0; step < 32 && state.Phase == RunPhase.Event; step++)
+        {
+            var actions = engine.GetLegalActions(state);
+            Assert.NotEmpty(actions);
+            // An optional out-of-combat potion action does not complete Neow.
+            var choice = actions.FirstOrDefault(action => action.Kind != "use_potion")
+                ?? throw new InvalidOperationException(
+                    "Neow offered no non-potion continuation action.");
+            state = engine.Step(state, choice).State;
+        }
+
+        Assert.Equal(RunPhase.MapChoice, state.Phase);
+        return state;
     }
 }
