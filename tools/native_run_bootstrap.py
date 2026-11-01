@@ -16,6 +16,7 @@ from pathlib import Path
 from native_run_prelude_audit import audit, load
 from native_neow_rng_verify import verify_neow_event_rng
 from native_run_rng_verify import verify_run_streams
+from native_map_fidelity import compare_native_map
 from native_neow_rng_probe_audit import compare as compare_neow_rng, has_pinned_native_build
 
 SCHEMA = "native-first-combat-bootstrap-v1"
