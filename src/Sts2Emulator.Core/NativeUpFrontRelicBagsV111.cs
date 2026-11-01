@@ -159,7 +159,14 @@ public static class NativeUpFrontRelicBagsV111
     public sealed record Result(
         Bag SharedBag, Bag PlayerBag,
         NativeRngSnapshot AfterSharedBag,
-        NativeRngSnapshot AfterPlayerBag);
+        NativeRngSnapshot AfterPlayerBag)
+    {
+        public Result Fork() => this with
+        {
+            SharedBag = SharedBag.Fork(),
+            PlayerBag = PlayerBag.Fork()
+        };
+    }
 
     /// <summary>
     /// RunManager.InitializeNewRun calls SharedRelicGrabBag.Populate
