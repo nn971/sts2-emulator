@@ -95,7 +95,9 @@ public sealed partial class PrototypeGameEngine
                     acquiredRelicId: relicId,
                     rng: after.Rng,
                     allocateCardId: () => nextId++,
-                    nativeRunRng: nativeRunRng);
+                    nativeRunRng: nativeRunRng,
+                        useNativeSilentPotionGeneration:
+                            after.Configuration?.UsesNativeStandardActMap == true);
                 continue;
             }
 
