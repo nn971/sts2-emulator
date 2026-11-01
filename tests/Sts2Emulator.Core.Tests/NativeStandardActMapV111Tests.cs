@@ -122,6 +122,12 @@ public sealed class NativeStandardActMapV111Tests
         Assert.Equal(CanonicalJson.Sha256(started), CanonicalJson.Sha256(snapshot));
         Assert.NotSame(started.NativeMapRng, snapshot.NativeMapRng);
         Assert.NotSame(started.NativeMapRng, started.Fork().NativeMapRng);
+        Assert.NotSame(started.NativeStartupRelicBags,
+            snapshot.NativeStartupRelicBags);
+        Assert.NotSame(started.NativeStartupRelicBags!.SharedBag.Common,
+            snapshot.NativeStartupRelicBags!.SharedBag.Common);
+        Assert.NotSame(started.NativeStartupRelicBags,
+            started.Fork().NativeStartupRelicBags);
         RunConfiguration.ValidateState(snapshot);
     }
 
