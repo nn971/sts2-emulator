@@ -1202,26 +1202,42 @@ are unchanged. This journal can isolate the first observed mechanics gap
 and guide a later mapped emulator replay; source callback agreement
 alone cannot certify native state settlement, RNG parity, or human input.
 
-**Observed source-history reset:** The 2026-11-01 native first-combat sidecar
-has a terminal status of `OBSERVED` with 0 unfinished actions, but its
-strict source auditor reports one `Native history reset outside terminal
-cleanup`. The strict auditor requires the reset to occur directly before
-the `Combat ended` terminal callback. In a source-only journal, if this
-is the *only* audit flag, exactly one well-formed history reset occurred
-outside all active executor actions, and the native terminal is observed,
-the journal retains the executor snapshots with status
-`SOURCE_ACTION_CHRONOLOGY_HISTORY_RESET_UNRESOLVED`. The reset ordinal
-and original counts are reported in `source_history_resets` and
-`source_audit` remains `INCOMPLETE_CAPTURE`. An active-action reset,
-malformed counts, missing terminal or any other audit failure still blocks
-extraction. The unchanged emulator shadow gate accepts only the original
-fully consistent `SOURCE_ACTION_CHRONOLOGY_OBSERVED` status.
+**Source UI-input window analysis (existing capture):** the original
+sidecar has 16 play-card executor requests but 17 `native_ui_play_begin`
+observations. The source journal's `source_ui_request_windows` associates
+15 requests with a single temporally matching native UI-begin card ID.
+The initial Neutralize input has *two* UI-begin observations (ordinals
+50 and 53), so its precise UI-to-request association stays ambiguous.
+Every uniquely matched attempt is immediately preceded by both original
+native UI guard callbacks returning `true`.
 
-This permits inspection of callback projections beyond decision 9 without
-asserting a trustworthy history-continuity/decision boundary or upgrading
-the source capture's strict provenance. The next offline step is to locate
-the reset ordinal and inspect its neighboring source events; do not alter
-the original sidecar.
+At decision 9, both native guards return `true` at 445–446,
+Defend #11 UI begins at **447** while Neutralize executor #11 is
+active, Neutralize completes at **453**, Defend request #12 arrives
+at **456**, its executor starts at **457**, and the strict gap is emitted
+at **459**. The last frame poll preceding the UI interaction was stale:
+Neutralize is added to the discard pile before the source request.
+This is a real overlapping *UI-input window*, with sequential executor
+intervals. The source UI/request correlation is qualified as a temporal
+card-instance match; it never certifies an entire legal menu, original
+human input, or a settled native decision.
+
+**Prepared future native UI evidence:** `native_ui_play_begin` now stores
+an optional canonical state projection from the original
+`NPlayerHand.StartCardPlay.prefix` callback, labelled
+`ui_state_observation=SOURCE_UI_BEGIN_CANONICAL_SNAPSHOT` (or
+`UNOBSERVED` when unavailable). The envelope auditor checks marker/state
+consistency, while the journal compares that callback-time snapshot with
+the later source request. Previous captures remain valid and explicitly
+unobserved in this field. This extra snapshot is read-only and requires
+a *future* original-game capture; none is needed for current offline work.
+
+**History-reset issue resolved:** the v111 strict source auditor now
+accepts the observed terminal sequence with the unchanged read-only
+`combat_end` RNG checkpoint between the 123→0 history reset and the
+`Combat ended` terminal event. The uploaded sidecar now reports
+`CALLBACK_TIMELINE_CONSISTENT`; the source journal reports
+`SOURCE_ACTION_CHRONOLOGY_OBSERVED`. The raw data is unchanged.
 
 **Current first-combat result (2026-11-01):** the independent typed
 emulator golden regression now extends through the original 26-executor
