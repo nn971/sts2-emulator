@@ -211,8 +211,20 @@ public sealed class NativeObservedMapV111Tests
         // original game and is an independent pending semantic gate.
         Assert.Equal(0UL, state.NativeRunRng.Streams.Single(
             stream => stream.StreamId == "run.up_front").CallCount);
-        Assert.Equal(0UL, state.NativeRunRng.Streams.Single(
-            stream => stream.StreamId == "run.combat_potion_generation").CallCount);
+        Assert.Equal(new NativeRngSnapshot(
+            4, 247483884377393130UL, 5718769650147259872UL,
+            2262233218431618893UL, 7728349850348698365UL),
+            NativeRngV111.ToSnapshot(state.NativeRunRng.Streams.Single(
+                stream => stream.StreamId == "run.combat_potion_generation")));
+        // Native passive snapshot does not expose potion identities.
+        // These two IDs are independently derived from the pinned source
+        // PotionFactory pool/rarity algorithm, so only their RNG cursor is
+        // source-observed parity in this regression.
+        Assert.Equal(
+            ["proto.potion.fortifier", "proto.potion.vulnerable"],
+            state.Player.PotionSlots.Where(potion => potion is not null)
+                .Select(potion => potion!.PotionId).ToArray());
+        Assert.Equal(3, state.Player.PotionSlots.Length);
     }
 
 }
