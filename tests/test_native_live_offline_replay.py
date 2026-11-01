@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import tempfile
 import sys
 import unittest
 from pathlib import Path
@@ -9,7 +10,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
 from native_live_offline_replay import (
-    LiveEventError, _digest, recover_sidecar, simulate_sidecar,
+    LiveEventError, _digest, _LexicalFloat, _dump_json, load_live,
+    recover_sidecar, simulate_sidecar,
 )
 
 
@@ -90,6 +92,21 @@ class NativeLiveOfflineReplayTests(unittest.TestCase):
         bad[-1]["channel"] = "public"
         self.assertEqual("INVALID_LIVE_ENVELOPE", status(bad))
         self.assertEqual("INCOMPLETE_LIVE_CAPTURE", status(events[:-1]))
+
+    def test_native_scientific_float_hash_matches_csharp_and_archive(self):
+        raw = ('{"type":"native_rng_scalar_boundary","ordinal":371,'
+               '"data":{"selected_float":-5.0546736E-05,"label":"<native>&"}}')
+        row = json.loads(raw, parse_float=_LexicalFloat)
+        self.assertEqual(
+            "1984f86719ddf531392b0e39b369f29ec5fa55b93d11646177c8526ab409b072",
+            _digest(row))
+        self.assertIn("-5.0546736E-05", _dump_json(row, sort_keys=False))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "native.fidelity.jsonl"
+            path.write_text(_dump_json(row, sort_keys=False) + "\\n",
+                            encoding="utf-8")
+            recovered = load_live(path)
+            self.assertEqual(_digest(row), _digest(recovered[0]))
 
     def test_canonical_hash_ignores_json_object_key_order(self):
         self.assertEqual(_digest({"b": [1, 2], "a": {"z": True, "q": None}}),
