@@ -81,6 +81,7 @@ internal static class NativeV111PassiveBridge
     private static bool _hookDisabled;
     private static NativeAgentBoundaryFeed? _agentFeed;
     private static LocalBridgeServer? _agentBridge;
+    private static NativeLiveEventHub? _liveEvents;
 
     // Only report changes in gate state: these diagnostics must not spam
     // every Godot frame or affect player input/RNG.
@@ -605,9 +606,20 @@ internal static class NativeV111PassiveBridge
         try
         {
             var feed = new NativeAgentBoundaryFeed();
-            var server = new LocalBridgeServer(feed, token, port);
+            string root = System.Environment.GetEnvironmentVariable(
+                "STS2_FIDELITY_TRACE_DIR")
+                ?? Path.Combine(OS.GetUserDataDir(), "native_fidelity_traces");
+            var prefix = Path.Combine(root, "live-" +
+                DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmssfff") + "-" +
+                Guid.NewGuid().ToString("N"));
+            var events = new NativeLiveEventHub(prefix);
+            string? fidelityToken = System.Environment.GetEnvironmentVariable(
+                "STS2_INSPECTOR_FIDELITY_TOKEN");
+            var server = new LocalBridgeServer(feed, token, port,
+                liveEvents: events, fidelityToken: fidelityToken);
             server.Start();
             _agentFeed = feed;
+            _liveEvents = events;
             _agentBridge = server;
             Godot.GD.Print("[Sts2ReferenceMod] AGENT_BRIDGE_STATUS=SPECTATOR_READY;" +
                 " schema=" + NativeAgentBoundaryFeed.SchemaId +
@@ -617,6 +629,7 @@ internal static class NativeV111PassiveBridge
         catch (Exception error)
         {
             _agentFeed = null;
+            _liveEvents = null;
             _agentBridge = null;
             Godot.GD.PushError("[Sts2ReferenceMod] AGENT_BRIDGE_STATUS=START_FAILED;" +
                 " reason=" + error.GetType().Name);
@@ -721,7 +734,14 @@ internal static class NativeV111PassiveBridge
                 _lastCapturedGeneration = _decisionGeneration;
                 _actionEnvelopes?.StableBoundary(
                     recorded.DecisionId, recorded.State);
-                try { _agentFeed?.Publish(recorded); }
+                try
+                {
+                    _agentFeed?.Publish(recorded);
+                    var visible = _agentFeed?.Current();
+                    if (visible is not null
+                        && _liveEvents?.PublishPublicBoundary(visible) == false)
+                        _agentFeed?.Withhold("LIVE_EVENT_JOURNAL_FAILED");
+                }
                 catch (Exception error)
                 {
                     _agentFeed?.Withhold("OBSERVATION_PROJECTION_UNAVAILABLE");
@@ -791,6 +811,8 @@ internal static class NativeV111PassiveBridge
         _adapter = new NativeCombatAdapter(combat, () => _choiceInterrupted);
         string runId = Guid.NewGuid().ToString("N");
         _agentFeed?.OpenCombat(runId);
+        if (_liveEvents?.OpenSession(runId) == false)
+            _agentFeed?.Withhold("LIVE_EVENT_JOURNAL_FAILED");
         string root = System.Environment.GetEnvironmentVariable("STS2_FIDELITY_TRACE_DIR")
             ?? Path.Combine(OS.GetUserDataDir(), "native_fidelity_traces");
         Directory.CreateDirectory(root);
@@ -850,7 +872,8 @@ internal static class NativeV111PassiveBridge
                 NativeV111InputHooks.HasHandChoiceFlowHook,
             nativeManualPlayHookInstalled: NativeV111InputHooks.HasManualPlayHook,
             nativeUiPlayBeginHookInstalled: NativeV111InputHooks.HasUiPlayBeginHook,
-            nativeUiGateHookInstalled: NativeV111InputHooks.HasUiGateHook);
+            nativeUiGateHookInstalled: NativeV111InputHooks.HasUiGateHook,
+            eventSink: record => _liveEvents?.PublishFidelityRecord(record) ?? true);
         if (!string.IsNullOrWhiteSpace(actualSeed))
             _actionEnvelopes.NativeRunIdentity(actualSeed, actualAscension);
         // A source-audited initial shuffle executes before the rendered
@@ -942,6 +965,7 @@ internal static class NativeV111PassiveBridge
         // A previous stable menu is no longer safe as soon as ANY executor
         // action (including automatic enemy or hook action) starts.
         _agentFeed?.Withhold("ACTION_RESOLVING");
+        _liveEvents?.PublishPublicStatus("ACTION_RESOLVING");
         // This callback runs for every executor action, including monster and
         // automatic actions which have no matching human legal-menu item.
         // A distinct timeline protects their evidence from strict-trace gaps.
@@ -1015,6 +1039,7 @@ internal static class NativeV111PassiveBridge
     private static void OnNestedChoice(NativeGameAction action)
     {
         _agentFeed?.Withhold("UNSUPPORTED_NESTED_CHOICE");
+        _liveEvents?.PublishPublicStatus("UNSUPPORTED_NESTED_CHOICE");
         try
         {
             _actionEnvelopes?.ChoicePause(
@@ -1047,6 +1072,7 @@ internal static class NativeV111PassiveBridge
     private static void StopStrictCapture(string reason)
     {
         _agentFeed?.Withhold("STRICT_TRACE_INCOMPLETE");
+        _liveEvents?.PublishPublicStatus("STRICT_TRACE_INCOMPLETE");
         var recording = _recording;
         if (recording is null) return;
         _recording = null;
@@ -1122,6 +1148,7 @@ internal static class NativeV111PassiveBridge
             _ = FinishRunPreludeAsync(prelude);
         }
         _agentFeed?.EndCombat(reason);
+        _liveEvents?.PublishPublicStatus("COMBAT_COMPLETE");
         NativeV111RngHook.EndCombat();
         var recording = _recording;
         var actionEnvelopes = _actionEnvelopes;
