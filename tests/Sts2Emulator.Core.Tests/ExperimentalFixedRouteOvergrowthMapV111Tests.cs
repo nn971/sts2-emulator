@@ -115,6 +115,60 @@ public sealed class ExperimentalFixedRouteOvergrowthMapV111Tests
             ExperimentalFixedRouteOvergrowthMapV111.OverrideOpening(entered));
     }
 
+    [Fact]
+    public void FixedRouteUnknownRoomUsesNativeOvergrowthResolution()
+    {
+        const string profile = ExperimentalFixedRouteOvergrowthMapV111.ProfileId;
+        Assert.False(PrototypeNativeOvergrowthMap.IsGenerationProfile(profile));
+        Assert.True(PrototypeNativeOvergrowthMap.UsesOvergrowthGameplay(profile));
+        Assert.True(PrototypeNativeOvergrowthMap.UsesOvergrowthGameplay(
+            PrototypeNativeOvergrowthMap.GenerationProfileId));
+
+        // Reconstruct a valid map-choice boundary immediately before floor 3.
+        // This exercises the same unknown-room dispatch that stopped H16
+        // during the first full-run smoke, without running two whole combats.
+        var initial = ExperimentalFixedRouteOvergrowthMapV111.Create(
+            "h16-fixed-route-unknown-regression", 10);
+        var map = initial.World!.Map;
+        var first = map.Nodes.Single(node => node.Floor == 1);
+        var second = map.Nodes.Single(node => node.Floor == 2);
+        var unknown = map.Nodes.Single(node => node.Floor == 3);
+        Assert.Equal(PrototypeRoomType.Unknown, unknown.RoomType);
+        var history = new[]
+        {
+            new PrototypeCompletedRoomRecord(
+                1, first.Floor, first.NodeId, first.RoomType),
+            new PrototypeCompletedRoomRecord(
+                1, second.Floor, second.NodeId, second.RoomType),
+        };
+        var before = initial with
+        {
+            Phase = RunPhase.MapChoice,
+            World = initial.World with
+            {
+                Event = null,
+                Floor = second.Floor,
+                ActiveRoom = null,
+                CompletedRoomHistory = history,
+                Map = map with { CurrentNodeId = second.NodeId }
+            }
+        };
+        PrototypeStateInvariants.Validate(before);
+        var engine = new PrototypeGameEngine();
+        var action = Assert.Single(
+            engine.GetLegalActions(before),
+            candidate => candidate.Kind == "choose_map_node");
+        var after = engine.Step(before, action).State;
+        Assert.Equal(3, after.World!.Floor);
+        Assert.Equal(unknown.NodeId, after.World.Map.CurrentNodeId);
+        Assert.NotEqual(PrototypeRoomType.Unknown, after.World.ActiveRoom);
+        Assert.Contains(after.Phase, new[]
+        {
+            RunPhase.Combat, RunPhase.Event, RunPhase.Shop, RunPhase.Reward,
+        });
+        PrototypeStateInvariants.Validate(after);
+    }
+
     private static RunState CompleteNeow(PrototypeGameEngine engine, RunState state)
     {
         for (var step = 0; step < 32 && state.Phase == RunPhase.Event; step++)
