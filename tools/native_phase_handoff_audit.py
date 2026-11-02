@@ -37,6 +37,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
     pending = None
     pending_turn = None
     pending_extra = False
+    pending_from_side_switch = False
     last_event = None
     for record in records:
         if record.get("type") == "native_turn_checkpoint":
@@ -46,7 +47,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                 and data.get("turn") == pending_turn
                 and data.get("player_phase") == "Play"):
                 result["player_start_hook_resumes_observed"] += 1
-                if last_event is not None:
+                if pending_from_side_switch:
                     result["completed_handoffs"] += 1
                     if pending_extra:
                         result["extra_player_turn_handoffs"] += 1
@@ -56,6 +57,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                     "settlement_status": "SETTLEMENT_UNVERIFIED",
                 })
                 pending, pending_turn, pending_extra = None, None, False
+                pending_from_side_switch = False
             continue
         if record.get("type") != "native_phase_handoff":
             continue
@@ -102,6 +104,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                     and turn == pending_turn):
                     result["player_start_hook_resolutions_without_frame"] += 1
                     pending, pending_turn, pending_extra = None, None, False
+                    pending_from_side_switch = False
                 if (side != "Player" or phase != "End" or sync != "NotPlayPhase"
                     or not two or enemy):
                     failure = "invalid pre-handoff source phase"
@@ -156,6 +159,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                         # its task completes; TurnStarted does not await it.
                         result["player_start_hook_pauses_observed"] += 1
                         pending_extra = pending == "AWAIT_EXTRA_PLAYER_START"
+                        pending_from_side_switch = allowed_predecessor
                         pending, pending_turn = "AWAIT_PLAYER_START_HOOK_COMPLETION", turn
                     elif phase == "Play":
                         if allowed_predecessor:
@@ -163,6 +167,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                             if pending == "AWAIT_EXTRA_PLAYER_START":
                                 result["extra_player_turn_handoffs"] += 1
                         pending, pending_turn, pending_extra = None, None, False
+                        pending_from_side_switch = False
                         milestone = "PLAYER_SETUP_AND_AUTO_PREPLAY_AWAITED_RETURNED"
                     else:
                         failure = "player start in unsupported phase"
