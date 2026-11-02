@@ -208,14 +208,22 @@ ordinals. It invokes the persistent coordinator against the pre-existing
 capture, using the independently bootstrapped emulator, and writes a small
 final acceptance report without copying private trace data to GitHub.
 
-After building the .NET 9 emulator CLI locally, use:
+From the `~/projects/sts2-inspector` working tree, rebuild the .NET 9 emulator CLI (to avoid a stale Release DLL), then run the offline acceptance:
 
 ```fish
-dotnet build Sts2Emulator.sln -c Release
+dotnet build src/Sts2Emulator.Cli/Sts2Emulator.Cli.csproj -c Release
 python tools/native_live_m1_acceptance.py \
     --trace-dir /mnt/d/SteamLibrary/sts2-inspector-traces \
     --out /tmp/native-live-m1-acceptance.json
 ```
+
+Before opening a native source replay session, the acceptance runner now
+launches a separate emulator `prototype-ai-jsonl` hello probe, checks the
+wire and snapshot schemas, and surfaces a bounded copy of the CLI exit code,
+stdout, and stderr if startup fails. The original-game trace is never provided
+to that probe. A failed coordinator also retains its captured stderr in the
+local acceptance JSON report. If a prior Release executable lacks the JSONL
+protocol, rebuild as shown above.
 
 This defaults to **at least six observed projected player-turn comparisons**,
 a terminal full-source replay, and no first detected difference. The result
