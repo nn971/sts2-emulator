@@ -164,9 +164,9 @@ even an agreement is labelled `PROJECTED_AGREEMENT_UNCERTIFIED`.
 
 ### Live integration gates still open
 
-- Run both offline rehearsal programs on the **actual six-turn native
-  sidecar and paired prelude**, checking all six projected checkpoints and
-  independent RNG comparisons.
+- **Complete:** independently replayed the original six-turn native
+  sidecar and prelude in the M1 persistent coordinator, with six projected
+  matches, 22 actions, terminal audit and no first difference.
 - Verify the real game-local `STS2_NATIVE` build and perform one controlled
   native live capture/no-perturbation test.
 - Persist native journal indexing across Reference Mod process restarts. A
@@ -190,11 +190,15 @@ marker) retained all source ordinals and passed uninterrupted fingerprint and
 sequence checks. Two source RNG floats used uppercase scientific exponents;
 the Python live validator now preserves their original lexical representation.
 
-This is **transport preservation only**. The original independent six-turn
-emulator replay report is existing evidence from PR #231. The newly added
-persistent coordinator has not yet been exercised on this private native
-capture with an executable emulator in the current environment. It must
-separately pass the six-turn gate before a live game launch is requested.
+This establishes transport preservation. In the user's local
+`~/projects/sts2-inspector` checkout, the new persistent coordinator has
+also independently replayed the original native capture using a compiled
+emulator. The M1 acceptance report confirmed **6/6 projected player-turn
+checkpoints matched**, **22 emulator actions stepped**, **5 enemy-turn
+candidates deferred**, **no first projected difference**, and a successful
+full-source terminal audit. Its exact final status was
+`M1_SIX_TURN_OFFLINE_AGREEMENT_UNCERTIFIED`. Native settlement and complete
+state parity remain unverified.
 
 ## One-command offline acceptance of an existing native capture
 
@@ -241,13 +245,13 @@ original game and does not require a new native capture.
 ### CI evidence for the new coordinator
 
 The focused v111-fidelity-integration workflow successfully built the
-repository and passed **177/177 targeted C# tests**, **26/26 dedicated M1
+repository and passed **177/177 targeted C# tests**, **33/33 dedicated M1
 Python tests**, and the real emulator JSONL process smoke. The wider existing
 native audit suite still has two pre-existing Neow source-route expectation
 failures from the underlying PR #231; they are tracked separately and are
 not M1 transport failures.
 
-The dedicated M1 Python tests (**26/26**) and the emulator-derived
+The dedicated M1 Python tests (**33/33**) and the emulator-derived
 **real JSONL-process** smoke passed in the focused GitHub Actions gate on
 the 2026-11-02 M1 branch. The latter matched two projected player-turn
 checkpoints and correctly froze an injected HP mismatch at `$.player.hp`.
@@ -260,6 +264,68 @@ RNG checkpoint comparisons of four 15-stream agreements plus two
 source-uncomparable windows. That report is the reference for the new M1
 acceptance command.
 
+## Live M1 prelaunch gates (do not launch the game yet)
+
+The pre-existing native build gate checks the installed **pinned v111**
+`sts2.dll` SHA-256 (`0861bfa1df347538d932f22d580e75420f08082792eb914e53b4882764acdbe9`),
+read-only PE metadata, compiles the game-bound `STS2_NATIVE` mod, and
+stages its DLL/PCK/manifest outside Steam. Run it from the
+`~/projects/sts2-inspector` checkout; replace `--game-root` with the actual
+Steam installation root if different:
+
+```fish
+python tools/native_map_build_preflight.py \
+    --game-root "/mnt/d/SteamLibrary/steamapps/common/Slay the Spire 2" \
+    --stage /tmp/sts2-native-live-m1-stage
+```
+
+This writes
+`/tmp/sts2-native-live-m1-stage/native-map-build-preflight.json`.
+The success status must be `NATIVE_SOURCE_COMPILED_STAGED_NOT_INSTALLED`;
+installation, game launch, live capture, and runtime hook parity have not
+yet occurred. Preserve the report for review before changing game files.
+
+After staging has passed, install the staged mod for the **Windows game
+process** and launch only once with the expected hash, capture, trace
+directory and dual credentials explicitly configured. The tokens must each
+have at least 24 characters and be different. The game process itself
+must receive `STS2_FIDELITY_CAPTURE=1`,
+`STS2_FIDELITY_EXPECT_SHA256=<pinned-sha256>`,
+`STS2_FIDELITY_TRACE_DIR=D:\\SteamLibrary\\sts2-inspector-traces`,
+`STS2_INSPECTOR_AGENT_BRIDGE=1`,
+`STS2_INSPECTOR_AGENT_TOKEN`, and
+`STS2_INSPECTOR_FIDELITY_TOKEN`.
+Environment variables exported solely in WSL do not configure an
+independently launched Windows Steam process.
+
+**Before starting a game run**, check the loopback server from the same
+environment in which the external coordinator will run:
+
+```fish
+python tools/native_live_bridge_preflight.py \
+    --out /tmp/native-live-bridge-preflight.json
+```
+
+This probe sends only four authenticated **GET** requests. It checks the
+public status endpoint, verifies the private SSE credential through the
+server's immediate `INVALID_EVENT_CURSOR` rejection of
+`/v1/fidelity/stream?after_seq=-1`, and checks cross-token isolation.
+It neither starts a game run nor opens a privileged event stream. It
+does **not** print or save bearer tokens. It refuses redirects and nonlocal
+HTTP origins. Success is `LIVE_BRIDGE_AUTHENTICATION_READY`, which proves
+transport reachability/auth separation but not native mechanics or live
+source parity.
+
+If WSL cannot connect to Windows `127.0.0.1:39221`, prefer running the
+external probe/coordinator on the Windows host. Never expand the native
+listener to non-loopback interfaces for connectivity.
+
+Once these gates pass, begin exactly one **Silent A10 fixed-seed** native
+run; at the first combat, start the external coordinator against the
+already-written run prelude, and compare each stable player-turn projection.
+Preserve the final F8 diagnostic screenshot and small coordinator report;
+raw action sidecars and private bearer tokens stay local.
+
 ## Test gates and remaining M1 work
 
 Focused C# tests check authentication separation, SSE cursor replay, disk
@@ -270,8 +336,9 @@ tests.
 
 Remaining M1 scope:
 
-1. Validate the new coordinator and feedback endpoints against focused CI
-   and the original recorded six-turn capture.
+1. **Complete:** coordinator focused CI and the original six-turn
+   offline native capture acceptance. Live fidelity-result feedback remains
+   to be verified against the actual game transport.
 2. Verify native-source event/no-perturbation behavior against the pinned
    installed game DLL in one controlled native launch.
 3. Add journal-on-process-restart recovery. Current live SSE replay uses
