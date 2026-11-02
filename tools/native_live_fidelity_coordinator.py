@@ -362,6 +362,14 @@ class IncrementalFidelityCoordinator:
         self.post_card_probe["source_stable_windows"] += 1
         snapshot = json.loads(self.state.save_snapshot())
         difference = first_difference(second, snapshot, self.crosswalk)
+        if difference is not None and difference.get("reason") in (
+                "MISSING_COMBAT_PROJECTION", "SCALAR_UNOBSERVED",
+                "ZONE_UNOBSERVED", "NATIVE_CARD_ID_UNMAPPED"):
+            # A source projection can be incomplete or include a native
+            # card created after the initial ID crosswalk. This is a
+            # coverage gap, not evidence of incorrect emulator mechanics.
+            self.post_card_probe["deferred_native_windows"] += 1
+            return
         self.post_card_probe["emulator_comparisons"] += 1
         if difference is None:
             self.post_card_probe["emulator_projected_matches"] += 1
