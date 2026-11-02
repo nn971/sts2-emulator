@@ -790,3 +790,53 @@ Offline C# and Python tests cover the bounded status, malformed values,
 legacy sidecars, synthetic phase handoffs and a start-of-turn choice pause.
 An installed-game build and any runtime validation of the new callbacks
 remain pending.
+
+
+## Source-stable post-card action windows (2026-11-02)
+
+The accepted native v0.111 Silent A10 sidecar for seed `6JK8MD0VQQTA`
+contains 17 completed `PlayCardAction` bodies. For the **16** followed by
+another native `BeforeActionExecuted` callback, the complete public native
+projection at `AfterActionExecuted` and the next action's pre-state is
+**identical**. This includes a Survivor play with a nested choice. The last
+card action ends combat, so it has no next-action observation.
+
+The independent source-only `native_action_window_audit.py` now
+computes `post_card_windows` as part of the strict sidecar audit. It
+reports `stable_post_card_windows`, `changed_post_card_windows`,
+`unpaired_post_card_windows`, `unverifiable_post_card_windows`,
+`nested_choice_stable_windows` and each stable or changed interval's
+source ordinals. A change between two callbacks is evidence of
+**potential legitimate automatic game effects**, so it is recorded
+without treating it as a parity failure.
+
+To compare the emulator at these extra boundaries, the persistent Python
+coordinator has an **opt-in diagnostic-only** probe. After a completed
+card action has been stepped in the emulator, if the following native
+action has the same complete native projection as the completed card,
+the probe compares that next native pre-state with the independent
+emulator's current state. If the source projection has changed
+between callbacks, a turn-loop callback intervened, or the snapshots
+are incomplete, the interval is deferred. All diagnostic results are
+explicitly `native_settlement_certified=false` and can identify
+an earlier provisional first difference.
+
+Example using the existing saved original-game sidecar and paired prelude,
+after building the emulator CLI, **without launching the game**:
+
+```fish
+cd ~/projects/sts2-inspector
+dotnet build src/Sts2Emulator.Cli/Sts2Emulator.Cli.csproj -c Release
+python tools/native_live_fidelity_coordinator.py \
+    --sidecar "/mnt/d/SteamLibrary/sts2-inspector-traces/passive-20261102-121956051-e8c8ed546a234bdcb6498e17e1f5f3f9.actions.jsonl" \
+    --prelude "/mnt/d/SteamLibrary/sts2-inspector-traces/run-prelude-20261102-121950783-13151013c989470581c4fcd7ddabb257.jsonl" \
+    --probe-post-card-windows \
+    --out /tmp/native-post-card-probe.json
+```
+
+The opt-in probe is withheld from normal live coordinator feedback
+(`--follow` requires `--no-feedback` when probing). The established
+six-turn source agreement and F8 receipt schema remain unchanged by
+default. Promoting a window to a stronger acceptance contract awaits
+an independent replay against the saved native sidecar and scrutiny of
+auto-effects that run after the `AfterActionExecuted` callback.
