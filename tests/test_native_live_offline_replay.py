@@ -108,8 +108,8 @@ class NativeLiveOfflineReplayTests(unittest.TestCase):
         }
         expected = "211839735340aa0cacea6a7f22be16ada31c4464ebc386361acef5b334816273"
         self.assertEqual(expected, _digest(header))
-        self.assertIn(r"\\u002B", _dump_json(header, sort_keys=True))
-        self.assertIn(r"\\u0060", _dump_json(header, sort_keys=True))
+        self.assertIn(r"\u002B", _dump_json(header, sort_keys=True))
+        self.assertIn(r"\u0060", _dump_json(header, sort_keys=True))
         with tempfile.TemporaryDirectory() as directory:
             file = Path(directory) / "live.fidelity.jsonl"
             envelope = simulate_sidecar([header, {
