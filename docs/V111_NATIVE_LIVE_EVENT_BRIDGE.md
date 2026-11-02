@@ -551,6 +551,57 @@ opt_in_show_on_start=True` at the main menu of the next controlled launch,
 then verify the drawn overlay and F8 toggling. This remains a runtime
 hypothesis until native visual confirmation.
 
+## Native action-queue quiescence evidence (next fidelity increment)
+
+The original game uses a separate `ActionQueueSet`, `ActionExecutor`
+and `ActionQueueSynchronizer` (pinned
+`Flaaax/STS2-source@706ef1c9`, v0.111.0). A rendered idle player frame
+alone could conceal queued or deferred actions. The new read-only
+player-turn checkpoint additionally captures eight boolean source
+observations:
+
+1. `ActionQueueSet.IsEmpty` and
+   `ActionQueueSet.BecameEmpty().IsCompletedSuccessfully`;
+2. `!ActionExecutor.IsRunning`,
+   `ActionExecutor.FinishedExecutingActions().IsCompletedSuccessfully`,
+   `CurrentlyRunningAction == null`, and `!IsPaused`;
+3. `ActionQueueSynchronizer.CombatState == PlayPhase` and an empty
+   source-private `_requestedActionsWaitingForPlayerTurn` list.
+
+The inspector never invokes `GetReadyAction()`, which can remove
+canceled items, never awaits tasks, and never changes the native
+action queue. The private deferred list is read through pinned
+reflection. If a source member is unavailable or reading it fails,
+evidence is `NOT_CAPTURED`, not an empty-queue assertion.
+
+When all eight flags are true, the checkpoint includes
+`queue_quiescence_status:
+SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME`. Otherwise it has
+`SOURCE_QUEUE_QUIESCENCE_UNVERIFIED`. The source auditor recomputes
+the status from the eight individual booleans and rejects malformed,
+contradictory, or enemy-turn assertions; the live coordinator validates
+the same contract **before** comparing that player turn. Old sidecars
+without these fields remain acceptable and are marked
+`NOT_CAPTURED_LEGACY`. The offline source journal and emulator
+turn-checkpoint replay carry the validated status forward.
+
+**Precise guarantee:** the native action queue, executor and
+synchronizer were jointly observed quiescent *at that sampled Godot
+player frame*. The later scheduling of asynchronous hooks, animation
+completion, native phase-handoff ordering and globally settled
+mechanical state remain unverified. In particular,
+`settlement_status: SETTLEMENT_UNVERIFIED`,
+`complete_native_queue_verified: false` and
+`native_phase_handoff_order_verified: false` remain unchanged.
+
+The PE-metadata-only native preflight now requires the queue/executor
+members and the private deferred-request list on the pinned local
+`sts2.dll` before compilation and staging. The new native gate must
+be compiled on the user's WSL installation and then validated against
+a fresh original-game combat; **no new original-game validation has
+yet occurred for the quiescence fields**. Existing six-turn live
+feedback agreement is unaffected.
+
 ## Test gates and remaining M1 work
 
 Focused C# tests check authentication separation, SSE cursor replay, disk
