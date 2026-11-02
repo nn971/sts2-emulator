@@ -143,10 +143,8 @@ def probe_emulator_jsonl(dotnet: str, cli_dll: Path) -> dict:
         if not isinstance(response, dict) or response.get("requestId") != (
                 "m1-preflight") or response.get("ok") is not True:
             raise ValueError("JSONL hello returned an invalid envelope")
-        payload = response.get("result")
-        if not isinstance(payload, dict) or payload.get("wireSchemaId") != (
-                "prototype-ai-jsonl-v0") or payload.get("snapshotSchemaId") != (
-                "sts2-exact-snapshot-v1"):
+        if response.get("wireSchemaId") != "prototype-ai-jsonl-v0" or (
+                response.get("snapshotSchemaId") != "sts2-exact-snapshot-v1"):
             raise ValueError("Emulator JSONL schema negotiation failed")
     except (ValueError, TypeError) as error:
         return {"status": "BLOCKED_EMULATOR_JSONL_STARTUP",
