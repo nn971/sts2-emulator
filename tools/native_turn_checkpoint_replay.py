@@ -352,6 +352,8 @@ def replay(journal, snapshot, session, sidecar=None):
             matched.append({"turn": cp["turn"], "ordinal": cp["ordinal"],
                             "comparison": "PROJECTED_MECHANICS_AGREE",
                             "native_settlement": "SETTLEMENT_UNVERIFIED",
+                            "native_queue_quiescence": cp.get(
+                                "queue_quiescence_status", "NOT_CAPTURED_LEGACY"),
                             "rng_comparison": detail["status"]})
             cp_index += 1
         if cmd.get("_sentinel"):
