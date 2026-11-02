@@ -17,7 +17,7 @@ from native_live_fidelity_coordinator import (
     FidelityEventCursor, LiveFidelityError, IncrementalFidelityCoordinator,
     _NoRedirect, _loopback_base, parse_sse, follow,
 )
-from test_native_turn_checkpoint_replay import fixture, FakeSession
+from test_native_turn_checkpoint_replay import fixture, FakeSession, source as native_source
 
 
 def source_records():
@@ -46,7 +46,7 @@ def source_records():
     ]
 
 
-def synthetic_coordinator():
+def synthetic_coordinator(*, probe_post_card_windows=False):
     _, start, _, _ = fixture()
     prelude = {
         "status": "RUN_PRELUDE_SOURCE_OBSERVED",
@@ -57,8 +57,9 @@ def synthetic_coordinator():
     def bootstrap(_source, _session):
         return ({"status": "CANDIDATE_COMBAT_REACHED_UNCERTIFIED"},
                 start.save_snapshot())
-    return IncrementalFidelityCoordinator(FakeSession(start), prelude,
-                                          bootstrap=bootstrap)
+    return IncrementalFidelityCoordinator(
+        FakeSession(start), prelude, bootstrap=bootstrap,
+        probe_post_card_windows=probe_post_card_windows)
 
 
 class LiveCoordinatorTests(unittest.TestCase):
@@ -77,6 +78,61 @@ class LiveCoordinatorTests(unittest.TestCase):
                          live.matched[-1]["native_settlement"])
         self.assertFalse(any("native_full_state_parity" in r for r in receipts
                              if r))
+
+    def test_offline_post_card_probe_matches_only_source_stable_next_action(self):
+        rows = source_records()
+        after = native_source(1, [], [1], [0], hp=34)
+        after["combat"]["energy"] = 2
+        # This synthetic action-completion observation is identical to the
+        # native next action's pre-state; the emulator already stepped card 1.
+        rows[4]["state"] = copy.deepcopy(after)
+        rows[5]["state"] = copy.deepcopy(after)
+        live = synthetic_coordinator(probe_post_card_windows=True)
+        for event in simulate_sidecar(rows[:6]):
+            live.consume(event)
+        probe = live.post_card_probe
+        self.assertEqual(1, probe["source_stable_windows"])
+        self.assertEqual(1, probe["emulator_comparisons"])
+        self.assertEqual(1, probe["emulator_projected_matches"])
+        self.assertIsNone(probe["first_difference"])
+        self.assertFalse(probe["native_settlement_certified"])
+        self.assertEqual("DIAGNOSTIC_ONLY", probe["status"])
+        self.assertFalse(live.stopped)
+
+    def test_post_card_probe_reports_candidate_without_repair_or_false_parity(self):
+        rows = source_records()
+        after = native_source(1, [], [1], [0], hp=33)
+        after["combat"]["energy"] = 2
+        rows[4]["state"] = copy.deepcopy(after)
+        rows[5]["state"] = copy.deepcopy(after)
+        live = synthetic_coordinator(probe_post_card_windows=True)
+        for event in simulate_sidecar(rows[:6]):
+            live.consume(event)
+        probe = live.post_card_probe
+        self.assertEqual(1, probe["source_stable_windows"])
+        self.assertEqual(0, probe["emulator_projected_matches"])
+        self.assertEqual("$.combat.creatures.creature:1.hp",
+                         probe["first_difference"]["difference"]["path"])
+        self.assertEqual(2, probe["first_difference"]["next_action_start_ordinal"]
+                         // 3)  # source ordinal 6, never a guessed frame
+        self.assertEqual(1, live.stepped)
+        # A later turn checkpoint can still be checked. This is a
+        # provisional candidate, separate from terminal settled parity.
+        self.assertFalse(live.stopped)
+
+        rows[5]["state"]["combat"]["energy"] = 1
+        deferred = synthetic_coordinator(probe_post_card_windows=True)
+        for event in simulate_sidecar(rows[:6]):
+            deferred.consume(event)
+        self.assertEqual(1, deferred.post_card_probe["deferred_native_windows"])
+        self.assertEqual(0, deferred.post_card_probe["emulator_comparisons"])
+
+    def test_default_coordinator_does_not_send_provisional_probe_fields(self):
+        live = synthetic_coordinator()
+        for event in simulate_sidecar(source_records()[:6]):
+            live.consume(event)
+        self.assertNotIn("post_card_action_probe", live._receipt())
+        self.assertFalse(live.probe_post_card_windows)
 
     def test_live_queue_evidence_is_checked_before_player_comparison(self):
         rows = source_records()
