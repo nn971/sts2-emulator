@@ -6,6 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_action_envelope_audit import audit, diff_scalars, infer_choice_discard
+from native_live_offline_replay import _LexicalFloat, _digest
 
 
 def sample():
@@ -42,6 +43,59 @@ def sample():
 
 
 class EnvelopeAuditTests(unittest.TestCase):
+    def test_source_rng_float_lexemes_pass_strict_numeric_audit(self):
+        rows = sample()
+        rng = {
+            "type": "native_rng_scalar_boundary",
+            "data": {
+                "operation_kind": "range_float",
+                "selected_double": None, "selected_bool": None,
+                "selected_float": _LexicalFloat("-5.0546736E-05"),
+                "float_min": -1, "float_max": 1,
+                "cursor_before": {"counter": 12},
+                "cursor_after": {"counter": 13},
+                "origin": "source_primitive_hook",
+                "source_hook_observed": True,
+                "source_version": "v0.111.0",
+                "site_id": "synthetic-float",
+                "stream_id": "run.synthetic",
+                "owner_id": "synthetic",
+                "attributed": True,
+            },
+        }
+        rows.insert(-1, rng)
+        for ordinal, row in enumerate(rows, 1):
+            row["ordinal"] = ordinal
+        original_fingerprint = _digest(rng)
+        report = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(1, report["native_rng_float_source_calls"])
+        self.assertEqual(original_fingerprint, _digest(rng))
+
+        rows[-2]["data"]["float_min"] = True
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(rows)["status"])
+        rows[-2]["data"]["float_min"] = -1
+        rows[-2]["data"]["selected_float"] = float("nan")
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(rows)["status"])
+
+    def test_unit_double_lexical_subclass_is_not_mistaken_for_boolean(self):
+        rows = sample()
+        rows.insert(-1, {"type": "native_rng_scalar_boundary",
+            "data": {"operation_kind": "unit_double",
+                     "selected_double": _LexicalFloat("0.0554321"),
+                     "selected_bool": None, "selected_float": None,
+                     "float_min": None, "float_max": None,
+                     "cursor_before": {"counter": 3},
+                     "cursor_after": {"counter": 4},
+                     "origin": "source_primitive_hook",
+                     "source_hook_observed": True,
+                     "source_version": "v0.111.0"}})
+        for ordinal, row in enumerate(rows, 1):
+            row["ordinal"] = ordinal
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", audit(rows)["status"])
+        rows[-2]["data"]["selected_double"] = True
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(rows)["status"])
+
     def test_turn_start_candidates_are_provisional_and_source_ordered(self):
         records = sample()
         player_state = {"combat": {"turn": 1}, "player": {"hp": 50}}
