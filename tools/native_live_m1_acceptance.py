@@ -109,6 +109,53 @@ def discover_pair(root: Path, min_player_turns: int = 6) -> tuple[Path, Path]:
                           "No complete native sidecar and matching run prelude found")
 
 
+def probe_emulator_jsonl(dotnet: str, cli_dll: Path) -> dict:
+    """Expose the actual .NET startup error before launching source replay.
+
+    The source is never supplied to this probe: it sends one hello request to
+    the existing JSONL protocol, closes stdin, and checks the negotiated schema.
+    """
+    request = json.dumps({"op": "hello", "request_id": "m1-preflight"}) + "\\n"
+    try:
+        completed = subprocess.run(
+            [dotnet, str(cli_dll), "prototype-ai-jsonl"],
+            input=request, capture_output=True, text=True, check=False,
+            timeout=15)
+    except subprocess.TimeoutExpired:
+        return {"status": "BLOCKED_EMULATOR_JSONL_STARTUP",
+                "reason": "Emulator JSONL hello timed out after 15 seconds"}
+    except OSError as error:
+        return {"status": "BLOCKED_EMULATOR_JSONL_STARTUP",
+                "reason": type(error).__name__ + ": " + str(error)}
+    stderr = completed.stderr.strip()[-2500:]
+    lines = completed.stdout.splitlines()
+    first = lines[0] if lines else ""
+    if completed.returncode != 0 or not first:
+        return {"status": "BLOCKED_EMULATOR_JSONL_STARTUP",
+                "reason": ("Emulator CLI JSONL hello exited "
+                           + str(completed.returncode)
+                           + " before a usable response"),
+                "exit_code": completed.returncode,
+                "emulator_stderr": stderr,
+                "emulator_stdout": completed.stdout.strip()[-1000:]}
+    try:
+        response = json.loads(first)
+        if not isinstance(response, dict) or response.get("requestId") != (
+                "m1-preflight") or response.get("ok") is not True:
+            raise ValueError("JSONL hello returned an invalid envelope")
+        payload = response.get("result")
+        if not isinstance(payload, dict) or payload.get("wireSchemaId") != (
+                "prototype-ai-jsonl-v0") or payload.get("snapshotSchemaId") != (
+                "sts2-exact-snapshot-v1"):
+            raise ValueError("Emulator JSONL schema negotiation failed")
+    except (ValueError, TypeError) as error:
+        return {"status": "BLOCKED_EMULATOR_JSONL_STARTUP",
+                "reason": str(error), "exit_code": completed.returncode,
+                "emulator_stderr": stderr,
+                "emulator_stdout": completed.stdout.strip()[-1000:]}
+    return {"status": "EMULATOR_JSONL_HELLO_VERIFIED"}
+
+
 def acceptance_result(sidecar: Path, prelude: Path, *, dotnet: str,
                       cli_dll: Path, coordinator_report: Path,
                       min_player_turns: int) -> dict:
@@ -127,6 +174,12 @@ def acceptance_result(sidecar: Path, prelude: Path, *, dotnet: str,
     if not cli_dll.is_file() or shutil.which(dotnet) is None:
         result["reason"] = "Build the .NET 9 emulator CLI before offline acceptance"
         return result
+    diagnostic = probe_emulator_jsonl(dotnet, cli_dll)
+    result["emulator_startup"] = diagnostic
+    if diagnostic["status"] != "EMULATOR_JSONL_HELLO_VERIFIED":
+        result["status"] = diagnostic["status"]
+        result["reason"] = diagnostic["reason"]
+        return result
     command = [
         sys.executable,
         str(ROOT / "tools/native_live_fidelity_coordinator.py"),
@@ -134,14 +187,24 @@ def acceptance_result(sidecar: Path, prelude: Path, *, dotnet: str,
         "--dotnet", dotnet, "--cli-dll", str(cli_dll),
         "--out", str(coordinator_report),
     ]
+    coordinator_report.unlink(missing_ok=True)
     completed = subprocess.run(command, text=True, capture_output=True,
                                check=False)
     if not coordinator_report.is_file():
         result.update(status="BLOCKED_EMULATOR_COORDINATOR",
                       reason="Coordinator produced no report",
+                      coordinator_stderr=completed.stderr.strip()[-2500:],
+                      coordinator_stdout=completed.stdout.strip()[-1000:],
                       return_code=completed.returncode)
         return result
-    report = json.loads(coordinator_report.read_text(encoding="utf-8"))
+    try:
+        report = json.loads(coordinator_report.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        result.update(status="BLOCKED_EMULATOR_COORDINATOR",
+                      reason="Invalid coordinator report: " + str(error),
+                      coordinator_stderr=completed.stderr.strip()[-2500:],
+                      return_code=completed.returncode)
+        return result
     result["coordinator_status"] = report.get("status")
     result["player_turns_matched"] = report.get("player_checkpoints_matched", 0)
     result["emulator_actions_stepped"] = report.get("emulator_actions_stepped", 0)
