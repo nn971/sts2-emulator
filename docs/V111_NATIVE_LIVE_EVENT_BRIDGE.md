@@ -653,10 +653,12 @@ combat and detached on combat termination:
   the player turn number increments on entry to the player side, and creature
   `OnSideSwitch` callbacks run. It is therefore a **side-switched**
   observation, not a pre-switch notice.
-- `TurnStarted`: emitted on the newly selected side after its start-turn
-  processing. For the player, `RunAutoPrePlayPhase` has already completed,
-  `PlayerTurnPhase.Play` is active, and `ActionQueueSynchronizer` is in
-  `PlayPhase`; for the enemy, `IsEnemyTurnStarted` is true.
+- `TurnStarted`: emitted on the newly selected side after its
+  synchronous start-turn processing or a pause for a native choice. For
+  the player, `ActionQueueSynchronizer` is in `PlayPhase`, but the player's
+  `PlayerTurnPhase` can still be `Start` or `AutoPrePlay` while a hook
+  remains suspended; `Play` indicates completion of that awaited chain.
+  For the enemy, `IsEnemyTurnStarted` is true.
 
 Source: `Flaaax/STS2-source@706ef1c9`, v0.111.0,
 `CombatManager.cs` (`AfterAllPlayersReadyToBeginEnemyTurn`,
