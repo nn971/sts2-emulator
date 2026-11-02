@@ -113,8 +113,7 @@ class LiveCoordinatorTests(unittest.TestCase):
         self.assertEqual(0, probe["emulator_projected_matches"])
         self.assertEqual("$.combat.creatures.creature:1.hp",
                          probe["first_difference"]["difference"]["path"])
-        self.assertEqual(2, probe["first_difference"]["next_action_start_ordinal"]
-                         // 3)  # source ordinal 6, never a guessed frame
+        self.assertEqual(6, probe["first_difference"]["next_action_start_ordinal"])
         self.assertEqual(1, live.stepped)
         # A later turn checkpoint can still be checked. This is a
         # provisional candidate, separate from terminal settled parity.
