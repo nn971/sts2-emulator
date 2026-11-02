@@ -714,3 +714,77 @@ but unpaired. A callback for the same turn arriving **after** an already
 sampled player-frame checkpoint, or a duplicate player-turn-start callback,
 fails closed. This connects the source handoff chronology to the existing
 eight-flag queue snapshot without claiming globally settled effects.
+
+
+## Awaited turn-loop stages and tracked automatic-effect evidence (2026-11-02)
+
+The pinned v0.111 source establishes which asynchronous work is actually
+awaited by the original combat turn loop:
+
+- `AboutToSwitchToEnemyTurn` occurs after the phase-one
+  `EndPlayerTurnPhaseOneInternal` awaited chain and before phase-two hand
+  flushing/after-side-end hooks.
+- `TurnEnded(Enemy)` is emitted after `EndPlayerTurnPhaseTwoInternal`
+  and the side switch, meaning the awaited player phase-two hook chain
+  has returned.
+- `TurnStarted(Enemy)` follows awaited enemy-side start hooks but precedes
+  `ExecuteEnemyTurn` (enemy actions have **not** run yet).
+- `TurnEnded(Player)` after an enemy turn follows the awaited enemy
+  `TakeTurn` actions and `EndEnemyTurnInternal` hook chain. If the player
+  receives an extra turn, the player-side switch instead occurs immediately
+  after player phase two, and `Hook.AfterTakingExtraTurn` may still be
+  pending when `TurnEnded` fires.
+- `TurnStarted(Player)` with `PlayerTurnPhase.Play` follows completion of
+  `RunAutoPrePlayPhase`, including awaiting the setup task, draw, start-turn
+  hooks and `Hook.AfterAutoPrePlayPhaseEntered`.
+
+**Important source exception:** `HookPlayerChoiceContext.AssignTaskAndWaitForPauseOrCompletion`
+can return when a start-of-turn hook pauses for a player choice. In that
+case `CombatManager.TurnStarted(Player)` may fire with phase `Start` or
+`AutoPrePlay` and synchronizer `PlayPhase`. The independent auditor
+records an `AWAIT_PLAYER_START_HOOK_COMPLETION` state. A later native
+`PLAYER_TURN_START` frame with phase `Play` is evidence that the
+auto-pre-play phase completed. If the run progresses to another end-turn
+without an observed playable frame, the unpaired completion remains
+explicitly counted rather than fabricating the missing frame.
+
+The phase auditor now reports `awaited_source_milestones`, plus
+`player_start_hook_pauses_observed`,
+`player_start_hook_resumes_observed` and
+`player_start_hook_resolutions_without_frame`. Milestones are strictly
+bounded to what the associated source `await` chain or observed
+`PlayerTurnPhase.Play` proves.
+
+At each player-frame candidate, the Reference Mod additionally samples
+three read-only source flags:
+`!CombatManager.IsExecutingCardOrPotionEffect(player)`,
+`!EndingPlayerTurnPhaseOne && !EndingPlayerTurnPhaseTwo`, and
+`!IsEnemyTurnStarted`. The first query directly checks the game's
+tracked card/potion effect-body nesting depth, including nested
+auto-plays. Its status is
+`SOURCE_TRACKED_EFFECT_BODY_INACTIVE_AT_FRAME` only if all three
+flags are true; any false flag yields
+`SOURCE_TRACKED_EFFECT_ACTIVITY_UNVERIFIED`.
+Missing evidence yields `NOT_CAPTURED` (or
+`NOT_CAPTURED_LEGACY` on older sidecars).
+The source auditor and live independent coordinator recompute the status
+from exact boolean fields, fail closed on forged claims, and preserve
+the prior independent eight-flag queue evidence.
+
+The metadata-only preflight now verifies the three
+`CombatManager` source events, its three phase-state properties,
+and `IsExecutingCardOrPotionEffect` in the pinned installed assembly,
+in addition to the previous native queue members.
+
+These observations prove **awaited game turn-loop stages and tracked
+card/potion effect inactivity at a particular frame**. They do not
+prove that every detached task, animation-triggered hook or future effect
+has settled. `SETTLEMENT_UNVERIFIED`,
+`native_phase_handoff_order_verified=false`,
+`native_settlement_certified=false`, and
+`native_live_lockstep=false` remain unchanged.
+
+Offline C# and Python tests cover the bounded status, malformed values,
+legacy sidecars, synthetic phase handoffs and a start-of-turn choice pause.
+An installed-game build and any runtime validation of the new callbacks
+remain pending.
