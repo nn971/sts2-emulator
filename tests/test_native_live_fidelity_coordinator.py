@@ -113,6 +113,34 @@ class LiveCoordinatorTests(unittest.TestCase):
         # identity record; the forged checkpoint blocks comparison/actions.
         self.assertEqual(1, blocked.session.loaded)
 
+    def test_tracked_effect_evidence_is_checked_before_live_comparison(self):
+        rows = source_records()
+        cp = rows[2]["data"]
+        cp["automatic_effect_evidence"] = {
+            "no_active_card_or_potion_effect_body": True,
+            "no_player_turn_end_transition": True,
+            "enemy_turn_not_started": True,
+        }
+        cp["automatic_effect_evidence_status"] = (
+            "SOURCE_TRACKED_EFFECT_BODY_INACTIVE_AT_FRAME")
+        live = synthetic_coordinator()
+        for row in simulate_sidecar(rows[:3]):
+            live.consume(row)
+        self.assertEqual(1, len(live.matched))
+        self.assertEqual("SOURCE_TRACKED_EFFECT_BODY_INACTIVE_AT_FRAME",
+                         live.matched[0]["automatic_effect_evidence"])
+        self.assertEqual("SETTLEMENT_UNVERIFIED",
+                         live.matched[0]["native_settlement"])
+
+        cp["automatic_effect_evidence"]["no_active_card_or_potion_effect_body"] = False
+        blocked = synthetic_coordinator()
+        for row in simulate_sidecar(rows[:3]):
+            blocked.consume(row)
+        self.assertEqual("BLOCKED_SOURCE_CHRONOLOGY", blocked.status)
+        self.assertEqual(0, len(blocked.matched))
+        self.assertEqual(0, blocked.stepped)
+        self.assertEqual(1, blocked.session.loaded)
+
     def test_first_observed_difference_freezes_emulator_without_repair(self):
         records = source_records()
         records[-2]["state"]["combat"]["creatures"][1]["hp"] = 21
