@@ -61,6 +61,9 @@ def _dump_json(value: object, *, sort_keys: bool) -> str:
     if isinstance(value, str):
         # .NET's default JavaScriptEncoder escapes HTML-sensitive characters.
         encoded = json.dumps(value, ensure_ascii=True)
+        # Default Utf8JsonWriter hex-escapes quotation marks in values.
+        # Python json.dumps uses a short \" escape for the same character.
+        encoded = encoded.replace(r'\"', r'\u0022')
         for character, escape in (("<", "\\u003C"), (">", "\\u003E"),
                                   ("&", "\\u0026"), ("'", "\\u0027"),
                                   ("+", "\\u002B"), ("`", "\\u0060")):
