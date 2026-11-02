@@ -14,6 +14,16 @@ from collections import Counter
 from pathlib import Path
 
 
+def _is_json_number(value: object) -> bool:
+    """Accept float lexeme-preserving JSON parsers while rejecting booleans.
+
+    Fidelity transport retains native scientific-notation spelling inside a
+    float subclass so that its original C# payload fingerprint is verifiable.
+    Source mechanics audit must check numeric value rather than parser class.
+    """
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def diff_scalars(before: dict, after: dict) -> dict:
     """Small measured delta, with no card-rule assumptions or RNG replay."""
     values: dict = {}
@@ -995,12 +1005,12 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             float_min = data.get("float_min")
             float_max = data.get("float_max")
             value_valid = (
-                (kind == "unit_double" and type(scalar) in (float, int)
+                (kind == "unit_double" and _is_json_number(scalar)
                  and 0 <= scalar < 1 and boolean is None)
                 or (kind == "boolean" and type(boolean) is bool
                     and scalar is None)
                 or (kind == "range_float" and scalar is None and boolean is None
-                    and all(type(x) in (float, int) for x in
+                    and all(_is_json_number(x) for x in
                             (float_value, float_min, float_max))
                     and all(math.isfinite(x) for x in
                             (float_value, float_min, float_max))
