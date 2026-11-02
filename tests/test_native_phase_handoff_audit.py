@@ -139,6 +139,63 @@ class PhaseHandoffAuditTests(unittest.TestCase):
         self.assertEqual("INCOMPLETE_CAPTURE", reversed_events["status"])
         self.assertTrue(reversed_events["incomplete_observations"])
 
+    def test_player_start_hook_choice_pause_is_not_a_false_chronology_error(self):
+        # HookPlayerChoiceContext's wait returns on a nested-choice pause.
+        # TurnStarted can be emitted before RunAutoPrePlayPhase reaches Play.
+        source = full_cycle()
+        source[-1]["data"]["player_phase"] = "AutoPrePlay"
+        pending = audit_phase_handoffs(sidecar(source))
+        self.assertEqual("SOURCE_PHASE_CALLBACKS_PARTIAL", pending["status"])
+        self.assertEqual("AWAIT_PLAYER_START_HOOK_COMPLETION", pending["pending"])
+        self.assertEqual(1, pending["player_start_hook_pauses_observed"])
+        self.assertEqual(0, pending["completed_handoffs"])
+        self.assertNotEqual(
+            "PLAYER_SETUP_AND_AUTO_PREPLAY_AWAITED_RETURNED",
+            pending["awaited_source_milestones"][-1]["milestone"])
+
+        checkpoint = {
+            "type": "native_turn_checkpoint",
+            "state": {"combat": {"turn": 2}, "player": {"hp": 60}},
+            "data": {
+                "kind": "PLAYER_TURN_START", "turn": 2,
+                "observation_site": "NativeV111PassiveBridge.OnFrame",
+                "observation_basis":
+                    "IDLE_PLAYABLE_PLAYER_FRAME_BEFORE_OBSERVED_INPUT",
+                "native_side": "Player", "player_phase": "Play",
+                "settlement_status": "SETTLEMENT_UNVERIFIED",
+                "complete_native_queue_verified": False,
+                "native_phase_handoff_order_verified": False,
+                "original_native_legal_menu": "NOT_VERIFIED",
+                "emulator_parity": "NOT_TESTED",
+                "rng_draws_performed_by_inspector": 0,
+            },
+        }
+        resumed = audit(sidecar(source + [checkpoint]))
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", resumed["status"])
+        result = resumed["native_phase_handoff"]
+        self.assertEqual("SOURCE_PHASE_HANDOFF_ORDER_OBSERVED", result["status"])
+        self.assertEqual(1, result["player_start_hook_resumes_observed"])
+        self.assertEqual(1, result["completed_handoffs"])
+        self.assertEqual("PLAYER_AUTO_PREPLAY_REACHED_PLAY_AT_FRAME",
+                         result["awaited_source_milestones"][-1]["milestone"])
+        self.assertEqual("SETTLEMENT_UNVERIFIED",
+                         result["awaited_source_milestones"][-1]["settlement_status"])
+        first = audit_phase_handoffs(sidecar([
+            event("TURN_STARTED", 1, "Player", "Start", "PlayPhase"),
+            {**copy.deepcopy(checkpoint),
+             "data": {**checkpoint["data"], "turn": 1},
+             "state": {"combat": {"turn": 1}, "player": {"hp": 60}}},
+        ]))
+        self.assertEqual(0, first["completed_handoffs"])
+        self.assertEqual(1, first["player_start_hook_resumes_observed"])
+
+        no_frame = audit_phase_handoffs(sidecar(source + [
+            event("ABOUT_TO_SWITCH_TO_ENEMY_TURN", 2, "Player", "End",
+                  "NotPlayPhase", two=True),
+        ]))
+        self.assertEqual([], no_frame["errors"])
+        self.assertEqual(1, no_frame["player_start_hook_resolutions_without_frame"])
+
     def test_source_tracked_effect_depth_is_independently_audited(self):
         checkpoint = {
             "type": "native_turn_checkpoint",
