@@ -6,13 +6,15 @@ import json
 import os
 import sys
 import tempfile
+import subprocess
+from unittest.mock import patch
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
 from native_live_m1_acceptance import (
-    AcceptanceError, acceptance_result, discover_pair, inspect_pair)
+    AcceptanceError, acceptance_result, discover_pair, inspect_pair, probe_emulator_jsonl)
 
 
 def sample(directory: Path):
@@ -95,6 +97,46 @@ class M1AcceptanceTests(unittest.TestCase):
             write(sidecar, source)
             with self.assertRaisesRegex(AcceptanceError, "did not finish"):
                 inspect_pair(sidecar, prelude)
+
+    def test_emulator_jsonl_preflight_exposes_stderr_and_exit_code(self):
+        failure = subprocess.CompletedProcess(
+            args=["dotnet", "unbuilt.dll", "prototype-ai-jsonl"],
+            returncode=2, stdout="", stderr="Unknown command: prototype-ai-jsonl")
+        with patch("native_live_m1_acceptance.subprocess.run",
+                   return_value=failure) as runner:
+            report = probe_emulator_jsonl("dotnet", Path("/tmp/unbuilt.dll"))
+        self.assertEqual("BLOCKED_EMULATOR_JSONL_STARTUP", report["status"])
+        self.assertEqual(2, report["exit_code"])
+        self.assertIn("Unknown command", report["emulator_stderr"])
+        self.assertIn('"request_id": "m1-preflight"',
+                      runner.call_args.kwargs["input"])
+        self.assertTrue(runner.call_args.kwargs["input"].endswith("\\n"))
+
+    def test_emulator_jsonl_preflight_valid_hello(self):
+        valid = subprocess.CompletedProcess(
+            args=[], returncode=0,
+            stdout=json.dumps({
+                "requestId": "m1-preflight", "ok": True,
+                "result": {
+                    "wireSchemaId": "prototype-ai-jsonl-v0",
+                    "snapshotSchemaId": "sts2-exact-snapshot-v1"}}) + "\\n",
+            stderr="")
+        with patch("native_live_m1_acceptance.subprocess.run",
+                   return_value=valid):
+            report = probe_emulator_jsonl("dotnet", Path("/tmp/emulator.dll"))
+        self.assertEqual("EMULATOR_JSONL_HELLO_VERIFIED", report["status"])
+
+    def test_emulator_jsonl_preflight_rejects_stale_wire_schema(self):
+        stale = subprocess.CompletedProcess(args=[], returncode=0,
+            stdout=json.dumps({
+                "requestId": "m1-preflight", "ok": True,
+                "result": {"wireSchemaId": "old-wire-schema"}}) + "\\n",
+            stderr="")
+        with patch("native_live_m1_acceptance.subprocess.run",
+                   return_value=stale):
+            report = probe_emulator_jsonl("dotnet", Path("/tmp/emulator.dll"))
+        self.assertEqual("BLOCKED_EMULATOR_JSONL_STARTUP", report["status"])
+        self.assertIn("schema negotiation", report["reason"])
 
     def test_missing_emulator_executable_reports_blocker_without_replay(self):
         with tempfile.TemporaryDirectory() as tmp:
