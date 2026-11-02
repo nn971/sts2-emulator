@@ -109,7 +109,9 @@ class LiveCoordinatorTests(unittest.TestCase):
         self.assertEqual("BLOCKED_SOURCE_CHRONOLOGY", blocked.status)
         self.assertEqual(0, len(blocked.matched))
         self.assertEqual(0, blocked.stepped)
-        self.assertEqual(0, blocked.session.loaded)
+        # Independent emulator startup occurs from the preceding native
+        # identity record; the forged checkpoint blocks comparison/actions.
+        self.assertEqual(1, blocked.session.loaded)
 
     def test_first_observed_difference_freezes_emulator_without_repair(self):
         records = source_records()
