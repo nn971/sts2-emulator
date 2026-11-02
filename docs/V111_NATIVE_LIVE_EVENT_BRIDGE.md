@@ -702,3 +702,15 @@ phase handoffs before considering any stronger certification.
 serialization regressions were added. A new installed-game DLL build and
 original-game runtime observation are pending; do not rerun the earlier
 six-turn combat merely to repeat the old queue gate.
+
+
+The action-sidecar audit also correlates each sampled `PLAYER_TURN_START`
+checkpoint with an earlier source `TurnStarted(Player)` callback for the
+same player turn number. It reports
+`player_checkpoint_phase_callback_pairs` and
+`player_checkpoints_without_observed_start_callback` separately. A first
+turn whose callback occurred before observer attachment remains acceptable
+but unpaired. A callback for the same turn arriving **after** an already
+sampled player-frame checkpoint, or a duplicate player-turn-start callback,
+fails closed. This connects the source handoff chronology to the existing
+eight-flag queue snapshot without claiming globally settled effects.
