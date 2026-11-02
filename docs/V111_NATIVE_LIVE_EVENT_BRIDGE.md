@@ -637,3 +637,68 @@ Remaining M1 scope:
 
 This first slice **does not certify** original-game live lockstep, native
 queue settlement, full continuation-state parity or native autoplay.
+
+
+## Source-pinned native phase-handoff chronology (2026-11-02)
+
+This increment builds on the six native queue-quiescent player starts. It adds
+three **read-only** `CombatManager` event subscriptions, scoped to one recorded
+combat and detached on combat termination:
+
+- `AboutToSwitchToEnemyTurn`: after the automatic phase-one end-turn
+  sequence has requested `ReadyToBeginEnemyTurnAction`, with
+  `EndingPlayerTurnPhaseTwo=true`; this event occurs **before** the
+  phase-two hand flush and `AfterSideTurnEnd` hooks.
+- `TurnEnded`: emitted by `SwitchSides` **after** `CurrentSide` changes,
+  the player turn number increments on entry to the player side, and creature
+  `OnSideSwitch` callbacks run. It is therefore a **side-switched**
+  observation, not a pre-switch notice.
+- `TurnStarted`: emitted on the newly selected side after its start-turn
+  processing. For the player, `RunAutoPrePlayPhase` has already completed,
+  `PlayerTurnPhase.Play` is active, and `ActionQueueSynchronizer` is in
+  `PlayPhase`; for the enemy, `IsEnemyTurnStarted` is true.
+
+Source: `Flaaax/STS2-source@706ef1c9`, v0.111.0,
+`CombatManager.cs` (`AfterAllPlayersReadyToBeginEnemyTurn`,
+`SwitchSides`, `StartTurn`) and
+`ActionQueueSynchronizer.cs` (`SetCombatState`).
+
+Each event is persisted as `native_phase_handoff` in the existing action
+sidecar and authenticated fidelity stream, with source callback provenance,
+player turn number, side, player phase, synchronizer state, three source
+phase flags, and `SETTLEMENT_UNVERIFIED`. The recorder does not wait on
+tasks or touch game queues, RNG or input. The independent
+`tools/native_phase_handoff_audit.py`, included in
+`native_action_envelope_audit.py`, checks callback provenance,
+transition order, phase invariants and turn-number arithmetic. It accepts
+an initially missed opening `TurnStarted` callback, supports extra
+player turns, preserves legacy captures with no events, and distinguishes
+a partial tail from an invalid or forged chronology.
+
+A complete normal observed handoff follows
+
+`AboutToSwitchToEnemyTurn(t) -> TurnEnded(Enemy,t) ->
+TurnStarted(Enemy,t) -> TurnEnded(Player,t+1) -> TurnStarted(Player,t+1)`.
+
+An extra player turn follows
+`AboutToSwitchToEnemyTurn(t) -> TurnEnded(Player,t+1) ->
+TurnStarted(Player,t+1)`.
+`SwitchSides` increments the player turn number before emitting
+`TurnEnded`. Terminal combat may interrupt a sequence; such an observed
+tail remains explicitly partial.
+
+The independent audit reports
+`SOURCE_PHASE_HANDOFF_ORDER_OBSERVED`,
+`SOURCE_PHASE_CALLBACKS_PARTIAL` or
+`INVALID_PHASE_HANDOFF_CHRONOLOGY`. No event or audit result promotes
+`native_phase_handoff_order_verified` in a source checkpoint,
+`settlement_status`, or `native_live_lockstep`. Even a complete observed
+callback chain plus a quiescent player frame cannot exclude delayed
+gameplay-affecting tasks scheduled to run after the observed frame.
+Next, identify and instrument completion of relevant automatic hooks and
+phase handoffs before considering any stronger certification.
+
+**Validation:** Offline Python adversarial chronology tests and C# recorder
+serialization regressions were added. A new installed-game DLL build and
+original-game runtime observation are pending; do not rerun the earlier
+six-turn combat merely to repeat the old queue gate.
