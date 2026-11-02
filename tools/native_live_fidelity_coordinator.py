@@ -476,10 +476,11 @@ def post_feedback(base: str, token: str, receipt: dict, timeout: int = 10):
 
 def _notify_terminal_fault(base: str, token: str,
                            coordinator: IncrementalFidelityCoordinator,
-                           status: str, reason: str):
+                           status: str, reason: str, *,
+                           report_feedback: bool = True):
     coordinator._fail(status, reason)
     receipt = coordinator._maybe_receipt()
-    if receipt is not None:
+    if receipt is not None and report_feedback:
         try:
             post_feedback(base, token, receipt)
         except (OSError, RuntimeError):
@@ -489,8 +490,13 @@ def _notify_terminal_fault(base: str, token: str,
 
 
 def follow(base: str, token: str, coordinator: IncrementalFidelityCoordinator,
-           *, max_reconnects: int = 3):
-    """Reconnect from the last verified cursor; refusal/gaps stop replay."""
+           *, max_reconnects: int = 3, report_feedback: bool = True):
+    """Reconnect from verified cursor; optionally withhold all native feedback.
+
+    In read-only mode, an already terminal-failed native session can be
+    diagnosed using the preserved in-memory SSE history without attempting
+    to override its irreversible failure receipt.
+    """
     cursor = coordinator.cursor
     reconnects = 0
     while not coordinator.stopped:
@@ -503,24 +509,27 @@ def follow(base: str, token: str, coordinator: IncrementalFidelityCoordinator,
                 reconnects = 0
                 for row in parse_sse(response):
                     report = coordinator.consume(row)
-                    if report is not None:
+                    if report is not None and report_feedback:
                         post_feedback(base, token, report)
                     if coordinator.stopped:
                         return
         except LiveFidelityError as error:
-            _notify_terminal_fault(base, token, coordinator, error.status, str(error))
+            _notify_terminal_fault(base, token, coordinator, error.status, str(error),
+                                   report_feedback=report_feedback)
             return
         except urllib.error.HTTPError as error:
             _notify_terminal_fault(base, token, coordinator,
                 "BLOCKED_STREAM_INTEGRITY",
-                "Native fidelity HTTP request rejected (status " + str(error.code) + ")")
+                "Native fidelity HTTP request rejected (status " + str(error.code) + ")",
+                report_feedback=report_feedback)
             return
         except (TimeoutError, OSError, urllib.error.URLError, EOFError):
             reconnects += 1
             if reconnects > max_reconnects:
                 _notify_terminal_fault(base, token, coordinator,
                     "EMULATOR_COORDINATOR_ERROR",
-                    "SSE disconnect/reconnect limit reached")
+                    "SSE disconnect/reconnect limit reached",
+                    report_feedback=report_feedback)
                 return
             time.sleep(min(reconnects, 3))
 
@@ -537,11 +546,15 @@ def main() -> int:
     source.add_argument("--sidecar", type=Path,
                         help="Simulate live stream from a recorded native sidecar")
     parser.add_argument("--bridge", default="http://127.0.0.1:39221")
+    parser.add_argument("--no-feedback", action="store_true",
+                        help="GET-only live replay; do not POST any diagnostic result")
     parser.add_argument("--dotnet", default="dotnet")
     parser.add_argument("--cli-dll", type=Path, default=(
         ROOT / "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll"))
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
+    if args.no_feedback and not args.follow:
+        parser.error("--no-feedback requires --follow")
     try:
         records, error = load_prelude(args.prelude)
         native_prelude = audit_prelude(records, error)
@@ -556,7 +569,8 @@ def main() -> int:
                 token = os.environ.get("STS2_INSPECTOR_FIDELITY_TOKEN", "")
                 if len(token) < 24:
                     raise ValueError("STS2_INSPECTOR_FIDELITY_TOKEN required (24+ chars)")
-                follow(base, token, live)
+                follow(base, token, live,
+                       report_feedback=not args.no_feedback)
             else:
                 if args.sidecar:
                     envelope_rows = simulate_sidecar(load_live(args.sidecar))
