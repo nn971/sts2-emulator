@@ -43,10 +43,10 @@ public sealed class NativeLiveEventHubTests
         // event after session_started in a real local native fidelity SSE.
         using var document = JsonDocument.Parse(
             """
-            {"type":"header","ordinal":1,"data":{"timestamp":"2026-11-02T09:04:06+00:00","build":"assembly=0.1.0.0;mvid=ABC;sha256=0861","label":"<native>& +` \"quote\""}}
+            {"type":"header","ordinal":1,"data":{"timestamp":"2026-11-02T09:04:06+00:00","build":"assembly=0.1.0.0;mvid=ABC;sha256=0861","label":"<native>& +` \"quote\"","run_id":"synthetic-native-combat"}}
             """);
         Assert.Equal(
-            "6fc1a98b5ec33afd78e03d38d2e84b44e82f4a9cc7ba510a8526a6f88a92fbf9",
+            "3c68dabb4333dbab1bd387ac1c20abfe4d8bf2775c10722790f3894a60b582e5",
             CanonicalJson.Sha256(document.RootElement));
     }
 
