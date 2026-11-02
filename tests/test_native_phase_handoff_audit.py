@@ -37,7 +37,7 @@ def full_cycle():
               "NotPlayPhase", two=True),
         event("SIDE_SWITCHED", 1, "Enemy", "End", "NotPlayPhase", two=True),
         event("TURN_STARTED", 1, "Enemy", "None", "NotPlayPhase", enemy=True),
-        event("SIDE_SWITCHED", 1, "Player", "None", "NotPlayPhase", enemy=True),
+        event("SIDE_SWITCHED", 2, "Player", "None", "NotPlayPhase", enemy=True),
         event("TURN_STARTED", 2, "Player", "Play", "PlayPhase"),
     ]
 
@@ -72,7 +72,7 @@ class PhaseHandoffAuditTests(unittest.TestCase):
         records = sidecar([
             event("ABOUT_TO_SWITCH_TO_ENEMY_TURN", 1, "Player", "End",
                   "NotPlayPhase", two=True),
-            event("SIDE_SWITCHED", 1, "Player", "End",
+            event("SIDE_SWITCHED", 2, "Player", "End",
                   "NotPlayPhase", two=True),
             event("TURN_STARTED", 2, "Player", "Play", "PlayPhase"),
         ])
@@ -111,7 +111,7 @@ class PhaseHandoffAuditTests(unittest.TestCase):
             elif mutation == "bad_flag":
                 rows[1]["data"]["ending_player_turn_phase_two"] = 1
             elif mutation == "wrong_turn":
-                rows[5]["data"]["turn"] = 1
+                rows[4]["data"]["turn"] = 1
             elif mutation == "wrong_extra_turn":
                 rows[2]["data"]["native_side"] = "Player"
             else:
