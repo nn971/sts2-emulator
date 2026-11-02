@@ -161,6 +161,66 @@ class EnvelopeAuditTests(unittest.TestCase):
         forged[8]["data"]["complete_native_queue_verified"] = True
         self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
 
+        # Versioned source queue/executor evidence is verified independently
+        # of the native full-settlement contract. Old traces stay valid.
+        enhanced = copy.deepcopy(records)
+        checkpoint = next(x for x in enhanced if
+                          x.get("type") == "native_turn_checkpoint" and
+                          x.get("data", {}).get("kind") == "PLAYER_TURN_START")
+        checkpoint["data"]["queue_evidence"] = {
+            "queue_is_empty": True,
+            "queue_completion_succeeded": True,
+            "executor_not_running": True,
+            "executor_completion_succeeded": True,
+            "no_currently_running_action": True,
+            "executor_not_paused": True,
+            "synchronizer_play_phase": True,
+            "no_deferred_player_requests": True,
+        }
+        checkpoint["data"]["queue_quiescence_status"] = (
+            "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME")
+        observed = run(enhanced)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", observed["status"])
+        self.assertEqual(1, observed["source_queue_quiescent_player_checkpoints"])
+        self.assertEqual("SETTLEMENT_UNVERIFIED",
+                         observed["turn_boundary_candidates"][0][
+                             "settlement_status"])
+
+        for corrupted in ("boolean", "missing_flag", "forged_status",
+                          "wrong_turn", "settlement_promoted"):
+            changed = copy.deepcopy(enhanced)
+            player = next(x for x in changed if
+                          x.get("type") == "native_turn_checkpoint" and
+                          x.get("data", {}).get("kind") == "PLAYER_TURN_START")
+            if corrupted == "boolean":
+                player["data"]["queue_evidence"]["queue_is_empty"] = 1
+            elif corrupted == "missing_flag":
+                del player["data"]["queue_evidence"]["executor_not_running"]
+            elif corrupted == "forged_status":
+                player["data"]["queue_evidence"]["no_deferred_player_requests"] = False
+            elif corrupted == "wrong_turn":
+                enemy = next(x for x in changed if
+                             x.get("type") == "native_turn_checkpoint" and
+                             x.get("data", {}).get("kind") == "ENEMY_TURN_START")
+                enemy["data"]["queue_evidence"] = player["data"]["queue_evidence"]
+                enemy["data"]["queue_quiescence_status"] = (
+                    "SOURCE_QUEUE_QUIESCENCE_UNVERIFIED")
+            else:
+                player["data"]["settlement_status"] = "SETTLEMENT_VERIFIED"
+            self.assertEqual("INCOMPLETE_CAPTURE", run(changed)["status"],
+                             corrupted)
+
+        incomplete = copy.deepcopy(enhanced)
+        partial = next(x for x in incomplete if
+                       x.get("type") == "native_turn_checkpoint" and
+                       x.get("data", {}).get("kind") == "PLAYER_TURN_START")
+        partial["data"]["queue_evidence"]["no_deferred_player_requests"] = False
+        partial["data"]["queue_quiescence_status"] = (
+            "SOURCE_QUEUE_QUIESCENCE_UNVERIFIED")
+        report = run(incomplete)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(0, report["source_queue_quiescent_player_checkpoints"])
+
     def test_disabled_and_installed_rng_hooks_remain_distinct(self):
         default = audit(sample())
         self.assertFalse(default["native_rng_hook_installed"])
