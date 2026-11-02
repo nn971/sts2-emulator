@@ -80,17 +80,19 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
             elif event == "SIDE_SWITCHED":
                 if sync != "NotPlayPhase":
                     failure = "side switched outside NotPlayPhase"
-                elif pending == "AWAIT_SIDE_SWITCH" and turn == pending_turn:
-                    if side == "Enemy" and two and not enemy and phase == "End":
+                elif pending == "AWAIT_SIDE_SWITCH":
+                    if (side == "Enemy" and turn == pending_turn
+                        and two and not enemy and phase == "End"):
                         pending = "AWAIT_ENEMY_START"
-                    elif side == "Player" and two and not enemy and phase == "End":
-                        pending = "AWAIT_EXTRA_PLAYER_START"
+                    elif (side == "Player" and turn == pending_turn + 1
+                          and two and not enemy and phase == "End"):
+                        pending, pending_turn = "AWAIT_EXTRA_PLAYER_START", turn
                     else:
                         failure = "invalid player-to-next-side transition"
                 elif (pending == "AWAIT_PLAYER_SWITCH"
                       and side == "Player" and not two and enemy
-                      and phase == "None" and turn == pending_turn):
-                    pending = "AWAIT_PLAYER_START"
+                      and phase == "None" and turn == pending_turn + 1):
+                    pending, pending_turn = "AWAIT_PLAYER_START", turn
                 else:
                     failure = "unpaired or out-of-order side switch"
             elif event == "TURN_STARTED":
@@ -105,9 +107,9 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                     if phase != "Play" or sync != "PlayPhase" or enemy or two:
                         failure = "player start before play phase ready"
                     elif pending in ("AWAIT_PLAYER_START", "AWAIT_EXTRA_PLAYER_START"):
-                        # Native turn count is increased in StartTurn, after
-                        # SwitchSides. An extra turn also starts a fresh turn.
-                        if turn != pending_turn + 1:
+                        # SwitchSides increments the player's TurnNumber
+                        # BEFORE TurnEnded fires, including an extra turn.
+                        if turn != pending_turn:
                             failure = "player turn number not advanced"
                         else:
                             result["completed_handoffs"] += 1
