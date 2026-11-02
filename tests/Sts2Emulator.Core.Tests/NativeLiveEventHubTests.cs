@@ -248,19 +248,48 @@ public sealed class NativeLiveEventHubTests
                 server.Start();
                 using var http = new HttpClient(new HttpClientHandler { UseProxy = false });
                 var url = "http://127.0.0.1:" + port + "/v1/fidelity/result";
+                var statusUrl = "http://127.0.0.1:" + port + "/v1/fidelity/status";
                 var options = new JsonSerializerOptions {
                     PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
                 http.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", PublicToken);
                 var denied = await http.PostAsJsonAsync(url, result, options);
                 Assert.Equal(HttpStatusCode.Unauthorized, denied.StatusCode);
+                var deniedStatus = await http.GetAsync(statusUrl);
+                Assert.Equal(HttpStatusCode.Unauthorized, deniedStatus.StatusCode);
                 Assert.Null(hub.LatestFidelityResult);
 
                 http.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", FidelityToken);
+                using (var pendingStatus = await http.GetAsync(statusUrl))
+                {
+                    Assert.Equal(HttpStatusCode.OK, pendingStatus.StatusCode);
+                    using var initial = JsonDocument.Parse(
+                        await pendingStatus.Content.ReadAsStringAsync());
+                    Assert.Equal(JsonValueKind.Null, initial.RootElement
+                        .GetProperty("latest_result").ValueKind);
+                    Assert.False(initial.RootElement.GetProperty(
+                        "native_settlement_certified").GetBoolean());
+                    Assert.False(initial.RootElement.GetProperty(
+                        "native_live_lockstep").GetBoolean());
+                    Assert.Equal(1, initial.RootElement
+                        .GetProperty("last_source_sequence").GetInt64());
+                }
                 var accepted = await http.PostAsJsonAsync(url, result, options);
                 Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
                 Assert.Equal(result, hub.LatestFidelityResult);
+                using (var acceptedStatus = await http.GetAsync(statusUrl))
+                {
+                    Assert.Equal(HttpStatusCode.OK, acceptedStatus.StatusCode);
+                    using var published = JsonDocument.Parse(
+                        await acceptedStatus.Content.ReadAsStringAsync());
+                    var received = published.RootElement.GetProperty("latest_result");
+                    Assert.Equal("EMULATOR_BOOTSTRAPPED_UNCERTIFIED",
+                        received.GetProperty("status").GetString());
+                    Assert.Equal(1, received.GetProperty("through_sequence").GetInt64());
+                    Assert.Equal(0, received.GetProperty(
+                        "player_checkpoints_matched").GetInt32());
+                }
                 var duplicate = await http.PostAsJsonAsync(url, result, options);
                 Assert.Equal(HttpStatusCode.OK, duplicate.StatusCode);
                 var bad = await http.PostAsJsonAsync(url,
