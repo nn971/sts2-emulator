@@ -594,13 +594,26 @@ mechanical state remain unverified. In particular,
 `complete_native_queue_verified: false` and
 `native_phase_handoff_order_verified: false` remain unchanged.
 
+**Original-game acceptance (2026-11-02):** Native Silent A10, seed
+`6JK8MD0VQQTA`, produced six `PLAYER_TURN_START` checkpoints
+(ordinals 47, 230, 415, 576, 768, 854); **6/6** carry
+`SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME`. The independent
+coordinator matched **6/6** player turn projections, stepped 22
+canonical commands, and observed 918 authenticated source sequences,
+with no first difference. Five enemy-start candidates remain
+`NOT_CAPTURED` for quiescence. The action-envelope audit is
+`CALLBACK_TIMELINE_CONSISTENT`, with 26/26 action
+start/completions and 26 source request/execution links; a strict
+decision-gap at ordinal 461 remains isolated to the older strict
+input collector. The new observation **does not upgrade**
+`SETTLEMENT_UNVERIFIED` or `native_live_lockstep=false`.
+This gate requires no further identical native game run.
+
 The PE-metadata-only native preflight now requires the queue/executor
 members and the private deferred-request list on the pinned local
-`sts2.dll` before compilation and staging. The new native gate must
-be compiled on the user's WSL installation and then validated against
-a fresh original-game combat; **no new original-game validation has
-yet occurred for the quiescence fields**. Existing six-turn live
-feedback agreement is unaffected.
+`sts2.dll` before compilation and staging. The pinned WSL source-compiled build passed all 32 metadata
+checks and was verified in the original game at six turn starts.
+Existing live-feedback functionality remains operational.
 
 ## Test gates and remaining M1 work
 
