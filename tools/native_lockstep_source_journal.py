@@ -137,6 +137,8 @@ def build(records: list[dict], error: str | None = None) -> dict:
             "player_phase": details["player_phase"],
             "observation_site": details["observation_site"],
             "settlement_status": "SETTLEMENT_UNVERIFIED",
+            "queue_quiescence_status": details.get(
+                "queue_quiescence_status", "NOT_CAPTURED_LEGACY"),
             "native_full_queue_settlement": "NOT_VERIFIED",
             "emulator_applied": False,
             "emulator_parity": "NOT_TESTED",
