@@ -103,10 +103,10 @@ class NativeLiveOfflineReplayTests(unittest.TestCase):
             "data": {
                 "timestamp": "2026-11-02T09:04:06+00:00",
                 "build": "assembly=0.1.0.0;mvid=ABC;sha256=0861",
-                "label": "<native>& +`",
+                "label": "<native>& +` \"quote\"",
             }
         }
-        expected = "211839735340aa0cacea6a7f22be16ada31c4464ebc386361acef5b334816273"
+        expected = "6fc1a98b5ec33afd78e03d38d2e84b44e82f4a9cc7ba510a8526a6f88a92fbf9"
         self.assertEqual(expected, _digest(header))
         self.assertIn(r"\u002B", _dump_json(header, sort_keys=True))
         self.assertIn(r"\u0060", _dump_json(header, sort_keys=True))
