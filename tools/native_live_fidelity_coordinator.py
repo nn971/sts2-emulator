@@ -28,6 +28,7 @@ from native_live_offline_replay import (SCHEMA, CHANNEL, _digest, _LexicalFloat,
 from native_lockstep_source_journal import build as build_source_journal
 from native_action_envelope_audit import (queue_quiescence_status,
                                          automatic_effect_evidence_status)
+from native_action_window_audit import _first_difference as native_window_difference
 from native_lockstep_shadow import _resolve
 from native_run_bootstrap import run_bootstrap
 from native_run_prelude_audit import load as load_prelude, audit as audit_prelude
@@ -123,7 +124,8 @@ class FidelityEventCursor:
 class IncrementalFidelityCoordinator:
     """One persistent emulator process, with no native-state injection."""
 
-    def __init__(self, session, prelude: dict, *, bootstrap=run_bootstrap):
+    def __init__(self, session, prelude: dict, *, bootstrap=run_bootstrap,
+                 probe_post_card_windows: bool = False):
         self.session = session
         self.prelude = prelude
         self.bootstrap = bootstrap
@@ -143,6 +145,17 @@ class IncrementalFidelityCoordinator:
         self.first_difference: dict | None = None
         self.stopped = False
         self._last_fingerprint = None
+        self.probe_post_card_windows = probe_post_card_windows
+        self._previous_card_completion = None
+        self.post_card_probe = {
+            "source_stable_windows": 0,
+            "emulator_comparisons": 0,
+            "emulator_projected_matches": 0,
+            "deferred_native_windows": 0,
+            "first_difference": None,
+            "native_settlement_certified": False,
+            "status": "DIAGNOSTIC_ONLY",
+        }
 
     def _fail(self, status: str, reason: str, first: dict | None = None):
         self.status, self.reason, self.first_difference = status, reason, first
@@ -151,7 +164,7 @@ class IncrementalFidelityCoordinator:
     def _receipt(self) -> dict:
         diff = self.first_difference or {}
         detail = diff.get("difference") if isinstance(diff.get("difference"), dict) else diff
-        return {
+        report = {
             "schema": RESULT_SCHEMA,
             "run_id": self.cursor.run_id,
             "session_epoch": self.cursor.epoch,
@@ -164,6 +177,10 @@ class IncrementalFidelityCoordinator:
             "first_difference_path": (detail.get("path") or None) if detail else None,
             "first_difference_reason": (detail.get("reason") or None) if detail else None,
         }
+        if self.probe_post_card_windows:
+            # Diagnostic only; the caller must withhold live feedback.
+            report["post_card_action_probe"] = self.post_card_probe.copy()
+        return report
 
     def _maybe_receipt(self) -> dict | None:
         if not self.cursor.sequence:
@@ -313,6 +330,46 @@ class IncrementalFidelityCoordinator:
                 self.stepped += 1
                 self.choices = [x for x in self.choices if x not in matching]
 
+    def _probe_card_to_next_action(self, record: dict):
+        """Compare only when two successive native action snapshots agree.
+
+        The previous card action has already been stepped in the independent
+        emulator. An identical next native pre-action projection lets us
+        sample that emulator state without conflating it with turn-end,
+        asynchronous between-action mutations, or the nested-choice pause.
+        """
+        previous = self._previous_card_completion
+        self._previous_card_completion = None
+        if previous is None:
+            return
+        first = previous.get("state")
+        second = record.get("state")
+        left = previous.get("ordinal")
+        right = record.get("ordinal")
+        if (not isinstance(first, dict) or not isinstance(second, dict)
+            or type(left) is not int or type(right) is not int
+            or left >= right or self.pending_order
+            or any(x.get("type") == "native_phase_handoff"
+                   and left < x.get("ordinal", -1) < right
+                   for x in self.records if isinstance(x, dict))
+            or native_window_difference(first, second) is not None
+            or self.crosswalk is None):
+            self.post_card_probe["deferred_native_windows"] += 1
+            return
+        self.post_card_probe["source_stable_windows"] += 1
+        snapshot = json.loads(self.state.save_snapshot())
+        difference = first_difference(second, snapshot, self.crosswalk)
+        self.post_card_probe["emulator_comparisons"] += 1
+        if difference is None:
+            self.post_card_probe["emulator_projected_matches"] += 1
+        elif self.post_card_probe["first_difference"] is None:
+            self.post_card_probe["first_difference"] = {
+                "prior_card_action_id": previous["action_id"],
+                "native_post_action_ordinal": left,
+                "next_action_start_ordinal": right,
+                "difference": difference,
+            }
+
     def _process(self, record: dict):
         kind = record.get("type")
         if kind == "observation_failure" or kind == "anomaly":
@@ -352,6 +409,8 @@ class IncrementalFidelityCoordinator:
             else:
                 self._fail("BLOCKED_SOURCE_CHRONOLOGY", "Unknown turn checkpoint kind")
         elif kind == "action_started" and isinstance(record.get("canonical_action"), dict):
+            if self.probe_post_card_windows:
+                self._probe_card_to_next_action(record)
             aid = record.get("action_id")
             if type(aid) is not int or aid in self.pending or self.crosswalk is None:
                 self._fail("BLOCKED_SOURCE_CHRONOLOGY",
@@ -360,6 +419,8 @@ class IncrementalFidelityCoordinator:
             self.pending[aid] = {"action": record["canonical_action"],
                                  "start": record["ordinal"], "complete": False}
             self.pending_order.append(aid)
+        elif kind == "action_started" and self.probe_post_card_windows:
+            self._previous_card_completion = None
         elif kind == "native_player_choice":
             data = record.get("data") or {}
             if type(record.get("action_id")) is int:
@@ -369,8 +430,14 @@ class IncrementalFidelityCoordinator:
         elif kind == "action_completed":
             aid = record.get("action_id")
             if aid in self.pending:
+                was_card = self.pending[aid]["action"].get("kind") == "play_card"
                 self.pending[aid]["complete"] = True
                 self._advance_completed()
+                if self.probe_post_card_windows and not self.stopped:
+                    self._previous_card_completion = ({
+                        "action_id": aid, "ordinal": record.get("ordinal"),
+                        "state": record.get("state"),
+                    } if was_card else None)
         elif kind == "terminal":
             if self.pending_order:
                 self._fail("BLOCKED_SOURCE_CHRONOLOGY",
@@ -408,6 +475,12 @@ class IncrementalFidelityCoordinator:
             self.reason = (
                 "Independent full-source replay agrees at observed player turns; "
                 "native settlement and complete state parity uncertified")
+            if (self.probe_post_card_windows
+                and self.post_card_probe["first_difference"] is not None):
+                self.status = "SOURCE_POST_CARD_ACTION_DIFFERENCE_UNCERTIFIED"
+                self.reason = (
+                    "An earlier source-stable post-card projection differed; "
+                    "turn-start projection agreement does not erase it")
             self.stopped = True
 
 
@@ -565,6 +638,8 @@ def main() -> int:
     parser.add_argument("--bridge", default="http://127.0.0.1:39221")
     parser.add_argument("--no-feedback", action="store_true",
                         help="GET-only live replay; do not POST any diagnostic result")
+    parser.add_argument("--probe-post-card-windows", action="store_true",
+                        help="Offline/GET-only provisional per-card projection comparisons")
     parser.add_argument("--dotnet", default="dotnet")
     parser.add_argument("--cli-dll", type=Path, default=(
         ROOT / "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll"))
@@ -572,6 +647,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.no_feedback and not args.follow:
         parser.error("--no-feedback requires --follow")
+    if args.probe_post_card_windows and args.follow and not args.no_feedback:
+        parser.error("Post-card probes require --no-feedback in live mode")
     try:
         records, error = load_prelude(args.prelude)
         native_prelude = audit_prelude(records, error)
@@ -580,7 +657,9 @@ def main() -> int:
                                     "Native prelude is incomplete or unaudited")
         from sts2_emulator import Session
         with Session([args.dotnet, str(args.cli_dll), "prototype-ai-jsonl"]) as session:
-            live = IncrementalFidelityCoordinator(session, native_prelude)
+            live = IncrementalFidelityCoordinator(
+                session, native_prelude,
+                probe_post_card_windows=args.probe_post_card_windows)
             if args.follow:
                 base = _loopback_base(args.bridge)
                 token = os.environ.get("STS2_INSPECTOR_FIDELITY_TOKEN", "")
