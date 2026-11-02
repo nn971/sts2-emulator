@@ -8,13 +8,14 @@ import sys
 import unittest
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
 from native_live_offline_replay import simulate_sidecar, _digest
 from native_live_fidelity_coordinator import (
     FidelityEventCursor, LiveFidelityError, IncrementalFidelityCoordinator,
-    _NoRedirect, _loopback_base, parse_sse,
+    _NoRedirect, _loopback_base, parse_sse, follow,
 )
 from test_native_turn_checkpoint_replay import fixture, FakeSession
 
@@ -91,6 +92,29 @@ class LiveCoordinatorTests(unittest.TestCase):
         self.assertEqual(2, live.stepped)
         self.assertEqual("$.combat.creatures.creature:1.hp",
                          live.first_difference["difference"]["path"])
+
+    def test_live_get_only_replay_does_not_override_failed_native_receipt(self):
+        # A native session previously sent a terminal failure; diagnose the
+        # same live stream from its original sequence without any feedback POST.
+        rows = source_records()
+        rows[-2]["state"]["combat"]["creatures"][1]["hp"] = 21
+        events = simulate_sidecar(rows)
+        wire = "".join(
+            "id: " + str(e["sequence"]) + "\n"
+            "event: native\n"
+            "data: " + json.dumps(e) + "\n\n" for e in events)
+        live = synthetic_coordinator()
+        with patch("native_live_fidelity_coordinator._LOCAL_OPENER.open",
+                   return_value=io.StringIO(wire)) as opener, patch(
+                   "native_live_fidelity_coordinator.post_feedback") as feedback:
+            follow("http://127.0.0.1:39221", "private-test-token",
+                   live, report_feedback=False)
+        self.assertEqual("SOURCE_PLAYER_CHECKPOINT_DIFFERENCE_UNCERTIFIED",
+                         live.status)
+        self.assertEqual(1, len(live.matched))
+        self.assertEqual(2, live.stepped)
+        self.assertTrue(opener.called)
+        feedback.assert_not_called()
 
     def test_reconnect_duplicate_is_idempotent(self):
         live = synthetic_coordinator()
