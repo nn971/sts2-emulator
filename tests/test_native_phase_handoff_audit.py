@@ -92,6 +92,40 @@ class PhaseHandoffAuditTests(unittest.TestCase):
         self.assertEqual(0, result["completed_handoffs"])
         self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", audit(rows)["status"])
 
+    def test_turn_started_is_correlated_with_later_queue_checkpoint(self):
+        checkpoint = {
+            "type": "native_turn_checkpoint",
+            "state": {"combat": {"turn": 1}, "player": {"hp": 60}},
+            "data": {
+                "kind": "PLAYER_TURN_START", "turn": 1,
+                "observation_site": "NativeV111PassiveBridge.OnFrame",
+                "observation_basis":
+                    "IDLE_PLAYABLE_PLAYER_FRAME_BEFORE_OBSERVED_INPUT",
+                "native_side": "Player", "player_phase": "Play",
+                "settlement_status": "SETTLEMENT_UNVERIFIED",
+                "complete_native_queue_verified": False,
+                "native_phase_handoff_order_verified": False,
+                "original_native_legal_menu": "NOT_VERIFIED",
+                "emulator_parity": "NOT_TESTED",
+                "rng_draws_performed_by_inspector": 0,
+            },
+        }
+        callback = event("TURN_STARTED", 1, "Player", "Play", "PlayPhase")
+        paired = audit(sidecar([callback, checkpoint]))
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", paired["status"])
+        self.assertEqual(1, paired["player_checkpoint_phase_callback_pairs"])
+        self.assertEqual(0, paired["player_checkpoints_without_observed_start_callback"])
+
+        # A first-turn callback may have preceded observer attachment.
+        missed = audit(sidecar([checkpoint]))
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", missed["status"])
+        self.assertEqual(0, missed["player_checkpoint_phase_callback_pairs"])
+        self.assertEqual(1, missed["player_checkpoints_without_observed_start_callback"])
+
+        reversed_events = audit(sidecar([checkpoint, callback]))
+        self.assertEqual("INCOMPLETE_CAPTURE", reversed_events["status"])
+        self.assertTrue(reversed_events["incomplete_observations"])
+
     def test_invalid_order_provenance_and_forged_settlement_fail_closed(self):
         baseline = full_cycle()
         for mutation in ("wrong_order", "wrong_phase", "duplicate_handoff",
