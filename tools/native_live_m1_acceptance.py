@@ -115,7 +115,7 @@ def probe_emulator_jsonl(dotnet: str, cli_dll: Path) -> dict:
     The source is never supplied to this probe: it sends one hello request to
     the existing JSONL protocol, closes stdin, and checks the negotiated schema.
     """
-    request = json.dumps({"op": "hello", "request_id": "m1-preflight"}) + "\\n"
+    request = json.dumps({"op": "hello", "request_id": "m1-preflight"}) + "\n"
     try:
         completed = subprocess.run(
             [dotnet, str(cli_dll), "prototype-ai-jsonl"],
