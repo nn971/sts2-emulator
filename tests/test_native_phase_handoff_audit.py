@@ -276,7 +276,9 @@ class PhaseHandoffAuditTests(unittest.TestCase):
             if mutation == "wrong_order":
                 rows[2], rows[3] = rows[3], rows[2]
             elif mutation == "wrong_phase":
-                rows[5]["data"]["player_phase"] = "Start"
+                # Start/AutoPrePlay can occur while a native hook choice
+                # suspends; End is incompatible with player TurnStarted.
+                rows[5]["data"]["player_phase"] = "End"
             elif mutation == "duplicate_handoff":
                 rows.insert(2, copy.deepcopy(rows[1]))
             elif mutation == "bad_callback":
