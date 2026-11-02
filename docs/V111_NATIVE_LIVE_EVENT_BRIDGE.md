@@ -420,6 +420,51 @@ already-written run prelude, and compare each stable player-turn projection.
 Preserve the final F8 diagnostic screenshot and small coordinator report;
 raw action sidecars and private bearer tokens stay local.
 
+## Live first-combat fingerprint recovery without relaunch
+
+On 2026-11-02, the original game's first live Silent A10 prelude passed
+`RUN_PRELUDE_SOURCE_OBSERVED` for seed `6JK8MD0VQQTA`, and both
+`CAPTURE_STATUS=HOOK_ENABLED` and
+`AGENT_BRIDGE_STATUS=SPECTATOR_READY` appeared in `godot.log`.
+The first coordinator run instead stopped at SSE sequence 1, reporting
+`BLOCKED_STREAM_INTEGRITY: Native payload fingerprint mismatch` for
+the first subsequent native source record. The original .NET default
+canonical encoder additionally escapes `+`, grave accents and quote
+characters; the Python validator has now been aligned, with matching
+C# and Python canonical fixture tests.
+
+The original terminal diagnostic receipt is intentionally irreversible
+within a combat session. For *the same game process and combat*, replay
+the preserved SSE history from sequence zero with the **GET-only**
+`--no-feedback` mode. It keeps all original hash, ordering, source
+identity and emulator comparison checks, and sends zero feedback POSTs:
+
+```fish
+cd ~/projects/sts2-inspector
+git pull
+python tools/native_live_fidelity_coordinator.py \
+    --follow --no-feedback \
+    --prelude "$prelude" \
+    --bridge http://127.0.0.1:39221 \
+    --out /tmp/native-live-m1-readonly-recovery.json
+```
+
+This command can run while the game is already open at the first combat;
+the previous session's terminal failure remains visible to the native
+process and cannot be rewritten. The command produces a local report
+once a source terminal arrives or a blocker is detected. The `$prelude`
+variable is the exact first-combat run-prelude path already audited.
+
+The in-game F8 CanvasLayer has independent visibility diagnostics for
+the **next** mod build/launch:
+`INSPECTOR_PANEL_STATUS=CREATED` at UI construction and
+`INSPECTOR_PANEL_STATUS=F8_TOGGLED` on each detected key press. Setting
+`STS2_INSPECTOR_PANEL_SHOW_ON_START=1` in the Windows game process
+environment before a later launch exposes the panel immediately even
+when the F8 key event is not delivered. The current loaded mod cannot
+pick up that code change without a restart, so preserve the current
+capture for the GET-only replay first.
+
 ## Test gates and remaining M1 work
 
 Focused C# tests check authentication separation, SSE cursor replay, disk
