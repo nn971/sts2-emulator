@@ -27,6 +27,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
         "source_events": 0,
         "completed_handoffs": 0,
         "extra_player_turn_handoffs": 0,
+        "awaited_source_milestones": [],
         "pending": None,
         "errors": [],
     }
@@ -40,6 +41,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
         ordinal = record.get("ordinal")
         data = record.get("data")
         failure = None
+        milestone = None
         if not isinstance(data, dict):
             failure = "missing callback data"
         else:
@@ -77,6 +79,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                     failure = "handoff began before previous callback chain completed"
                 else:
                     pending, pending_turn = "AWAIT_SIDE_SWITCH", turn
+                    milestone = "PLAYER_PHASE_ONE_AWAITED_HOOKS_RETURNED"
             elif event == "SIDE_SWITCHED":
                 if sync != "NotPlayPhase":
                     failure = "side switched outside NotPlayPhase"
@@ -84,15 +87,18 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                     if (side == "Enemy" and turn == pending_turn
                         and two and not enemy and phase == "End"):
                         pending = "AWAIT_ENEMY_START"
+                        milestone = "PLAYER_PHASE_TWO_AWAITED_HOOKS_RETURNED"
                     elif (side == "Player" and turn == pending_turn + 1
                           and two and not enemy and phase == "End"):
                         pending, pending_turn = "AWAIT_EXTRA_PLAYER_START", turn
+                        milestone = "PLAYER_PHASE_TWO_RETURNED_EXTRA_TURN_HOOK_PENDING"
                     else:
                         failure = "invalid player-to-next-side transition"
                 elif (pending == "AWAIT_PLAYER_SWITCH"
                       and side == "Player" and not two and enemy
                       and phase == "None" and turn == pending_turn + 1):
                     pending, pending_turn = "AWAIT_PLAYER_START", turn
+                    milestone = "ENEMY_ACTIONS_AND_END_HOOKS_AWAITED_RETURNED"
                 else:
                     failure = "unpaired or out-of-order side switch"
             elif event == "TURN_STARTED":
@@ -103,6 +109,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                         failure = "unexpected enemy turn start"
                     else:
                         pending = "AWAIT_PLAYER_SWITCH"
+                        milestone = "ENEMY_START_HOOKS_AWAITED_RETURNED"
                 else:
                     if phase != "Play" or sync != "PlayPhase" or enemy or two:
                         failure = "player start before play phase ready"
@@ -116,14 +123,21 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                             if pending == "AWAIT_EXTRA_PLAYER_START":
                                 result["extra_player_turn_handoffs"] += 1
                             pending, pending_turn = None, None
+                            milestone = "PLAYER_SETUP_AND_AUTO_PREPLAY_AWAITED_RETURNED"
                     elif pending is None and last_event is None:
                         # The recorder can attach after the opening start callback.
                         # A first observed player start needs no invented predecessor.
                         pending, pending_turn = None, None
+                        milestone = "PLAYER_SETUP_AND_AUTO_PREPLAY_AWAITED_RETURNED"
                     else:
                         failure = "unexpected player turn start"
             if failure is None:
                 last_event = event
+                if milestone is not None:
+                    result["awaited_source_milestones"].append({
+                        "ordinal": ordinal, "turn": turn, "milestone": milestone,
+                        "settlement_status": "SETTLEMENT_UNVERIFIED",
+                    })
         if failure is not None:
             result["errors"].append(f"ordinal {ordinal}: {failure}")
     result["pending"] = pending
