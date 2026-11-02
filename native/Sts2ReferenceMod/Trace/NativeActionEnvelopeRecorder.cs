@@ -14,6 +14,29 @@ namespace Sts2ReferenceMod.Trace;
 public sealed record NativeHandMenuOption(
     long CombatCardId, string ModelId, int UiHandIndex);
 
+/// <summary>
+/// Read-only source assertions at a single native player-frame boundary.
+/// A completed queue/executor pair and zero deferred requests prove
+/// instantaneous quiescence, not completion of asynchronous effects that
+/// may enqueue future native actions.
+/// </summary>
+public sealed record NativeQueueQuiescenceEvidence(
+    bool QueueIsEmpty,
+    bool QueueCompletionSucceeded,
+    bool ExecutorNotRunning,
+    bool ExecutorCompletionSucceeded,
+    bool NoCurrentlyRunningAction,
+    bool ExecutorNotPaused,
+    bool SynchronizerPlayPhase,
+    bool NoDeferredPlayerRequests)
+{
+    public bool SourceQuiescent =>
+        QueueIsEmpty && QueueCompletionSucceeded &&
+        ExecutorNotRunning && ExecutorCompletionSucceeded &&
+        NoCurrentlyRunningAction && ExecutorNotPaused &&
+        SynchronizerPlayPhase && NoDeferredPlayerRequests;
+}
+
 public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
 {
     public const string Schema = "native-action-envelope-v1";
@@ -896,7 +919,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     /// </summary>
     public void TurnBoundaryCandidate(
         string kind, int turn, JsonElement state, string nativeSide,
-        string playerPhase)
+        string playerPhase, NativeQueueQuiescenceEvidence? queueEvidence = null)
     {
         if (_closed) return;
         bool playerStart = kind == "PLAYER_TURN_START";
@@ -923,6 +946,24 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                     : "PRE_READY_TO_BEGIN_ENEMY_TURN_ACTION",
                 native_side = nativeSide,
                 player_phase = playerPhase,
+                // Optional source-pinned queue/executor observation. No
+                // stronger settlement certificate is implied by an empty
+                // queue at one particular rendered game frame.
+                queue_evidence = queueEvidence is null ? null : new
+                {
+                    queue_is_empty = queueEvidence.QueueIsEmpty,
+                    queue_completion_succeeded = queueEvidence.QueueCompletionSucceeded,
+                    executor_not_running = queueEvidence.ExecutorNotRunning,
+                    executor_completion_succeeded = queueEvidence.ExecutorCompletionSucceeded,
+                    no_currently_running_action = queueEvidence.NoCurrentlyRunningAction,
+                    executor_not_paused = queueEvidence.ExecutorNotPaused,
+                    synchronizer_play_phase = queueEvidence.SynchronizerPlayPhase,
+                    no_deferred_player_requests = queueEvidence.NoDeferredPlayerRequests
+                },
+                queue_quiescence_status = queueEvidence is null
+                    ? "NOT_CAPTURED" : queueEvidence.SourceQuiescent
+                    ? "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME"
+                    : "SOURCE_QUEUE_QUIESCENCE_UNVERIFIED",
                 settlement_status = "SETTLEMENT_UNVERIFIED",
                 complete_native_queue_verified = false,
                 native_phase_handoff_order_verified = false,
