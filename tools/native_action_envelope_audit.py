@@ -11,6 +11,7 @@ import argparse
 import json
 import math
 from native_phase_handoff_audit import audit_phase_handoffs
+from native_action_window_audit import audit_action_windows
 from collections import Counter
 from pathlib import Path
 
@@ -316,6 +317,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "source_queue_quiescent_player_checkpoints": 0,
         "source_tracked_effect_idle_player_checkpoints": 0,
         "native_phase_handoff": None,
+        "post_card_windows": None,
         "player_checkpoint_phase_callback_pairs": 0,
         "player_checkpoints_without_observed_start_callback": 0,
         "native_input_requests": [],
@@ -1231,6 +1233,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     # certify completion of future asynchronous automatic effects.
     phase_handoff = audit_phase_handoffs(records)
     report["native_phase_handoff"] = phase_handoff
+    report["post_card_windows"] = audit_action_windows(records)
     strict_failures.extend(phase_handoff["errors"])
     report["native_hand_menu_open_lifetimes"] = sorted(
         menu_id for menu_id, menu in menus_by_id.items() if not menu["closed"])
