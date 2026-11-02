@@ -71,6 +71,53 @@ public sealed class NativeTurnBoundaryCandidateTests
     }
 
     [Fact]
+    public async Task NativeTrackedEffectEvidenceIsBoundedToOnePlayerFrame()
+    {
+        var state = JsonSerializer.SerializeToElement(new {
+            player = new { hp = 56 },
+            combat = new { turn = 1, energy = 3 }
+        });
+        var rows = await Capture(recorder =>
+        {
+            recorder.TurnBoundaryCandidate(
+                "PLAYER_TURN_START", 1, state, "Player", "Play",
+                effectEvidence: new NativeAutomaticEffectEvidence(
+                    NoActiveCardOrPotionEffectBody: true,
+                    NoPlayerTurnEndTransition: true,
+                    EnemyTurnNotStarted: true));
+            recorder.TurnBoundaryCandidate(
+                "PLAYER_TURN_START", 2, state, "Player", "Play",
+                effectEvidence: new NativeAutomaticEffectEvidence(
+                    NoActiveCardOrPotionEffectBody: false,
+                    NoPlayerTurnEndTransition: true,
+                    EnemyTurnNotStarted: true));
+        });
+        var checkpoints = rows.Where(row =>
+            row.GetProperty("type").GetString() == "native_turn_checkpoint")
+            .ToArray();
+        Assert.Equal(2, checkpoints.Length);
+        Assert.Equal("SOURCE_TRACKED_EFFECT_BODY_INACTIVE_AT_FRAME",
+            checkpoints[0].GetProperty("data")
+                .GetProperty("automatic_effect_evidence_status").GetString());
+        Assert.Equal("SOURCE_TRACKED_EFFECT_ACTIVITY_UNVERIFIED",
+            checkpoints[1].GetProperty("data")
+                .GetProperty("automatic_effect_evidence_status").GetString());
+        Assert.False(checkpoints[1].GetProperty("data")
+            .GetProperty("automatic_effect_evidence")
+            .GetProperty("no_active_card_or_potion_effect_body").GetBoolean());
+        Assert.All(checkpoints, row =>
+        {
+            var data = row.GetProperty("data");
+            Assert.Equal("SETTLEMENT_UNVERIFIED",
+                data.GetProperty("settlement_status").GetString());
+            Assert.False(data.GetProperty("native_phase_handoff_order_verified")
+                .GetBoolean());
+        });
+        Assert.Equal("OBSERVED", rows[^1].GetProperty("data")
+            .GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task DuplicateTurnCandidateIsExplicitObservationFailure()
     {
         var state = JsonSerializer.SerializeToElement(new
