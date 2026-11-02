@@ -115,9 +115,18 @@ class LiveCoordinatorTests(unittest.TestCase):
                          probe["first_difference"]["difference"]["path"])
         self.assertEqual(6, probe["first_difference"]["next_action_start_ordinal"])
         self.assertEqual(1, live.stepped)
-        # A later turn checkpoint can still be checked. This is a
-        # provisional candidate, separate from terminal settled parity.
-        self.assertFalse(live.stopped)
+        # A real source-stable intermediate discrepancy is visible at
+        # once, before the next action is stepped or a turn checkpoint.
+        self.assertTrue(live.stopped)
+        self.assertEqual("SOURCE_POST_CARD_ACTION_DIFFERENCE_UNCERTIFIED",
+                         live.status)
+        receipt = live._receipt()
+        self.assertEqual("$.combat.creatures.creature:1.hp",
+                         receipt["first_difference_path"])
+        self.assertNotIn("post_card_action_probe", receipt)
+        self.assertEqual(1, receipt["emulator_actions_stepped"])
+        local = live._receipt(include_post_card_probe=True)
+        self.assertIsNotNone(local["post_card_action_probe"]["first_difference"])
 
         rows[5]["state"]["combat"]["energy"] = 1
         deferred = synthetic_coordinator(probe_post_card_windows=True)
@@ -125,6 +134,32 @@ class LiveCoordinatorTests(unittest.TestCase):
             deferred.consume(event)
         self.assertEqual(1, deferred.post_card_probe["deferred_native_windows"])
         self.assertEqual(0, deferred.post_card_probe["emulator_comparisons"])
+
+    def test_guarded_monitor_enabled_by_default_on_real_coordinator(self):
+        _, start, _, _ = fixture()
+        prelude = {
+            "status": "RUN_PRELUDE_SOURCE_OBSERVED",
+            "run_identity": {"game_build": "pinned-v111",
+                             "seed": "TEST-SEED", "ascension": 10},
+            "first_combat_link": {"combat_run_id": "synthetic-native-combat"},
+        }
+        def bootstrap(_source, _session):
+            return ({"status": "CANDIDATE_COMBAT_REACHED_UNCERTIFIED"},
+                    start.save_snapshot())
+        live = IncrementalFidelityCoordinator(
+            FakeSession(start), prelude, bootstrap=bootstrap)
+        self.assertTrue(live.probe_post_card_windows)
+        self.assertNotIn("post_card_action_probe", live._receipt())
+
+    def test_unsupported_native_post_card_projection_is_deferred(self):
+        rows = source_records()
+        rows[4]["state"] = {"player": {}, "combat": {}}
+        rows[5]["state"] = copy.deepcopy(rows[4]["state"])
+        live = synthetic_coordinator(probe_post_card_windows=True)
+        for event in simulate_sidecar(rows[:6]):
+            live.consume(event)
+        self.assertEqual(1, live.post_card_probe["deferred_native_windows"])
+        self.assertFalse(live.stopped)
 
     def test_default_coordinator_does_not_send_provisional_probe_fields(self):
         live = synthetic_coordinator()
