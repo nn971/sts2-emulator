@@ -646,9 +646,22 @@ internal static class NativeV111PassiveBridge
             {
                 _panel = new FidelityInspectorPanel();
                 _tree.Root.AddChild(_panel);
+                // Explicit diagnostic for an absent F8 overlay. Observing a
+                // keypress and drawing a CanvasLayer are different gates.
+                bool showOnStart = System.Environment.GetEnvironmentVariable(
+                    "STS2_INSPECTOR_PANEL_SHOW_ON_START") == "1";
+                if (showOnStart) _panel.Toggle();
+                Godot.GD.Print("[Sts2ReferenceMod] INSPECTOR_PANEL_STATUS=CREATED;" +
+                    " visible=" + _panel.Visible +
+                    "; opt_in_show_on_start=" + showOnStart);
             }
             bool f8Down = Godot.Input.IsKeyPressed(Godot.Key.F8);
-            if (f8Down && !_f8WasDown) _panel?.Toggle();
+            if (f8Down && !_f8WasDown)
+            {
+                _panel?.Toggle();
+                Godot.GD.Print("[Sts2ReferenceMod] INSPECTOR_PANEL_STATUS=F8_TOGGLED;" +
+                    " visible=" + (_panel?.Visible.ToString() ?? "UNAVAILABLE"));
+            }
             _f8WasDown = f8Down;
             _panel?.SetFidelityResult(_liveEvents?.LatestFidelityResult,
                 _liveEvents?.Failure);
