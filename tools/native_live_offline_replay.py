@@ -62,7 +62,8 @@ def _dump_json(value: object, *, sort_keys: bool) -> str:
         # .NET's default JavaScriptEncoder escapes HTML-sensitive characters.
         encoded = json.dumps(value, ensure_ascii=True)
         for character, escape in (("<", "\\u003C"), (">", "\\u003E"),
-                                  ("&", "\\u0026"), ("'", "\\u0027")):
+                                  ("&", "\\u0026"), ("'", "\\u0027"),
+                                  ("+", "\\u002B"), ("`", "\\u0060")):
             encoded = encoded.replace(character, escape)
         return encoded
     if isinstance(value, _LexicalFloat):
