@@ -364,9 +364,13 @@ class IncrementalFidelityCoordinator:
                 return
             source = build_source_journal(self.records)
             if source.get("status") != "SOURCE_ACTION_CHRONOLOGY_OBSERVED":
+                summary = "; ".join(str(error) for error in
+                                    source.get("errors", [])[:2])
                 self._fail("BLOCKED_SOURCE_AUDIT",
                            "Final native action chronology: " + source.get(
-                               "status", "UNKNOWN"))
+                               "status", "UNKNOWN") +
+                           ("; " + summary if summary else "") +
+                           "; source audit: " + str(source.get("source_audit")))
                 return
             if not self.matched:
                 self._fail("BLOCKED_SOURCE_CHRONOLOGY",
