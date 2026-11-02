@@ -37,6 +37,20 @@ public sealed class NativeLiveEventHubTests
     }
 
     [Fact]
+    public void CanonicalFingerprintMatchesPythonForRealNativeHeaderDateOffset()
+    {
+        // This header-like payload is representative of the first source
+        // event after session_started in a real local native fidelity SSE.
+        using var document = JsonDocument.Parse(
+            """
+            {"type":"header","ordinal":1,"data":{"timestamp":"2026-11-02T09:04:06+00:00","build":"assembly=0.1.0.0;mvid=ABC;sha256=0861","label":"<native>& +`"}}
+            """);
+        Assert.Equal(
+            "211839735340aa0cacea6a7f22be16ada31c4464ebc386361acef5b334816273",
+            CanonicalJson.Sha256(document.RootElement));
+    }
+
+    [Fact]
     public async Task PublicAndFidelityEventsHaveIndependentCursorsAndJournalFiles()
     {
         var prefix = NewJournalPrefix();
