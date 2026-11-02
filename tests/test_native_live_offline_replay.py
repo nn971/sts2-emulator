@@ -94,6 +94,32 @@ class NativeLiveOfflineReplayTests(unittest.TestCase):
         self.assertEqual("INVALID_LIVE_ENVELOPE", status(bad))
         self.assertEqual("INCOMPLETE_LIVE_CAPTURE", status(events[:-1]))
 
+    def test_real_header_date_offset_and_html_marker_match_dotnet_hash(self):
+        # The native header is the first source event after session_started.
+        # DateTimeOffset metadata may include +00:00; .NET escapes '+' even
+        # though the JSON wire serialization is valid either way.
+        header = {
+            "type": "header", "ordinal": 1,
+            "data": {
+                "timestamp": "2026-11-02T09:04:06+00:00",
+                "build": "assembly=0.1.0.0;mvid=ABC;sha256=0861",
+                "label": "<native>& +`",
+            }
+        }
+        expected = "211839735340aa0cacea6a7f22be16ada31c4464ebc386361acef5b334816273"
+        self.assertEqual(expected, _digest(header))
+        self.assertIn(r"\\u002B", _dump_json(header, sort_keys=True))
+        self.assertIn(r"\\u0060", _dump_json(header, sort_keys=True))
+        with tempfile.TemporaryDirectory() as directory:
+            file = Path(directory) / "live.fidelity.jsonl"
+            envelope = simulate_sidecar([header, {
+                "type": "terminal", "ordinal": 2,
+                "data": {"status": "OBSERVED"}}])
+            file.write_text("".join(_dump_json(row, sort_keys=False) + "\n"
+                             for row in envelope), encoding="utf-8")
+            loaded = load_live(file)
+            self.assertEqual(header, recover_sidecar(loaded)[0])
+
     def test_native_scientific_float_hash_matches_csharp_and_archive(self):
         raw = ('{"type":"native_rng_scalar_boundary","ordinal":371,'
                '"data":{"selected_float":-5.0546736E-05,"label":"<native>&"}}')
