@@ -33,6 +33,7 @@ and is enabled with:
 | `GET /v1/agent/boundary` | Public | Existing whitelisted public decision |
 | `GET /v1/public/stream` | Public | SSE public decision/readiness events |
 | `GET /v1/fidelity/stream` | Fidelity | SSE privileged source action/RNG/checkpoint events |
+| `GET /v1/fidelity/status` | Fidelity | Read-only latest native-accepted coordinator receipt, journal status, sequence |
 
 The fidelity stream is disabled if its credential is absent. Each bearer token
 is accepted for its own endpoints only. Native action POST endpoints remain
@@ -464,6 +465,56 @@ environment before a later launch exposes the panel immediately even
 when the F8 key event is not delivered. The current loaded mod cannot
 pick up that code change without a restart, so preserve the current
 capture for the GET-only replay first.
+
+## Native live SSE recovery verified and next feedback gate
+
+The real original-game recovery run for Silent A10 seed
+`6JK8MD0VQQTA` now returned
+`SOURCE_TERMINAL_OBSERVED_UNCERTIFIED` with **six of six matched projected
+player-turn checkpoints, 22 emulator actions stepped, five enemy-turn
+candidates deferred, 910 live fidelity sequences consumed, and no projected
+first difference**. This fixes the first-live-capture canonical fingerprint
+blocker, independently confirms the native SSE transport and full-source
+replay, and establishes the GET-only recovery gate for this original
+combat. The session had already accepted an irreversible error receipt
+before this recovery, so its current in-game F8 result was not updated.
+
+For the **next** controlled game launch, rebuild/reinstall the updated
+`STS2_NATIVE` mod using `tools/native_map_build_preflight.py` and the
+staging procedure above (while the game is closed). Before restarting
+Windows Steam, set the optional User environment variable:
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+  'STS2_INSPECTOR_PANEL_SHOW_ON_START', '1', 'User')
+```
+
+The modified panel will appear on the first Godot frame if it can be
+constructed, and the game will log
+`INSPECTOR_PANEL_STATUS=CREATED` and
+`INSPECTOR_PANEL_STATUS=F8_TOGGLED` on F8 key transitions.
+On the next combat, run the normal coordinator with `--follow`
+**without `--no-feedback`** so the game receives the projected
+comparison results. To independently inspect the native server's
+accepted status even if the panel is invisible, use:
+
+```fish
+python tools/native_live_fidelity_status.py \
+    --out /tmp/native-live-feedback-status.json
+```
+
+This is a private-token-authenticated GET on
+`/v1/fidelity/status`, not an input or game mutation; the report
+contains the latest accepted coordinator receipt, latest source cursor
+and any journal failure, never bearer credentials. It only exists in
+the **newly rebuilt** native mod, so it cannot be queried successfully
+from the previously loaded game DLL.
+
+The successful read-only native replay proves that SSE source
+observations and independent projected mechanics agree. The next
+feedback acceptance gate separately requires in-game receipt delivery
+and a concurrently advancing source/emulator run. Native queue settlement,
+full state parity, and autoplay remain unverified.
 
 ## Test gates and remaining M1 work
 
