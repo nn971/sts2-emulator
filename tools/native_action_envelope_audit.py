@@ -33,6 +33,38 @@ QUEUE_QUIESCENCE_FLAGS = (
 )
 
 
+AUTOMATIC_EFFECT_FLAGS = (
+    "no_active_card_or_potion_effect_body",
+    "no_player_turn_end_transition",
+    "enemy_turn_not_started",
+)
+
+
+def automatic_effect_evidence_status(data: dict, *, player_start: bool) -> str:
+    """Validate bounded source effect-depth evidence, not global settlement."""
+    if ("automatic_effect_evidence" not in data
+        and "automatic_effect_evidence_status" not in data):
+        return "NOT_CAPTURED_LEGACY"
+    evidence = data.get("automatic_effect_evidence")
+    status = data.get("automatic_effect_evidence_status")
+    if evidence is None:
+        if status != "NOT_CAPTURED":
+            raise ValueError("Missing tracked-effect evidence cannot imply idle effects")
+        return status
+    if (not player_start or not isinstance(evidence, dict)
+        or set(evidence) != set(AUTOMATIC_EFFECT_FLAGS)
+        or any(type(evidence[k]) is not bool for k in AUTOMATIC_EFFECT_FLAGS)):
+        raise ValueError("Malformed or misplaced source tracked-effect evidence")
+    expected = (
+        "SOURCE_TRACKED_EFFECT_BODY_INACTIVE_AT_FRAME"
+        if all(evidence[k] for k in AUTOMATIC_EFFECT_FLAGS)
+        else "SOURCE_TRACKED_EFFECT_ACTIVITY_UNVERIFIED"
+    )
+    if status != expected:
+        raise ValueError("Tracked-effect status contradicts native source flags")
+    return status
+
+
 def queue_quiescence_status(data: dict, *, player_start: bool) -> str:
     """Validate optional native source snapshot, preserving old sidecars.
 
@@ -282,6 +314,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_ui_play_begins": [],
         "turn_boundary_candidates": [],
         "source_queue_quiescent_player_checkpoints": 0,
+        "source_tracked_effect_idle_player_checkpoints": 0,
         "native_phase_handoff": None,
         "player_checkpoint_phase_callback_pairs": 0,
         "player_checkpoints_without_observed_start_callback": 0,
@@ -482,6 +515,11 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     data, player_start=kind == "PLAYER_TURN_START")
             except ValueError:
                 quiescence = "INVALID_QUEUE_EVIDENCE"
+            try:
+                effect_status = automatic_effect_evidence_status(
+                    data, player_start=kind == "PLAYER_TURN_START")
+            except ValueError:
+                effect_status = "INVALID_AUTOMATIC_EFFECT_EVIDENCE"
             player_start = kind == "PLAYER_TURN_START"
             enemy_start = kind == "ENEMY_TURN_START"
             key = (kind, turn)
@@ -507,6 +545,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 and isinstance(data.get("player_phase"), str)
                 and data.get("settlement_status") == "SETTLEMENT_UNVERIFIED"
                 and quiescence != "INVALID_QUEUE_EVIDENCE"
+                and effect_status != "INVALID_AUTOMATIC_EFFECT_EVIDENCE"
                 and data.get("complete_native_queue_verified") is False
                 and data.get("native_phase_handoff_order_verified") is False
                 and data.get("original_native_legal_menu") == "NOT_VERIFIED"
@@ -532,6 +571,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                         # The first turn's callback can precede OpenCombat.
                         # Missing callback evidence is reported, not invented.
                         report["player_checkpoints_without_observed_start_callback"] += 1
+                if effect_status == "SOURCE_TRACKED_EFFECT_BODY_INACTIVE_AT_FRAME":
+                    report["source_tracked_effect_idle_player_checkpoints"] += 1
                 if quiescence == "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME":
                     report["source_queue_quiescent_player_checkpoints"] += 1
                 report["turn_boundary_candidates"].append({
@@ -542,6 +583,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     "player_phase": data["player_phase"],
                     "settlement_status": "SETTLEMENT_UNVERIFIED",
                     "queue_quiescence_status": quiescence,
+                    "automatic_effect_evidence_status": effect_status,
                     "emulator_parity": "NOT_TESTED",
                 })
         elif typ == "frame_state":
