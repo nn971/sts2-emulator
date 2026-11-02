@@ -24,6 +24,44 @@ def _is_json_number(value: object) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+QUEUE_QUIESCENCE_FLAGS = (
+    "queue_is_empty", "queue_completion_succeeded",
+    "executor_not_running", "executor_completion_succeeded",
+    "no_currently_running_action", "executor_not_paused",
+    "synchronizer_play_phase", "no_deferred_player_requests",
+)
+
+
+def queue_quiescence_status(data: dict, *, player_start: bool) -> str:
+    """Validate optional native source snapshot, preserving old sidecars.
+
+    This proves a queue/executor observation at *one frame*, never that
+    future async hooks cannot enqueue further automatic game actions.
+    """
+    if ("queue_evidence" not in data and
+        "queue_quiescence_status" not in data):
+        return "NOT_CAPTURED_LEGACY"
+    evidence = data.get("queue_evidence")
+    status = data.get("queue_quiescence_status")
+    if evidence is None:
+        if status != "NOT_CAPTURED":
+            raise ValueError("Missing queue evidence cannot imply quiescence")
+        return status
+    if (not player_start or not isinstance(evidence, dict)
+        or set(evidence) != set(QUEUE_QUIESCENCE_FLAGS)
+        or any(type(evidence[k]) is not bool
+               for k in QUEUE_QUIESCENCE_FLAGS)):
+        raise ValueError("Malformed or misplaced native queue evidence")
+    expected = (
+        "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME"
+        if all(evidence[k] for k in QUEUE_QUIESCENCE_FLAGS)
+        else "SOURCE_QUEUE_QUIESCENCE_UNVERIFIED"
+    )
+    if status != expected:
+        raise ValueError("Native queue quiescence claim contradicts source flags")
+    return status
+
+
 def diff_scalars(before: dict, after: dict) -> dict:
     """Small measured delta, with no card-rule assumptions or RNG replay."""
     values: dict = {}
@@ -242,6 +280,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_ui_hand_gates": [],
         "native_ui_play_begins": [],
         "turn_boundary_candidates": [],
+        "source_queue_quiescent_player_checkpoints": 0,
         "native_input_requests": [],
         "native_input_outcomes": [],
         "native_player_choices": [],
@@ -420,6 +459,11 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         elif typ == "native_turn_checkpoint":
             data = record.get("data") or {}
             kind, turn = data.get("kind"), data.get("turn")
+            try:
+                quiescence = queue_quiescence_status(
+                    data, player_start=kind == "PLAYER_TURN_START")
+            except ValueError:
+                quiescence = "INVALID_QUEUE_EVIDENCE"
             player_start = kind == "PLAYER_TURN_START"
             enemy_start = kind == "ENEMY_TURN_START"
             key = (kind, turn)
@@ -444,6 +488,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 and isinstance(data.get("native_side"), str)
                 and isinstance(data.get("player_phase"), str)
                 and data.get("settlement_status") == "SETTLEMENT_UNVERIFIED"
+                and quiescence != "INVALID_QUEUE_EVIDENCE"
                 and data.get("complete_native_queue_verified") is False
                 and data.get("native_phase_handoff_order_verified") is False
                 and data.get("original_native_legal_menu") == "NOT_VERIFIED"
@@ -462,6 +507,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     f"Invalid native turn-boundary candidate at {ordinal}")
             else:
                 turn_checkpoint_ids.add(key)
+                if quiescence == "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME":
+                    report["source_queue_quiescent_player_checkpoints"] += 1
                 report["turn_boundary_candidates"].append({
                     "ordinal": ordinal, "kind": kind, "turn": turn,
                     "observation_site": data["observation_site"],
@@ -469,6 +516,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     "native_side": data["native_side"],
                     "player_phase": data["player_phase"],
                     "settlement_status": "SETTLEMENT_UNVERIFIED",
+                    "queue_quiescence_status": quiescence,
                     "emulator_parity": "NOT_TESTED",
                 })
         elif typ == "frame_state":
