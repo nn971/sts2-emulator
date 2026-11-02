@@ -56,12 +56,15 @@ def read_status(base: str, token: str | None, *, timeout: float = 4.0) -> dict:
     if receipt is not None and not isinstance(receipt, dict):
         result["reason"] = "Native feedback latest_result is not a JSON object"
         return result
-    result.update(status="NATIVE_FIDELITY_FEEDBACK_OBSERVED",
-                  journal_failure=body.get("journal_failure"),
-                  last_source_sequence=body.get("last_source_sequence"),
-                  latest_result=receipt,
-                  native_settlement_certified=False,
-                  native_live_lockstep=False)
+    result.update(
+        status=("NATIVE_FIDELITY_FEEDBACK_OBSERVED" if receipt is not None
+                else "NATIVE_FIDELITY_STATUS_READY_NO_RECEIPT"),
+        feedback_received=receipt is not None,
+        journal_failure=body.get("journal_failure"),
+        last_source_sequence=body.get("last_source_sequence"),
+        latest_result=receipt,
+        native_settlement_certified=False,
+        native_live_lockstep=False)
     return result
 
 
@@ -77,7 +80,9 @@ def main() -> int:
         args.out.write_text(json.dumps(report, sort_keys=True, indent=2) + "\n",
                             encoding="utf-8")
     print(json.dumps(report, sort_keys=True))
-    return 0 if report["status"] == "NATIVE_FIDELITY_FEEDBACK_OBSERVED" else 2
+    return 0 if report["status"] in (
+        "NATIVE_FIDELITY_FEEDBACK_OBSERVED",
+        "NATIVE_FIDELITY_STATUS_READY_NO_RECEIPT") else 2
 
 
 if __name__ == "__main__":
