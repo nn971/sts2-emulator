@@ -61,6 +61,16 @@ class PhaseHandoffAuditTests(unittest.TestCase):
         self.assertEqual(6, result["source_events"])
         self.assertEqual(1, result["completed_handoffs"])
         self.assertIsNone(result["pending"])
+        self.assertEqual([
+            "PLAYER_SETUP_AND_AUTO_PREPLAY_AWAITED_RETURNED",
+            "PLAYER_PHASE_ONE_AWAITED_HOOKS_RETURNED",
+            "PLAYER_PHASE_TWO_AWAITED_HOOKS_RETURNED",
+            "ENEMY_START_HOOKS_AWAITED_RETURNED",
+            "ENEMY_ACTIONS_AND_END_HOOKS_AWAITED_RETURNED",
+            "PLAYER_SETUP_AND_AUTO_PREPLAY_AWAITED_RETURNED",
+        ], [row["milestone"] for row in result["awaited_source_milestones"]])
+        self.assertTrue(all(row["settlement_status"] == "SETTLEMENT_UNVERIFIED"
+                            for row in result["awaited_source_milestones"]))
         report = audit(records)
         self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
         self.assertEqual(result, report["native_phase_handoff"])
@@ -79,6 +89,9 @@ class PhaseHandoffAuditTests(unittest.TestCase):
         result = audit_phase_handoffs(records)
         self.assertEqual("SOURCE_PHASE_HANDOFF_ORDER_OBSERVED", result["status"])
         self.assertEqual(1, result["extra_player_turn_handoffs"])
+        self.assertEqual(
+            "PLAYER_PHASE_TWO_RETURNED_EXTRA_TURN_HOOK_PENDING",
+            result["awaited_source_milestones"][1]["milestone"])
         self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", audit(records)["status"])
 
     def test_partial_capture_and_old_sidecar_remain_explicitly_unverified(self):
