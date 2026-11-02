@@ -34,6 +34,13 @@ DLL_PATH = MOD_ROOT / "bin" / "Release" / "net9.0" / "Sts2ReferenceMod.dll"
 TURN_CHECKPOINT_METADATA_MEMBERS = frozenset({
     ("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "IsInProgress"),
     ("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "DebugOnlyGetState"),
+    ("MegaCrit.Sts2.Core.Combat.CombatManager", "event", "AboutToSwitchToEnemyTurn"),
+    ("MegaCrit.Sts2.Core.Combat.CombatManager", "event", "TurnEnded"),
+    ("MegaCrit.Sts2.Core.Combat.CombatManager", "event", "TurnStarted"),
+    ("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "IsExecutingCardOrPotionEffect"),
+    ("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "EndingPlayerTurnPhaseOne"),
+    ("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "EndingPlayerTurnPhaseTwo"),
+    ("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "IsEnemyTurnStarted"),
     ("MegaCrit.Sts2.Core.Combat.CombatState", "property", "CurrentSide"),
     ("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "event",
      "BeforeActionExecuted"),
