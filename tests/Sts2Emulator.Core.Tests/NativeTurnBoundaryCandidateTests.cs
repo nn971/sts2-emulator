@@ -77,6 +77,10 @@ public sealed class NativeTurnBoundaryCandidateTests
             player = new { hp = 56 },
             combat = new { turn = 1, energy = 3 }
         });
+        var stateTurnTwo = JsonSerializer.SerializeToElement(new {
+            player = new { hp = 56 },
+            combat = new { turn = 2, energy = 3 }
+        });
         var rows = await Capture(recorder =>
         {
             recorder.TurnBoundaryCandidate(
@@ -86,7 +90,7 @@ public sealed class NativeTurnBoundaryCandidateTests
                     NoPlayerTurnEndTransition: true,
                     EnemyTurnNotStarted: true));
             recorder.TurnBoundaryCandidate(
-                "PLAYER_TURN_START", 2, state, "Player", "Play",
+                "PLAYER_TURN_START", 2, stateTurnTwo, "Player", "Play",
                 effectEvidence: new NativeAutomaticEffectEvidence(
                     NoActiveCardOrPotionEffectBody: false,
                     NoPlayerTurnEndTransition: true,
