@@ -61,6 +61,13 @@ internal static class NativeV111PassiveBridge
     private static readonly FieldInfo? NativeStandardMapRngField =
         typeof(StandardActMap).GetField("_rng",
             BindingFlags.Instance | BindingFlags.NonPublic);
+    // Source: Flaaax/STS2-source@706ef1c9, pinned v0.111.0.
+    // Play-phase requests may be deferred outside the ActionQueueSet. A
+    // drained ActionQueueSet alone must never conceal those pending requests.
+    private static readonly FieldInfo? NativeDeferredPlayerActionsField =
+        typeof(ActionQueueSynchronizer).GetField(
+            "_requestedActionsWaitingForPlayerTurn",
+            BindingFlags.Instance | BindingFlags.NonPublic);
     private static bool _initialMapProjectionAttempted;
     private static bool _missingMapAtFirstInputReported;
     private static NativeCombatAdapter? _adapter;
@@ -730,7 +737,8 @@ internal static class NativeV111PassiveBridge
                 _actionEnvelopes.TurnBoundaryCandidate(
                     "PLAYER_TURN_START", playerState.TurnNumber,
                     frameState.Value, combat.CurrentSide.ToString(),
-                    playerState.Phase.ToString());
+                    playerState.Phase.ToString(),
+                    CaptureNativeQueueQuiescence());
                 ObservedPlayerStartTurns.Add(playerState.TurnNumber);
             }
             if (_recording is null || _adapter is null || _choiceInterrupted) return;
@@ -793,6 +801,47 @@ internal static class NativeV111PassiveBridge
             }
         }
         finally { _handlingFrame = false; }
+    }
+
+    /// <summary>
+    /// Passive source-pinned observation on the Godot frame thread. Neither
+    /// task is awaited and no ActionQueueSet.GetReadyAction is called (that
+    /// method can remove canceled queued actions). A failure to inspect the
+    /// private deferred-request list results in missing evidence, not a
+    /// claim that the list was empty.
+    /// </summary>
+    private static NativeQueueQuiescenceEvidence? CaptureNativeQueueQuiescence()
+    {
+        try
+        {
+            if (_executor is null || NativeDeferredPlayerActionsField is null)
+                return null;
+            var queue = RunManager.Instance.ActionQueueSet;
+            var synchronizer = RunManager.Instance.ActionQueueSynchronizer;
+            if (queue is null || synchronizer is null)
+                return null;
+            var deferred = NativeDeferredPlayerActionsField.GetValue(
+                synchronizer) as System.Collections.ICollection;
+            if (deferred is null) return null;
+            return new NativeQueueQuiescenceEvidence(
+                QueueIsEmpty: queue.IsEmpty,
+                QueueCompletionSucceeded: queue.BecameEmpty().IsCompletedSuccessfully,
+                ExecutorNotRunning: !_executor.IsRunning,
+                ExecutorCompletionSucceeded: _executor.FinishedExecutingActions()
+                    .IsCompletedSuccessfully,
+                NoCurrentlyRunningAction: _executor.CurrentlyRunningAction is null,
+                ExecutorNotPaused: !_executor.IsPaused,
+                SynchronizerPlayPhase: synchronizer.CombatState ==
+                    ActionSynchronizerCombatState.PlayPhase,
+                NoDeferredPlayerRequests: deferred.Count == 0);
+        }
+        catch (Exception error)
+        {
+            Godot.GD.PrintErr(
+                "[Sts2ReferenceMod] QUEUE_QUIESCENCE_STATUS=UNAVAILABLE; reason=" +
+                error.GetType().Name);
+            return null;
+        }
     }
 
     private static string? StableDecisionBlocker(CombatState combat)
