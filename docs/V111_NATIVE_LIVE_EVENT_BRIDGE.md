@@ -285,6 +285,96 @@ The success status must be `NATIVE_SOURCE_COMPILED_STAGED_NOT_INSTALLED`;
 installation, game launch, live capture, and runtime hook parity have not
 yet occurred. Preserve the report for review before changing game files.
 
+### Deploy the staged build (game closed)
+
+The local pinned-v111 build report from 2026-11-02 returned
+`NATIVE_SOURCE_COMPILED_STAGED_NOT_INSTALLED`: installed `sts2.dll`
+SHA-256 matched the pin; all required PE metadata checks passed;
+the STS2_NATIVE DLL, PCK and manifest were staged. This is **not**
+runtime hook validation.
+
+From fish in WSL, while the Windows game is **closed**:
+
+```fish
+set game "/mnt/d/SteamLibrary/steamapps/common/Slay the Spire 2"
+set stage /tmp/sts2-native-live-m1-stage/mods/Sts2ReferenceMod
+set target "$game/mods/Sts2ReferenceMod"
+
+for name in Sts2ReferenceMod.dll Sts2ReferenceMod.pck Sts2ReferenceMod.json
+    test -f "$stage/$name"; or begin
+        echo "Missing staged artifact: $name"
+        exit 2
+    end
+end
+
+if test -d "$target"
+    set backup "/tmp/sts2-reference-mod-backup-"(date +%Y%m%d-%H%M%S)
+    cp -a "$target" "$backup"; or exit 2
+    echo "Backed up existing mod to $backup"
+end
+mkdir -p "$target"; or exit 2
+for name in Sts2ReferenceMod.dll Sts2ReferenceMod.pck Sts2ReferenceMod.json
+    cp "$stage/$name" "$target/$name"; or exit 2
+    cmp -s "$stage/$name" "$target/$name"; or exit 2
+end
+# This loose file is for PCK generation; the game loader must not see it.
+rm -f "$target/mod_manifest.json"
+echo "Staged mod installed; game has not been launched."
+```
+
+Configure the **Windows User** environment in Windows PowerShell (not WSL
+`set -gx`, because Steam is a Windows process). This sets capture and
+source hooks, creates two independent 64-character random GUID-based
+credentials if not already configured, and never prints them:
+
+```powershell
+$settings = @{
+  STS2_FIDELITY_CAPTURE = '1'
+  STS2_FIDELITY_EXPECT_SHA256 = '0861bfa1df347538d932f22d580e75420f08082792eb914e53b4882764acdbe9'
+  STS2_FIDELITY_TRACE_DIR = 'D:\\SteamLibrary\\sts2-inspector-traces'
+  STS2_FIDELITY_RNG_HOOK = '1'
+  STS2_FIDELITY_RNG_STREAM_CHECKPOINTS = '1'
+  STS2_FIDELITY_INPUT_HOOK = '1'
+  STS2_INSPECTOR_AGENT_BRIDGE = '1'
+  STS2_INSPECTOR_AGENT_PORT = '39221'
+}
+foreach ($entry in $settings.GetEnumerator()) {
+    [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'User')
+}
+foreach ($name in @('STS2_INSPECTOR_AGENT_TOKEN', 'STS2_INSPECTOR_FIDELITY_TOKEN')) {
+    $value = [Environment]::GetEnvironmentVariable($name, 'User')
+    if ([string]::IsNullOrWhiteSpace($value) -or $value.Length -lt 24) {
+        $value = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
+        [Environment]::SetEnvironmentVariable($name, $value, 'User')
+    }
+}
+```
+
+Check that the two existing credentials differ if they were already
+configured. Fully **exit** Windows Steam and restart it, so the game
+inherits the new User environment. Clear any old Steam **Launch Options**
+that override these values (especially an old `cmd /c set ...` line).
+Start the game **once** and remain at the main menu; verify the mod
+initializes and the passive hook is enabled before beginning a run.
+
+To run the GET-only bridge probe from WSL fish, retrieve the private
+credentials from Windows User environment without printing either value:
+
+```fish
+set -gx STS2_INSPECTOR_AGENT_TOKEN (powershell.exe -NoProfile -Command '[Environment]::GetEnvironmentVariable("STS2_INSPECTOR_AGENT_TOKEN","User")' | string trim)
+set -gx STS2_INSPECTOR_FIDELITY_TOKEN (powershell.exe -NoProfile -Command '[Environment]::GetEnvironmentVariable("STS2_INSPECTOR_FIDELITY_TOKEN","User")' | string trim)
+python tools/native_live_bridge_preflight.py \
+    --out /tmp/native-live-bridge-preflight.json
+```
+
+A success report is `LIVE_BRIDGE_AUTHENTICATION_READY`. Share that
+report (no credentials in it) and confirm the original game's
+`CAPTURE_STATUS=HOOK_ENABLED` and
+`AGENT_BRIDGE_STATUS=SPECTATOR_READY` messages in its `godot.log`.
+Only then start the Silent A10 fixed-seed run in the **same** game process.
+The source run prelude is written as the run approaches first combat;
+the external coordinator will use it to replay buffered SSE from sequence 0.
+
 After staging has passed, install the staged mod for the **Windows game
 process** and launch only once with the expected hash, capture, trace
 directory and dual credentials explicitly configured. The tokens must each
