@@ -283,6 +283,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "turn_boundary_candidates": [],
         "source_queue_quiescent_player_checkpoints": 0,
         "native_phase_handoff": None,
+        "player_checkpoint_phase_callback_pairs": 0,
+        "player_checkpoints_without_observed_start_callback": 0,
         "native_input_requests": [],
         "native_input_outcomes": [],
         "native_player_choices": [],
@@ -391,6 +393,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     menus_by_choice: dict[tuple[int, int], dict] = {}
     menus_by_id: dict[int, dict] = {}
     turn_checkpoint_ids: set[tuple[str, int]] = set()
+    player_turn_start_callbacks: dict[int, int] = {}
     for ordinal, record in enumerate(records, 1):
         typ = record.get("type")
         if record.get("ordinal") != ordinal:
@@ -458,6 +461,19 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 "pre_state_present": isinstance(start.get("state"), dict),
                 "post_state_present": isinstance(record.get("state"), dict),
             }
+        elif typ == "native_phase_handoff":
+            data = record.get("data") or {}
+            if (data.get("source_event") == "TURN_STARTED"
+                and data.get("native_side") == "Player"):
+                turn = data.get("turn")
+                if type(turn) is not int or turn in player_turn_start_callbacks:
+                    strict_failures.append(
+                        f"Duplicate or invalid native player start at {ordinal}")
+                elif ("PLAYER_TURN_START", turn) in turn_checkpoint_ids:
+                    strict_failures.append(
+                        f"Native player start followed its frame checkpoint at {ordinal}")
+                else:
+                    player_turn_start_callbacks[turn] = ordinal
         elif typ == "native_turn_checkpoint":
             data = record.get("data") or {}
             kind, turn = data.get("kind"), data.get("turn")
@@ -509,6 +525,13 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     f"Invalid native turn-boundary candidate at {ordinal}")
             else:
                 turn_checkpoint_ids.add(key)
+                if player_start:
+                    if turn in player_turn_start_callbacks:
+                        report["player_checkpoint_phase_callback_pairs"] += 1
+                    else:
+                        # The first turn's callback can precede OpenCombat.
+                        # Missing callback evidence is reported, not invented.
+                        report["player_checkpoints_without_observed_start_callback"] += 1
                 if quiescence == "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME":
                     report["source_queue_quiescent_player_checkpoints"] += 1
                 report["turn_boundary_candidates"].append({
