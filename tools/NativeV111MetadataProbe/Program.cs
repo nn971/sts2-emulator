@@ -38,6 +38,14 @@ internal static class Program
         // ordering and queue settlement require native execution evidence.
         new("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "IsInProgress"),
         new("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "DebugOnlyGetState"),
+        // Source-pinned turn-loop callback and tracked-effect observation.
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "event", "AboutToSwitchToEnemyTurn"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "event", "TurnEnded"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "event", "TurnStarted"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "IsExecutingCardOrPotionEffect"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "EndingPlayerTurnPhaseOne"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "EndingPlayerTurnPhaseTwo"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "IsEnemyTurnStarted"),
         new("MegaCrit.Sts2.Core.Combat.CombatState", "property", "CurrentSide"),
         new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "event", "BeforeActionExecuted"),
         new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "event", "AfterActionExecuted"),
