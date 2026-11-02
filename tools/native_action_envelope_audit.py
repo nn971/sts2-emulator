@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from native_phase_handoff_audit import audit_phase_handoffs
 from collections import Counter
 from pathlib import Path
 
@@ -281,6 +282,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_ui_play_begins": [],
         "turn_boundary_candidates": [],
         "source_queue_quiescent_player_checkpoints": 0,
+        "native_phase_handoff": None,
         "native_input_requests": [],
         "native_input_outcomes": [],
         "native_player_choices": [],
@@ -372,7 +374,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_hand_menu", "native_hand_menu_revision",
         "native_hand_menu_closed", "native_manual_play_result",
         "native_ui_play_begin", "native_ui_hand_gate",
-        "native_turn_checkpoint", "terminal",
+        "native_turn_checkpoint", "native_phase_handoff", "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -1159,6 +1161,12 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         elif typ == "stable_decision" and not isinstance(record.get("state"), dict):
             strict_failures.append(f"Missing stable decision state at {ordinal}")
 
+    # Validate turn-loop callbacks independently of frame-derived candidates.
+    # Partial captures remain partial; source event ordering alone cannot
+    # certify completion of future asynchronous automatic effects.
+    phase_handoff = audit_phase_handoffs(records)
+    report["native_phase_handoff"] = phase_handoff
+    strict_failures.extend(phase_handoff["errors"])
     report["native_hand_menu_open_lifetimes"] = sorted(
         menu_id for menu_id, menu in menus_by_id.items() if not menu["closed"])
     final = records[-1].get("data") or {}
