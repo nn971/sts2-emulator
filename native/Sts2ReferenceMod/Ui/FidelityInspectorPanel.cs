@@ -31,8 +31,16 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
     private string _agentStatus = "Agent spectator: DISABLED";
     private string _liveFidelityStatus = "External emulator: NOT_CONNECTED";
 
-    public override void _Ready()
+    public override void _Ready() => Initialize();
+
+    /// <summary>Explicit initialization for dynamically loaded native mod
+    /// assemblies. Godot may not dispatch the managed _Ready override for a
+    /// CanvasLayer class that was loaded outside its script registry. The
+    /// observer's game-thread OnFrame calls this before showing the panel.
+    /// This is safe if Godot also calls _Ready during AddChild.</summary>
+    public void Initialize()
     {
+        if (_panel is not null) return;
         Layer = 90;
         Visible = false;
 
@@ -127,7 +135,14 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
         if (Visible) Refresh();
     }
 
-    public void Toggle() { Visible = !Visible; if (Visible) Refresh(); }
+    public void SetShown(bool shown)
+    {
+        Initialize();
+        Visible = shown;
+        if (shown) Refresh();
+    }
+
+    public void Toggle() => SetShown(!Visible);
 
     public void Tick()
     {
