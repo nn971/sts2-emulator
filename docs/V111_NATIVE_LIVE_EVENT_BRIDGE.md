@@ -296,30 +296,34 @@ runtime hook validation.
 From fish in WSL, while the Windows game is **closed**:
 
 ```fish
-set game "/mnt/d/SteamLibrary/steamapps/common/Slay the Spire 2"
-set stage /tmp/sts2-native-live-m1-stage/mods/Sts2ReferenceMod
-set target "$game/mods/Sts2ReferenceMod"
+function install_sts2_live_m1
+set -l game "/mnt/d/SteamLibrary/steamapps/common/Slay the Spire 2"
+set -l stage /tmp/sts2-native-live-m1-stage/mods/Sts2ReferenceMod
+set -l target "$game/mods/Sts2ReferenceMod"
 
 for name in Sts2ReferenceMod.dll Sts2ReferenceMod.pck Sts2ReferenceMod.json
     test -f "$stage/$name"; or begin
         echo "Missing staged artifact: $name"
-        exit 2
+        return 2
     end
 end
 
 if test -d "$target"
     set backup "/tmp/sts2-reference-mod-backup-"(date +%Y%m%d-%H%M%S)
-    cp -a "$target" "$backup"; or exit 2
+    cp -a "$target" "$backup"; or return 2
     echo "Backed up existing mod to $backup"
 end
-mkdir -p "$target"; or exit 2
+mkdir -p "$target"; or return 2
 for name in Sts2ReferenceMod.dll Sts2ReferenceMod.pck Sts2ReferenceMod.json
-    cp "$stage/$name" "$target/$name"; or exit 2
-    cmp -s "$stage/$name" "$target/$name"; or exit 2
+    cp "$stage/$name" "$target/$name"; or return 2
+    cmp -s "$stage/$name" "$target/$name"; or return 2
 end
 # This loose file is for PCK generation; the game loader must not see it.
 rm -f "$target/mod_manifest.json"
 echo "Staged mod installed; game has not been launched."
+end
+install_sts2_live_m1
+functions --erase install_sts2_live_m1
 ```
 
 Configure the **Windows User** environment in Windows PowerShell (not WSL
