@@ -110,7 +110,7 @@ class M1AcceptanceTests(unittest.TestCase):
         self.assertIn("Unknown command", report["emulator_stderr"])
         self.assertIn('"request_id": "m1-preflight"',
                       runner.call_args.kwargs["input"])
-        self.assertTrue(runner.call_args.kwargs["input"].endswith("\\n"))
+        self.assertTrue(runner.call_args.kwargs["input"].endswith("\n"))
 
     def test_emulator_jsonl_preflight_valid_hello(self):
         valid = subprocess.CompletedProcess(
@@ -119,7 +119,7 @@ class M1AcceptanceTests(unittest.TestCase):
                 "requestId": "m1-preflight", "ok": True,
                 "result": {
                     "wireSchemaId": "prototype-ai-jsonl-v0",
-                    "snapshotSchemaId": "sts2-exact-snapshot-v1"}}) + "\\n",
+                    "snapshotSchemaId": "sts2-exact-snapshot-v1"}}) + "\n",
             stderr="")
         with patch("native_live_m1_acceptance.subprocess.run",
                    return_value=valid):
@@ -130,7 +130,7 @@ class M1AcceptanceTests(unittest.TestCase):
         stale = subprocess.CompletedProcess(args=[], returncode=0,
             stdout=json.dumps({
                 "requestId": "m1-preflight", "ok": True,
-                "result": {"wireSchemaId": "old-wire-schema"}}) + "\\n",
+                "result": {"wireSchemaId": "old-wire-schema"}}) + "\n",
             stderr="")
         with patch("native_live_m1_acceptance.subprocess.run",
                    return_value=stale):
