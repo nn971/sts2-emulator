@@ -37,6 +37,22 @@ public sealed record NativeQueueQuiescenceEvidence(
         SynchronizerPlayPhase && NoDeferredPlayerRequests;
 }
 
+/// <summary>
+/// Source-native, read-only card/potion effect-body and turn handoff flags at
+/// the sampled player frame. These fields track only CombatManager's explicit
+/// effect depth and phase flags; they do not cover arbitrary delayed hooks.
+/// </summary>
+public sealed record NativeAutomaticEffectEvidence(
+    bool NoActiveCardOrPotionEffectBody,
+    bool NoPlayerTurnEndTransition,
+    bool EnemyTurnNotStarted)
+{
+    public bool TrackedEffectBodyInactive =>
+        NoActiveCardOrPotionEffectBody &&
+        NoPlayerTurnEndTransition &&
+        EnemyTurnNotStarted;
+}
+
 public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
 {
     public const string Schema = "native-action-envelope-v1";
@@ -967,7 +983,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     /// </summary>
     public void TurnBoundaryCandidate(
         string kind, int turn, JsonElement state, string nativeSide,
-        string playerPhase, NativeQueueQuiescenceEvidence? queueEvidence = null)
+        string playerPhase, NativeQueueQuiescenceEvidence? queueEvidence = null,
+        NativeAutomaticEffectEvidence? effectEvidence = null)
     {
         if (_closed) return;
         bool playerStart = kind == "PLAYER_TURN_START";
@@ -1012,6 +1029,19 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                     ? "NOT_CAPTURED" : queueEvidence.SourceQuiescent
                     ? "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME"
                     : "SOURCE_QUEUE_QUIESCENCE_UNVERIFIED",
+                automatic_effect_evidence = effectEvidence is null ? null : new
+                {
+                    no_active_card_or_potion_effect_body =
+                        effectEvidence.NoActiveCardOrPotionEffectBody,
+                    no_player_turn_end_transition =
+                        effectEvidence.NoPlayerTurnEndTransition,
+                    enemy_turn_not_started =
+                        effectEvidence.EnemyTurnNotStarted
+                },
+                automatic_effect_evidence_status = effectEvidence is null
+                    ? "NOT_CAPTURED" : effectEvidence.TrackedEffectBodyInactive
+                    ? "SOURCE_TRACKED_EFFECT_BODY_INACTIVE_AT_FRAME"
+                    : "SOURCE_TRACKED_EFFECT_ACTIVITY_UNVERIFIED",
                 settlement_status = "SETTLEMENT_UNVERIFIED",
                 complete_native_queue_verified = false,
                 native_phase_handoff_order_verified = false,
