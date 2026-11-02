@@ -911,6 +911,54 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     }
 
     /// <summary>
+    /// Source event callbacks, emitted by CombatManager in its original turn
+    /// loop. TurnEnded is invoked AFTER CurrentSide has changed, while
+    /// AboutToSwitchToEnemyTurn precedes phase-two cleanup. These event
+    /// observations deliberately make no async-settlement claim.
+    /// </summary>
+    public void NativePhaseHandoff(
+        string sourceEvent, int turn, string nativeSide, string playerPhase,
+        string synchronizerState, bool endingPhaseOne, bool endingPhaseTwo,
+        bool enemyTurnStarted)
+    {
+        if (_closed) return;
+        if (sourceEvent is not ("ABOUT_TO_SWITCH_TO_ENEMY_TURN" or
+                "SIDE_SWITCHED" or "TURN_STARTED")
+            || turn <= 0
+            || nativeSide is not ("Player" or "Enemy")
+            || string.IsNullOrWhiteSpace(playerPhase)
+            || string.IsNullOrWhiteSpace(synchronizerState))
+        {
+            ObservationFailure("native_phase_handoff",
+                "INVALID_NATIVE_PHASE_OBSERVATION");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_phase_handoff", Next(),
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                source_event = sourceEvent,
+                source_callback = sourceEvent switch
+                {
+                    "ABOUT_TO_SWITCH_TO_ENEMY_TURN" =>
+                        "CombatManager.AboutToSwitchToEnemyTurn",
+                    "SIDE_SWITCHED" => "CombatManager.TurnEnded",
+                    _ => "CombatManager.TurnStarted"
+                },
+                turn, native_side = nativeSide, player_phase = playerPhase,
+                synchronizer_state = synchronizerState,
+                ending_player_turn_phase_one = endingPhaseOne,
+                ending_player_turn_phase_two = endingPhaseTwo,
+                enemy_turn_started = enemyTurnStarted,
+                source_version = "v0.111.0",
+                observation_basis = "NATIVE_COMBAT_MANAGER_CALLBACK",
+                settlement_status = "SETTLEMENT_UNVERIFIED",
+                native_phase_handoff_order_verified = false,
+                rng_draws_performed_by_inspector = 0
+            })));
+    }
+
+    /// <summary>
     /// Source-observed turn-boundary candidate, captured without advancing
     /// game state. Neither a rendered idle frame nor a pre-executor callback
     /// proves that all native queue/animation hooks have settled. The source
