@@ -187,6 +187,38 @@ public sealed class NativeLiveEventHubTests
         Directory.Delete(Path.GetDirectoryName(prefix)!, recursive: true);
     }
     [Fact]
+    public async Task ProvisionalPostCardDifferenceIsAcceptedAndIrreversible()
+    {
+        var prefix = NewJournalPrefix();
+        await using (var hub = new NativeLiveEventHub(prefix))
+        {
+            Assert.True(hub.OpenSession("synthetic-combat"));
+            Assert.True(hub.PublishFidelityRecord(new NativeActionEnvelopeRecord(
+                "action_started", 1)));
+            var candidate = new NativeLiveFidelityResult(
+                NativeLiveFidelityResult.SchemaId, "synthetic-combat", 1, 2,
+                "SOURCE_POST_CARD_ACTION_DIFFERENCE_UNCERTIFIED",
+                "First source-stable action difference; settlement unverified",
+                1, 0, 1, "$.combat.energy", "SCALAR_DIFFERENCE");
+            Assert.True(NativeLiveFidelityResult.IsTerminalFailure(candidate.Status));
+            Assert.Null(hub.AcceptFidelityResult(candidate));
+            Assert.Equal("$.combat.energy",
+                hub.LatestFidelityResult!.FirstDifferencePath);
+            Assert.Null(hub.AcceptFidelityResult(candidate)); // reconnect retry
+            Assert.Equal("FIDELITY_SESSION_BLOCKED",
+                hub.AcceptFidelityResult(candidate with {
+                    Status = "PLAYER_CHECKPOINTS_PROJECTED_AGREEMENT_UNCERTIFIED",
+                    ThroughSequence = 2,
+                    FirstDifferencePath = null,
+                    FirstDifferenceReason = null
+                }));
+            Assert.True(hub.OpenSession("next-combat"));
+            Assert.Null(hub.LatestFidelityResult);
+        }
+        Directory.Delete(Path.GetDirectoryName(prefix)!, recursive: true);
+    }
+
+    [Fact]
     public async Task FidelityResultRequiresCurrentEpochObservedCursorAndIdempotence()
     {
         var prefix = NewJournalPrefix();
