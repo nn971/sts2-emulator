@@ -41,6 +41,17 @@ internal static class Program
         new("MegaCrit.Sts2.Core.Combat.CombatState", "property", "CurrentSide"),
         new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "event", "BeforeActionExecuted"),
         new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "event", "AfterActionExecuted"),
+        // Source-pinned queue quiescence contracts. Method existence is
+        // verified without invoking the original game or traversing queues.
+        new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "property", "IsRunning"),
+        new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "property", "IsPaused"),
+        new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "property", "CurrentlyRunningAction"),
+        new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "method", "FinishedExecutingActions"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSet", "property", "IsEmpty"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSet", "method", "BecameEmpty"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSynchronizer", "property", "CombatState"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSynchronizer", "field",
+            "_requestedActionsWaitingForPlayerTurn"),
         new("MegaCrit.Sts2.Core.GameActions.ReadyToBeginEnemyTurnAction", "type", ""),
         new("MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction", "type", "")
     ];
