@@ -17,6 +17,7 @@ PRIVATE = "native-private-fidelity-status-token-971"
 
 class StatusHandler(BaseHTTPRequestHandler):
     requests = []
+    receipt_enabled = True
 
     def log_message(self, *args):
         pass
@@ -34,10 +35,11 @@ class StatusHandler(BaseHTTPRequestHandler):
                 "schema": "sts2-native-fidelity-status-v1",
                 "journal_failure": None,
                 "last_source_sequence": 910,
-                "latest_result": {
+                "latest_result": ({
                     "status": "SOURCE_TERMINAL_OBSERVED_UNCERTIFIED",
                     "player_checkpoints_matched": 6,
-                    "emulator_actions_stepped": 22},
+                    "emulator_actions_stepped": 22}
+                    if self.receipt_enabled else None),
                 "native_settlement_certified": False,
                 "native_live_lockstep": False}
         data = json.dumps(result).encode()
@@ -51,6 +53,7 @@ class StatusHandler(BaseHTTPRequestHandler):
 class FidelityStatusTests(unittest.TestCase):
     def setUp(self):
         StatusHandler.requests = []
+        StatusHandler.receipt_enabled = True
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), StatusHandler)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -71,6 +74,14 @@ class FidelityStatusTests(unittest.TestCase):
         self.assertEqual([("/v1/fidelity/status", "Bearer " + PRIVATE)],
                          StatusHandler.requests)
         self.assertNotIn(PRIVATE, json.dumps(value))
+
+    def test_status_reachable_before_first_coordinator_feedback(self):
+        StatusHandler.receipt_enabled = False
+        value = read_status(self.url, PRIVATE)
+        self.assertEqual("NATIVE_FIDELITY_STATUS_READY_NO_RECEIPT",
+                         value["status"])
+        self.assertFalse(value["feedback_received"])
+        self.assertIsNone(value["latest_result"])
 
     def test_wrong_private_token_and_missing_public_rejected(self):
         wrong = "private-invalid-credential-971"
