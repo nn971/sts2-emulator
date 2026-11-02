@@ -26,7 +26,8 @@ sys.path.insert(0, str(ROOT / "bindings" / "python"))
 from native_live_offline_replay import (SCHEMA, CHANNEL, _digest, _LexicalFloat,
                                         load_live, simulate_sidecar)
 from native_lockstep_source_journal import build as build_source_journal
-from native_action_envelope_audit import queue_quiescence_status
+from native_action_envelope_audit import (queue_quiescence_status,
+                                         automatic_effect_evidence_status)
 from native_lockstep_shadow import _resolve
 from native_run_bootstrap import run_bootstrap
 from native_run_prelude_audit import load as load_prelude, audit as audit_prelude
@@ -243,7 +244,8 @@ class IncrementalFidelityCoordinator:
         self.reason = "Independent seed/Neow/map startup; waiting for player turn 1"
 
     def _compare(self, source: dict, ordinal: int, turn: int,
-                 queue_quiescence: str = "NOT_CAPTURED_LEGACY"):
+                 queue_quiescence: str = "NOT_CAPTURED_LEGACY",
+                 automatic_effects: str = "NOT_CAPTURED_LEGACY"):
         if self.initial_snapshot is None:
             self._fail("BLOCKED_EMULATOR_BOOTSTRAP",
                        "Native checkpoint arrived before independent startup")
@@ -274,6 +276,7 @@ class IncrementalFidelityCoordinator:
             "comparison": "PROJECTED_MECHANICS_AGREE",
             "native_settlement": "SETTLEMENT_UNVERIFIED",
             "queue_quiescence": queue_quiescence,
+            "automatic_effect_evidence": automatic_effects,
             "rng_comparison": "PENDING_SOURCE_BRACKET",
         })
         self.status = "PLAYER_CHECKPOINTS_PROJECTED_AGREEMENT_UNCERTIFIED"
@@ -324,9 +327,11 @@ class IncrementalFidelityCoordinator:
             try:
                 queue_status = queue_quiescence_status(
                     data, player_start=data.get("kind") == "PLAYER_TURN_START")
+                automatic_status = automatic_effect_evidence_status(
+                    data, player_start=data.get("kind") == "PLAYER_TURN_START")
             except ValueError as error:
                 self._fail("BLOCKED_SOURCE_CHRONOLOGY",
-                           "Invalid native queue evidence: " + str(error))
+                           "Invalid native queue/effect evidence: " + str(error))
                 return
             if data.get("settlement_status") != "SETTLEMENT_UNVERIFIED":
                 self._fail("BLOCKED_SOURCE_CHRONOLOGY",
@@ -342,7 +347,8 @@ class IncrementalFidelityCoordinator:
                                "Player action started before first player checkpoint")
                 else:
                     self._compare(record.get("state"), record["ordinal"],
-                                  data["turn"], queue_quiescence=queue_status)
+                                  data["turn"], queue_quiescence=queue_status,
+                                  automatic_effects=automatic_status)
             else:
                 self._fail("BLOCKED_SOURCE_CHRONOLOGY", "Unknown turn checkpoint kind")
         elif kind == "action_started" and isinstance(record.get("canonical_action"), dict):
