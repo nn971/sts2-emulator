@@ -857,3 +857,12 @@ A single original-game sidecar with **16/16** stable intermediate projected
 matches, **6/6** turn-start matches, 23 emulator steps, zero deferred
 intermediate windows and no first difference is the real-data acceptance
 basis for this promotion.
+
+**Deployment gate:** the Python coordinator and the C# native receipt
+allow-list change together. An already running/installed Reference Mod
+from before this change rejects the new intermediate-failure status.
+Before the **next** native-game session, re-run
+`tools/native_map_build_preflight.py` for the pinned original v0.111 DLL,
+then install the newly staged DLL/PCK/manifest while the game is closed.
+No original-game restart is necessary to inspect the existing saved
+967-record sidecar offline.
