@@ -516,6 +516,41 @@ feedback acceptance gate separately requires in-game receipt delivery
 and a concurrently advancing source/emulator run. Native queue settlement,
 full state parity, and autoplay remain unverified.
 
+## F8 panel initialization fix after main-menu runtime observation
+
+The second pinned-v111 native build loaded successfully and served
+`GET /v1/fidelity/status` at the main menu, returning
+`NATIVE_FIDELITY_STATUS_READY_NO_RECEIPT` with source sequence zero.
+The user observed **no F8 overlay**, despite the native log:
+
+```text
+CAPTURE_STATUS=HOOK_ENABLED
+INSPECTOR_PANEL_STATUS=CREATED; visible=False; opt_in_show_on_start=True
+```
+
+This identifies an overlay initialization path issue, separately from
+the functioning HTTP bridge and source capture. The first implementation
+created a `CanvasLayer` and called `Toggle()` to show it, while relying
+on Godot calling the managed `_Ready()` override to initialize its controls
+and hide it first. Dynamically loaded native mods may not have that
+managed script callback registered; toggling a still-visible default layer
+then hides an uninitialized panel.
+
+The fix now calls `FidelityInspectorPanel.Initialize()` explicitly after
+adding the layer to the scene tree. The `_Ready` callback also calls
+`Initialize()`, which is idempotent. `SetShown(showOnStart)` explicitly
+sets the intended initial visibility, instead of relying on `Toggle()`
+and an implicit prior state. The panel-creation log also includes
+`controls_created` and `in_tree` booleans for non-UI diagnostics.
+
+**This code is not loaded into a currently running game process.**
+The mod must be rebuilt against the pinned DLL, restaged and installed
+while the original game is closed; validate `INSPECTOR_PANEL_STATUS=CREATED;
+visible=True; controls_created=True; in_tree=True;
+opt_in_show_on_start=True` at the main menu of the next controlled launch,
+then verify the drawn overlay and F8 toggling. This remains a runtime
+hypothesis until native visual confirmation.
+
 ## Test gates and remaining M1 work
 
 Focused C# tests check authentication separation, SSE cursor replay, disk
