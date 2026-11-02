@@ -219,6 +219,10 @@ def acceptance_result(sidecar: Path, prelude: Path, *, dotnet: str,
         result["status"] = "BLOCKED_M1_OFFLINE_ACCEPTANCE"
         result["reason"] = report.get("reason", "Emulator replay did not meet acceptance gate")
         result["return_code"] = completed.returncode
+        if completed.stderr.strip():
+            result["coordinator_stderr"] = completed.stderr.strip()[-2500:]
+        if completed.stdout.strip():
+            result["coordinator_stdout"] = completed.stdout.strip()[-1000:]
     return result
 
 
