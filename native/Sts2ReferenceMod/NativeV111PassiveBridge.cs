@@ -738,7 +738,8 @@ internal static class NativeV111PassiveBridge
                     "PLAYER_TURN_START", playerState.TurnNumber,
                     frameState.Value, combat.CurrentSide.ToString(),
                     playerState.Phase.ToString(),
-                    CaptureNativeQueueQuiescence());
+                    CaptureNativeQueueQuiescence(),
+                    CaptureNativeAutomaticEffectEvidence(combat));
                 ObservedPlayerStartTurns.Add(playerState.TurnNumber);
             }
             if (_recording is null || _adapter is null || _choiceInterrupted) return;
@@ -810,6 +811,35 @@ internal static class NativeV111PassiveBridge
     /// private deferred-request list results in missing evidence, not a
     /// claim that the list was empty.
     /// </summary>
+    /// <summary>
+    /// Read only the native CombatManager's explicit card/potion effect-body
+    /// depth and phase flags. It is possible for detached delayed hooks to
+    /// remain in flight when all three flags are true.
+    /// </summary>
+    private static NativeAutomaticEffectEvidence? CaptureNativeAutomaticEffectEvidence(
+        CombatState combat)
+    {
+        try
+        {
+            if (combat.Players.Count != 1) return null;
+            var manager = CombatManager.Instance;
+            return new NativeAutomaticEffectEvidence(
+                NoActiveCardOrPotionEffectBody:
+                    !manager.IsExecutingCardOrPotionEffect(combat.Players[0]),
+                NoPlayerTurnEndTransition:
+                    !manager.EndingPlayerTurnPhaseOne &&
+                    !manager.EndingPlayerTurnPhaseTwo,
+                EnemyTurnNotStarted: !manager.IsEnemyTurnStarted);
+        }
+        catch (Exception error)
+        {
+            Godot.GD.PrintErr(
+                "[Sts2ReferenceMod] AUTOMATIC_EFFECT_STATUS=UNAVAILABLE; reason=" +
+                error.GetType().Name);
+            return null;
+        }
+    }
+
     private static NativeQueueQuiescenceEvidence? CaptureNativeQueueQuiescence()
     {
         try
