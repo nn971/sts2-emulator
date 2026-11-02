@@ -78,6 +78,39 @@ class LiveCoordinatorTests(unittest.TestCase):
         self.assertFalse(any("native_full_state_parity" in r for r in receipts
                              if r))
 
+    def test_live_queue_evidence_is_checked_before_player_comparison(self):
+        rows = source_records()
+        cp = rows[2]["data"]
+        cp["queue_evidence"] = {
+            "queue_is_empty": True,
+            "queue_completion_succeeded": True,
+            "executor_not_running": True,
+            "executor_completion_succeeded": True,
+            "no_currently_running_action": True,
+            "executor_not_paused": True,
+            "synchronizer_play_phase": True,
+            "no_deferred_player_requests": True,
+        }
+        cp["queue_quiescence_status"] = (
+            "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME")
+        live = synthetic_coordinator()
+        for row in simulate_sidecar(rows[:3]):
+            live.consume(row)
+        self.assertEqual(1, len(live.matched))
+        self.assertEqual("SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME",
+                         live.matched[0]["queue_quiescence"])
+        self.assertEqual("SETTLEMENT_UNVERIFIED",
+                         live.matched[0]["native_settlement"])
+
+        rows[2]["data"]["queue_evidence"]["queue_is_empty"] = False
+        blocked = synthetic_coordinator()
+        for row in simulate_sidecar(rows[:3]):
+            blocked.consume(row)
+        self.assertEqual("BLOCKED_SOURCE_CHRONOLOGY", blocked.status)
+        self.assertEqual(0, len(blocked.matched))
+        self.assertEqual(0, blocked.stepped)
+        self.assertEqual(0, blocked.session.loaded)
+
     def test_first_observed_difference_freezes_emulator_without_repair(self):
         records = source_records()
         records[-2]["state"]["combat"]["creatures"][1]["hp"] = 21
