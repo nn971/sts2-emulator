@@ -43,6 +43,7 @@ ACCEPTED_STATUSES = frozenset((
     "EMULATOR_BOOTSTRAPPED_UNCERTIFIED",
     "PLAYER_CHECKPOINTS_PROJECTED_AGREEMENT_UNCERTIFIED",
     "SOURCE_PLAYER_CHECKPOINT_DIFFERENCE_UNCERTIFIED",
+    "SOURCE_POST_CARD_ACTION_DIFFERENCE_UNCERTIFIED",
     "BLOCKED_NATIVE_PRELUDE_PAIRING", "BLOCKED_EMULATOR_BOOTSTRAP",
     "BLOCKED_SOURCE_CHRONOLOGY", "BLOCKED_EMULATOR_LEGAL_ACTION",
     "BLOCKED_EMULATOR_STEP", "BLOCKED_NESTED_SOURCE_CHOICE",
@@ -125,7 +126,7 @@ class IncrementalFidelityCoordinator:
     """One persistent emulator process, with no native-state injection."""
 
     def __init__(self, session, prelude: dict, *, bootstrap=run_bootstrap,
-                 probe_post_card_windows: bool = False):
+                 probe_post_card_windows: bool = True):
         self.session = session
         self.prelude = prelude
         self.bootstrap = bootstrap
@@ -161,7 +162,7 @@ class IncrementalFidelityCoordinator:
         self.status, self.reason, self.first_difference = status, reason, first
         self.stopped = True
 
-    def _receipt(self) -> dict:
+    def _receipt(self, *, include_post_card_probe: bool = False) -> dict:
         diff = self.first_difference or {}
         detail = diff.get("difference") if isinstance(diff.get("difference"), dict) else diff
         report = {
@@ -177,8 +178,10 @@ class IncrementalFidelityCoordinator:
             "first_difference_path": (detail.get("path") or None) if detail else None,
             "first_difference_reason": (detail.get("reason") or None) if detail else None,
         }
-        if self.probe_post_card_windows:
-            # Diagnostic only; the caller must withhold live feedback.
+        if self.probe_post_card_windows and include_post_card_probe:
+            # Expanded counters are a local diagnostic, not part of the
+            # fixed native feedback schema. Status/first-difference fields
+            # retain their explicit provisional semantics in both channels.
             report["post_card_action_probe"] = self.post_card_probe.copy()
         return report
 
@@ -369,6 +372,11 @@ class IncrementalFidelityCoordinator:
                 "next_action_start_ordinal": right,
                 "difference": difference,
             }
+            self._fail(
+                "SOURCE_POST_CARD_ACTION_DIFFERENCE_UNCERTIFIED",
+                "First projected mismatch between source-stable post-card "
+                "completion and next native action start; settlement unverified",
+                self.post_card_probe["first_difference"])
 
     def _process(self, record: dict):
         kind = record.get("type")
@@ -411,6 +419,8 @@ class IncrementalFidelityCoordinator:
         elif kind == "action_started" and isinstance(record.get("canonical_action"), dict):
             if self.probe_post_card_windows:
                 self._probe_card_to_next_action(record)
+                if self.stopped:
+                    return
             aid = record.get("action_id")
             if type(aid) is not int or aid in self.pending or self.crosswalk is None:
                 self._fail("BLOCKED_SOURCE_CHRONOLOGY",
@@ -639,7 +649,9 @@ def main() -> int:
     parser.add_argument("--no-feedback", action="store_true",
                         help="GET-only live replay; do not POST any diagnostic result")
     parser.add_argument("--probe-post-card-windows", action="store_true",
-                        help="Offline/GET-only provisional per-card projection comparisons")
+                        help="Include per-card diagnostic counters in local output (checks run by default)")
+    parser.add_argument("--disable-post-card-windows", action="store_true",
+                        help="Temporarily disable the bounded intermediate checks")
     parser.add_argument("--dotnet", default="dotnet")
     parser.add_argument("--cli-dll", type=Path, default=(
         ROOT / "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll"))
@@ -647,8 +659,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.no_feedback and not args.follow:
         parser.error("--no-feedback requires --follow")
-    if args.probe_post_card_windows and args.follow and not args.no_feedback:
-        parser.error("Post-card probes require --no-feedback in live mode")
+    if args.probe_post_card_windows and args.disable_post_card_windows:
+        parser.error("Choose either per-card diagnostic output or disable it")
     try:
         records, error = load_prelude(args.prelude)
         native_prelude = audit_prelude(records, error)
@@ -659,7 +671,7 @@ def main() -> int:
         with Session([args.dotnet, str(args.cli_dll), "prototype-ai-jsonl"]) as session:
             live = IncrementalFidelityCoordinator(
                 session, native_prelude,
-                probe_post_card_windows=args.probe_post_card_windows)
+                probe_post_card_windows=not args.disable_post_card_windows)
             if args.follow:
                 base = _loopback_base(args.bridge)
                 token = os.environ.get("STS2_INSPECTOR_FIDELITY_TOKEN", "")
@@ -676,7 +688,9 @@ def main() -> int:
                     live.consume(row)
                     if live.stopped:
                         break
-            result = live._receipt() if live.cursor.sequence else {
+            result = live._receipt(
+                include_post_card_probe=args.probe_post_card_windows
+            ) if live.cursor.sequence else {
                 "status": "AWAITING_SOURCE_PRELUDE"}
     except (LiveFidelityError, ValueError, OSError, RuntimeError,
             urllib.error.HTTPError) as error:
