@@ -126,6 +126,77 @@ class PhaseHandoffAuditTests(unittest.TestCase):
         self.assertEqual("INCOMPLETE_CAPTURE", reversed_events["status"])
         self.assertTrue(reversed_events["incomplete_observations"])
 
+    def test_source_tracked_effect_depth_is_independently_audited(self):
+        checkpoint = {
+            "type": "native_turn_checkpoint",
+            "state": {"combat": {"turn": 1}, "player": {"hp": 60}},
+            "data": {
+                "kind": "PLAYER_TURN_START", "turn": 1,
+                "observation_site": "NativeV111PassiveBridge.OnFrame",
+                "observation_basis":
+                    "IDLE_PLAYABLE_PLAYER_FRAME_BEFORE_OBSERVED_INPUT",
+                "native_side": "Player", "player_phase": "Play",
+                "settlement_status": "SETTLEMENT_UNVERIFIED",
+                "complete_native_queue_verified": False,
+                "native_phase_handoff_order_verified": False,
+                "original_native_legal_menu": "NOT_VERIFIED",
+                "emulator_parity": "NOT_TESTED",
+                "rng_draws_performed_by_inspector": 0,
+                "automatic_effect_evidence": {
+                    "no_active_card_or_potion_effect_body": True,
+                    "no_player_turn_end_transition": True,
+                    "enemy_turn_not_started": True,
+                },
+                "automatic_effect_evidence_status":
+                    "SOURCE_TRACKED_EFFECT_BODY_INACTIVE_AT_FRAME",
+            }
+        }
+        old = copy.deepcopy(checkpoint)
+        del old["data"]["automatic_effect_evidence"]
+        del old["data"]["automatic_effect_evidence_status"]
+        old_report = audit(sidecar([old]))
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", old_report["status"])
+        self.assertEqual("NOT_CAPTURED_LEGACY",
+                         old_report["turn_boundary_candidates"][0][
+                             "automatic_effect_evidence_status"])
+
+        report = audit(sidecar([checkpoint]))
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(1, report["source_tracked_effect_idle_player_checkpoints"])
+        self.assertEqual("SETTLEMENT_UNVERIFIED",
+                         report["turn_boundary_candidates"][0]["settlement_status"])
+
+        for mutation in ("bool_as_int", "flag_missing", "false_with_true_status",
+                         "forged_status", "misplaced_enemy_evidence"):
+            broken = copy.deepcopy(checkpoint)
+            data = broken["data"]
+            flags = data["automatic_effect_evidence"]
+            if mutation == "bool_as_int":
+                flags["enemy_turn_not_started"] = 1
+            elif mutation == "flag_missing":
+                del flags["no_active_card_or_potion_effect_body"]
+            elif mutation == "false_with_true_status":
+                flags["no_active_card_or_potion_effect_body"] = False
+            elif mutation == "forged_status":
+                data["automatic_effect_evidence_status"] = "SETTLEMENT_CERTIFIED"
+            else:
+                data["kind"] = "ENEMY_TURN_START"
+                data["observation_site"] = "ActionExecutor.BeforeActionExecuted"
+                data["observation_basis"] = "PRE_READY_TO_BEGIN_ENEMY_TURN_ACTION"
+            with self.subTest(mutation=mutation):
+                result = audit(sidecar([broken]))
+                self.assertEqual("INCOMPLETE_CAPTURE", result["status"])
+                self.assertTrue(result["incomplete_observations"])
+
+        incomplete = copy.deepcopy(checkpoint)
+        incomplete["data"]["automatic_effect_evidence"][
+            "no_active_card_or_potion_effect_body"] = False
+        incomplete["data"]["automatic_effect_evidence_status"] = (
+            "SOURCE_TRACKED_EFFECT_ACTIVITY_UNVERIFIED")
+        result = audit(sidecar([incomplete]))
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(0, result["source_tracked_effect_idle_player_checkpoints"])
+
     def test_invalid_order_provenance_and_forged_settlement_fail_closed(self):
         baseline = full_cycle()
         for mutation in ("wrong_order", "wrong_phase", "duplicate_handoff",
