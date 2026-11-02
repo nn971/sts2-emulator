@@ -1033,7 +1033,8 @@ internal static class NativeV111PassiveBridge
 
     // Pinned v0.111 CombatManager invokes these events from the original
     // turn loop. Side switch is observed from TurnEnded (after CurrentSide
-    // changes); TurnStarted occurs after that side's start-of-turn hooks.
+    // changes); TurnStarted can occur during a paused start-turn hook choice.
+    // In that case the player phase is Start/AutoPrePlay, not Play.
     // No gameplay method, RNG provider or task is called by the observer.
     private static void OnAboutToSwitchToEnemyTurn(CombatState state) =>
         ObserveNativePhaseHandoff("ABOUT_TO_SWITCH_TO_ENEMY_TURN", state);
