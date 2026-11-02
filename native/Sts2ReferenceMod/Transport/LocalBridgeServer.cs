@@ -96,7 +96,8 @@ public sealed class LocalBridgeServer : IAsyncDisposable
         {
             var method = context.Request.HttpMethod;
             var path = context.Request.Url?.AbsolutePath;
-            bool fidelityRoute = path is "/v1/fidelity/stream" or "/v1/fidelity/result";
+            bool fidelityRoute = path is "/v1/fidelity/stream" or "/v1/fidelity/result"
+                or "/v1/fidelity/status";
             var expected = fidelityRoute ? _fidelityToken : _expectedToken;
             if (expected is null)
             {
@@ -128,6 +129,18 @@ public sealed class LocalBridgeServer : IAsyncDisposable
                 else if (method == "POST" && path == "/v1/fidelity/result"
                     && _liveEvents is not null)
                     await ReceiveFidelityResultAsync(context).ConfigureAwait(false);
+                else if (method == "GET" && path == "/v1/fidelity/status"
+                    && _liveEvents is not null)
+                    await SendAsync(context, 200, new
+                    {
+                        schema = "sts2-native-fidelity-status-v1",
+                        latest_result = _liveEvents.LatestFidelityResult,
+                        journal_failure = _liveEvents.Failure,
+                        last_source_sequence = _liveEvents.LastSequence(
+                            NativeLiveEventHub.FidelityChannel),
+                        native_settlement_certified = false,
+                        native_live_lockstep = false
+                    }).ConfigureAwait(false);
                 else
                     await SendAsync(context, 403, new
                     {
