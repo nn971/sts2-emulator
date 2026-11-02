@@ -834,9 +834,26 @@ python tools/native_live_fidelity_coordinator.py \
     --out /tmp/native-post-card-probe.json
 ```
 
-The opt-in probe is withheld from normal live coordinator feedback
-(`--follow` requires `--no-feedback` when probing). The established
-six-turn source agreement and F8 receipt schema remain unchanged by
-default. Promoting a window to a stronger acceptance contract awaits
-an independent replay against the saved native sidecar and scrutiny of
-auto-effects that run after the `AfterActionExecuted` callback.
+**Promoted after the original-game offline acceptance (16/16):**
+the regular coordinator now performs the same **source-stable, bounded**
+intermediate comparison by default, including normal `--follow` sessions.
+If a native post-card/next-action pair agrees but the emulator differs,
+it stops at the first observed discrepancy and sends
+`SOURCE_POST_CARD_ACTION_DIFFERENCE_UNCERTIFIED` with a first-difference
+path through the already-authenticated fidelity feedback endpoint.
+The native F8 panel accepts that as an irreversible per-combat diagnostic
+while preserving the `NOT_CERTIFIED` warning.
+
+Normal feedback retains the original fixed receipt fields; the expanded
+`post_card_action_probe` counters appear **only** in local output with
+`--probe-post-card-windows`. Native windows with changed state, intervening
+turn-loop callbacks, incomplete projections, or native card IDs not yet in
+the initial crosswalk are deferred, not falsely labeled differences.
+`--disable-post-card-windows` allows a temporary regression/legacy replay
+comparison. The checks cannot certify completion of later asynchronous
+effects. No modifications to original gameplay or RNG are introduced.
+
+A single original-game sidecar with **16/16** stable intermediate projected
+matches, **6/6** turn-start matches, 23 emulator steps, zero deferred
+intermediate windows and no first difference is the real-data acceptance
+basis for this promotion.
