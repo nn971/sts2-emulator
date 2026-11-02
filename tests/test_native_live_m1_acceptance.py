@@ -117,9 +117,8 @@ class M1AcceptanceTests(unittest.TestCase):
             args=[], returncode=0,
             stdout=json.dumps({
                 "requestId": "m1-preflight", "ok": True,
-                "result": {
-                    "wireSchemaId": "prototype-ai-jsonl-v0",
-                    "snapshotSchemaId": "sts2-exact-snapshot-v1"}}) + "\n",
+                "wireSchemaId": "prototype-ai-jsonl-v0",
+                "snapshotSchemaId": "sts2-exact-snapshot-v1"}) + "\n",
             stderr="")
         with patch("native_live_m1_acceptance.subprocess.run",
                    return_value=valid):
@@ -130,7 +129,7 @@ class M1AcceptanceTests(unittest.TestCase):
         stale = subprocess.CompletedProcess(args=[], returncode=0,
             stdout=json.dumps({
                 "requestId": "m1-preflight", "ok": True,
-                "result": {"wireSchemaId": "old-wire-schema"}}) + "\n",
+                "wireSchemaId": "old-wire-schema"}) + "\n",
             stderr="")
         with patch("native_live_m1_acceptance.subprocess.run",
                    return_value=stale):
