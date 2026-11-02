@@ -151,6 +151,24 @@ class LiveCoordinatorTests(unittest.TestCase):
         self.assertTrue(live.probe_post_card_windows)
         self.assertNotIn("post_card_action_probe", live._receipt())
 
+    def test_interposed_native_phase_callback_defers_intermediate_check(self):
+        rows = source_records()
+        after = native_source(1, [], [1], [0], hp=34)
+        after["combat"]["energy"] = 2
+        rows[4]["state"] = copy.deepcopy(after)
+        rows[5]["state"] = copy.deepcopy(after)
+        rows.insert(5, {"type": "native_phase_handoff", "ordinal": 6,
+                        "data": {"event": "AboutToSwitchToEnemyTurn"}})
+        for i in range(6, len(rows)):
+            rows[i]["ordinal"] += 1
+        live = synthetic_coordinator(probe_post_card_windows=True)
+        for event in simulate_sidecar(rows[:7]):
+            live.consume(event)
+        self.assertEqual(1, live.post_card_probe["deferred_native_windows"])
+        self.assertEqual(0, live.post_card_probe["emulator_comparisons"])
+        self.assertFalse(live.stopped)
+        self.assertEqual(6, live._last_phase_handoff_ordinal)
+
     def test_unsupported_native_post_card_projection_is_deferred(self):
         rows = source_records()
         rows[4]["state"] = {"player": {}, "combat": {}}
