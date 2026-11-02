@@ -249,7 +249,8 @@ public sealed record NativeLiveFidelityResult(
         status.StartsWith("BLOCKED_", StringComparison.Ordinal)
         || status is "INCOMPLETE_CAPTURE"
             or "EMULATOR_COORDINATOR_ERROR"
-            or "SOURCE_PLAYER_CHECKPOINT_DIFFERENCE_UNCERTIFIED";
+            or "SOURCE_PLAYER_CHECKPOINT_DIFFERENCE_UNCERTIFIED"
+            or "SOURCE_POST_CARD_ACTION_DIFFERENCE_UNCERTIFIED";
 
     public static readonly IReadOnlySet<string> AllowedStatuses =
         new HashSet<string>(StringComparer.Ordinal)
@@ -258,6 +259,7 @@ public sealed record NativeLiveFidelityResult(
             "EMULATOR_BOOTSTRAPPED_UNCERTIFIED",
             "PLAYER_CHECKPOINTS_PROJECTED_AGREEMENT_UNCERTIFIED",
             "SOURCE_PLAYER_CHECKPOINT_DIFFERENCE_UNCERTIFIED",
+            "SOURCE_POST_CARD_ACTION_DIFFERENCE_UNCERTIFIED",
             "BLOCKED_NATIVE_PRELUDE_PAIRING", "BLOCKED_EMULATOR_BOOTSTRAP",
             "BLOCKED_SOURCE_CHRONOLOGY", "BLOCKED_EMULATOR_LEGAL_ACTION",
             "BLOCKED_EMULATOR_STEP", "BLOCKED_NESTED_SOURCE_CHOICE",
