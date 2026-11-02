@@ -28,13 +28,35 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
         "completed_handoffs": 0,
         "extra_player_turn_handoffs": 0,
         "awaited_source_milestones": [],
+        "player_start_hook_pauses_observed": 0,
+        "player_start_hook_resumes_observed": 0,
+        "player_start_hook_resolutions_without_frame": 0,
         "pending": None,
         "errors": [],
     }
     pending = None
     pending_turn = None
+    pending_extra = False
     last_event = None
     for record in records:
+        if record.get("type") == "native_turn_checkpoint":
+            data = record.get("data") or {}
+            if (pending == "AWAIT_PLAYER_START_HOOK_COMPLETION"
+                and data.get("kind") == "PLAYER_TURN_START"
+                and data.get("turn") == pending_turn
+                and data.get("player_phase") == "Play"):
+                result["player_start_hook_resumes_observed"] += 1
+                if last_event is not None:
+                    result["completed_handoffs"] += 1
+                    if pending_extra:
+                        result["extra_player_turn_handoffs"] += 1
+                result["awaited_source_milestones"].append({
+                    "ordinal": record.get("ordinal"), "turn": pending_turn,
+                    "milestone": "PLAYER_AUTO_PREPLAY_REACHED_PLAY_AT_FRAME",
+                    "settlement_status": "SETTLEMENT_UNVERIFIED",
+                })
+                pending, pending_turn, pending_extra = None, None, False
+            continue
         if record.get("type") != "native_phase_handoff":
             continue
         result["source_events"] += 1
@@ -72,6 +94,14 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
             elif one:
                 failure = "phase-one flag still set at handoff callback"
             elif event == "ABOUT_TO_SWITCH_TO_ENEMY_TURN":
+                # StartTurn can signal TurnStarted while a HookPlayerChoiceContext
+                # is paused for a nested choice. If no later playable frame was
+                # sampled, End-phase source flags can still advance chronology,
+                # but the missing resolution evidence remains counted.
+                if (pending == "AWAIT_PLAYER_START_HOOK_COMPLETION"
+                    and turn == pending_turn):
+                    result["player_start_hook_resolutions_without_frame"] += 1
+                    pending, pending_turn, pending_extra = None, None, False
                 if (side != "Player" or phase != "End" or sync != "NotPlayPhase"
                     or not two or enemy):
                     failure = "invalid pre-handoff source phase"
@@ -91,6 +121,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                     elif (side == "Player" and turn == pending_turn + 1
                           and two and not enemy and phase == "End"):
                         pending, pending_turn = "AWAIT_EXTRA_PLAYER_START", turn
+                        pending_extra = True
                         milestone = "PLAYER_PHASE_TWO_RETURNED_EXTRA_TURN_HOOK_PENDING"
                     else:
                         failure = "invalid player-to-next-side transition"
@@ -98,6 +129,7 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                       and side == "Player" and not two and enemy
                       and phase == "None" and turn == pending_turn + 1):
                     pending, pending_turn = "AWAIT_PLAYER_START", turn
+                    pending_extra = False
                     milestone = "ENEMY_ACTIONS_AND_END_HOOKS_AWAITED_RETURNED"
                 else:
                     failure = "unpaired or out-of-order side switch"
@@ -111,26 +143,29 @@ def audit_phase_handoffs(records: list[dict]) -> dict:
                         pending = "AWAIT_PLAYER_SWITCH"
                         milestone = "ENEMY_START_HOOKS_AWAITED_RETURNED"
                 else:
-                    if phase != "Play" or sync != "PlayPhase" or enemy or two:
-                        failure = "player start before play phase ready"
-                    elif pending in ("AWAIT_PLAYER_START", "AWAIT_EXTRA_PLAYER_START"):
-                        # SwitchSides increments the player's TurnNumber
-                        # BEFORE TurnEnded fires, including an extra turn.
-                        if turn != pending_turn:
-                            failure = "player turn number not advanced"
-                        else:
+                    allowed_predecessor = (
+                        pending in ("AWAIT_PLAYER_START", "AWAIT_EXTRA_PLAYER_START")
+                        and turn == pending_turn)
+                    opening_callback = pending is None and last_event is None
+                    if sync != "PlayPhase" or enemy or two:
+                        failure = "player start outside synchronized play state"
+                    elif not (allowed_predecessor or opening_callback):
+                        failure = "unexpected player turn start"
+                    elif phase in ("Start", "AutoPrePlay"):
+                        # HookPlayerChoiceContext can return on pause before
+                        # its task completes; TurnStarted does not await it.
+                        result["player_start_hook_pauses_observed"] += 1
+                        pending_extra = pending == "AWAIT_EXTRA_PLAYER_START"
+                        pending, pending_turn = "AWAIT_PLAYER_START_HOOK_COMPLETION", turn
+                    elif phase == "Play":
+                        if allowed_predecessor:
                             result["completed_handoffs"] += 1
                             if pending == "AWAIT_EXTRA_PLAYER_START":
                                 result["extra_player_turn_handoffs"] += 1
-                            pending, pending_turn = None, None
-                            milestone = "PLAYER_SETUP_AND_AUTO_PREPLAY_AWAITED_RETURNED"
-                    elif pending is None and last_event is None:
-                        # The recorder can attach after the opening start callback.
-                        # A first observed player start needs no invented predecessor.
-                        pending, pending_turn = None, None
+                        pending, pending_turn, pending_extra = None, None, False
                         milestone = "PLAYER_SETUP_AND_AUTO_PREPLAY_AWAITED_RETURNED"
                     else:
-                        failure = "unexpected player turn start"
+                        failure = "player start in unsupported phase"
             if failure is None:
                 last_event = event
                 if milestone is not None:
