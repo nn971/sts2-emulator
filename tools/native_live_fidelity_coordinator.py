@@ -148,6 +148,7 @@ class IncrementalFidelityCoordinator:
         self._last_fingerprint = None
         self.probe_post_card_windows = probe_post_card_windows
         self._previous_card_completion = None
+        self._last_phase_handoff_ordinal = 0
         self.post_card_probe = {
             "source_stable_windows": 0,
             "emulator_comparisons": 0,
@@ -352,9 +353,7 @@ class IncrementalFidelityCoordinator:
         if (not isinstance(first, dict) or not isinstance(second, dict)
             or type(left) is not int or type(right) is not int
             or left >= right or self.pending_order
-            or any(x.get("type") == "native_phase_handoff"
-                   and left < x.get("ordinal", -1) < right
-                   for x in self.records if isinstance(x, dict))
+            or left < self._last_phase_handoff_ordinal < right
             or native_window_difference(first, second) is not None
             or self.crosswalk is None):
             self.post_card_probe["deferred_native_windows"] += 1
@@ -395,6 +394,12 @@ class IncrementalFidelityCoordinator:
         self._bootstrap_if_ready()
         if self.stopped:
             return
+        if kind == "native_phase_handoff":
+            # Constant-time guard for interposed native turn-loop callbacks;
+            # avoids quadratic rescanning as a live combat journal grows.
+            ordinal = record.get("ordinal")
+            if type(ordinal) is int:
+                self._last_phase_handoff_ordinal = ordinal
         if kind == "native_turn_checkpoint":
             data = record.get("data") or {}
             try:
