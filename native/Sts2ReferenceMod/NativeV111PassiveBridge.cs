@@ -967,6 +967,9 @@ internal static class NativeV111PassiveBridge
             NativeV111RngHook.HasFloatHook,
             _agentBridge is not null);
         CombatManager.Instance.History.Changed += OnHistoryChanged;
+        CombatManager.Instance.AboutToSwitchToEnemyTurn += OnAboutToSwitchToEnemyTurn;
+        CombatManager.Instance.TurnEnded += OnNativeTurnEnded;
+        CombatManager.Instance.TurnStarted += OnNativeTurnStarted;
         AttachActionExecutor();
         var currentChoiceSync = RunManager.Instance.PlayerChoiceSynchronizer;
         if (!ReferenceEquals(_choiceSync, currentChoiceSync))
@@ -995,6 +998,54 @@ internal static class NativeV111PassiveBridge
         {
             _executor.BeforeActionExecuted += BeforeAction;
             _executor.AfterActionExecuted += AfterAction;
+        }
+    }
+
+    // Pinned v0.111 CombatManager invokes these events from the original
+    // turn loop. Side switch is observed from TurnEnded (after CurrentSide
+    // changes); TurnStarted occurs after that side's start-of-turn hooks.
+    // No gameplay method, RNG provider or task is called by the observer.
+    private static void OnAboutToSwitchToEnemyTurn(CombatState state) =>
+        ObserveNativePhaseHandoff("ABOUT_TO_SWITCH_TO_ENEMY_TURN", state);
+
+    private static void OnNativeTurnEnded(CombatState state) =>
+        ObserveNativePhaseHandoff("SIDE_SWITCHED", state);
+
+    private static void OnNativeTurnStarted(CombatState state) =>
+        ObserveNativePhaseHandoff("TURN_STARTED", state);
+
+    private static void ObserveNativePhaseHandoff(string sourceEvent, CombatState state)
+    {
+        if (_actionEnvelopes is null) return;
+        try
+        {
+            if (!ReferenceEquals(state, _combat) || state.Players.Count != 1
+                || state.Players[0].PlayerCombatState is not { } playerState)
+            {
+                _actionEnvelopes.ObservationFailure("native_phase_handoff",
+                    "SOURCE_COMBAT_IDENTITY_UNAVAILABLE");
+                return;
+            }
+            var synchronizer = RunManager.Instance.ActionQueueSynchronizer;
+            if (synchronizer is null)
+            {
+                _actionEnvelopes.ObservationFailure("native_phase_handoff",
+                    "SOURCE_SYNCHRONIZER_UNAVAILABLE");
+                return;
+            }
+            var manager = CombatManager.Instance;
+            _actionEnvelopes.NativePhaseHandoff(
+                sourceEvent, playerState.TurnNumber,
+                state.CurrentSide.ToString(), playerState.Phase.ToString(),
+                synchronizer.CombatState.ToString(),
+                manager.EndingPlayerTurnPhaseOne,
+                manager.EndingPlayerTurnPhaseTwo,
+                manager.IsEnemyTurnStarted);
+        }
+        catch (Exception error)
+        {
+            _actionEnvelopes.ObservationFailure("native_phase_handoff",
+                error.GetType().Name);
         }
     }
 
@@ -1256,6 +1307,9 @@ internal static class NativeV111PassiveBridge
             _choiceSync = null;
         }
         CombatManager.Instance.History.Changed -= OnHistoryChanged;
+        CombatManager.Instance.AboutToSwitchToEnemyTurn -= OnAboutToSwitchToEnemyTurn;
+        CombatManager.Instance.TurnEnded -= OnNativeTurnEnded;
+        CombatManager.Instance.TurnStarted -= OnNativeTurnStarted;
         _combat = null;
         _adapter = null;
         Godot.GD.Print("[Sts2ReferenceMod] Passive combat capture completed: " + _currentFile);
