@@ -82,12 +82,12 @@ public sealed class NativeAsyncTaskTrackerTests
             tracker.Register(pending.Task, "GAME_ACTION_BODY", "GameAction._executionTask");
             tracker.Poll();
         });
-        Assert.Single(rows.Where(r => r.GetProperty("type").GetString() ==
+        Assert.Single(rows, r => r.GetProperty("type").GetString() ==
             "native_async_task_lifecycle" && r.GetProperty("data")
-            .GetProperty("phase").GetString() == "registered"));
-        Assert.Single(rows.Where(r => r.GetProperty("type").GetString() ==
+            .GetProperty("phase").GetString() == "registered");
+        Assert.Single(rows, r => r.GetProperty("type").GetString() ==
             "native_async_task_lifecycle" && r.GetProperty("data")
-            .GetProperty("phase").GetString() == "completed"));
+            .GetProperty("phase").GetString() == "completed");
     }
 
     [Fact]
