@@ -82,7 +82,12 @@ def audit_idle_frame_exposures(records: list[dict]) -> dict:
         else:
             result["windows_unclosed"] += 1
         if any(active["preinput_event_counts"].values()):
+            active["preinput_activity_observation"] = (
+                "TRACKED_SOURCE_ACTIVITY_OBSERVED_BEFORE_INPUT")
             result["windows_with_preinput_tracked_activity"] += 1
+        else:
+            active["preinput_activity_observation"] = (
+                "NO_TRACKED_SOURCE_ACTIVITY_OBSERVED_BEFORE_INPUT")
         if (active["preinput_event_counts"]["native_rng_boundary"]
             or active["preinput_event_counts"]["native_rng_scalar_boundary"]):
             result["windows_with_preinput_rng_calls"] += 1
