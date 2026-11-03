@@ -1024,7 +1024,7 @@ before the action executor begins.
 
 Windows without an input-request marker or without a following
 canonical action remain explicitly qualified. Absence of tracked
-events is merely `NO_TRACKED_ACTIVITY_OBSERVED` in the measured
+events is merely `NO_TRACKED_SOURCE_ACTIVITY_OBSERVED_BEFORE_INPUT` in the measured
 interval, **never proof that the original game's async-task inventory
 is empty**. In particular, a future turn-loop continuation, untracked
 external hook or a pending paused choice task may still run.
