@@ -83,7 +83,7 @@ class NativeIntermediateRngAuditTests(unittest.TestCase):
     def test_wrong_phase_owner_ordinal_or_incomplete_inventory_is_unverifiable(self):
         rows = stable_records()
         for mutate in (
-            lambda r: r["data"].update(phase="before_action"),
+            lambda r: r["data"].update(phase="after_action"),
             lambda r: r.update(action_id=99),
             lambda r: r.update(ordinal=10),
             lambda r: r["data"]["streams"].pop(),
