@@ -1103,14 +1103,19 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     /// frame. A zero tracked count never certifies the entire game Task graph.
     /// </summary>
     public void NativeAsyncTaskCheckpoint(int? turn, string site,
-        int pending, IReadOnlyDictionary<string,int> byFamily,
+        int pending, int pendingNonTurnLoop,
+        IReadOnlyDictionary<string,int> byFamily,
         int registered, int completed, int overflow, long[] pendingIds)
     {
         if (_closed) return;
         if ((site != "PLAYER_TURN_START" && site != "COMBAT_TEARDOWN")
             || (site == "PLAYER_TURN_START" && (turn is null || turn < 1))
-            || pending < 0 || registered < 0 || completed < 0
+            || pending < 0 || pendingNonTurnLoop < 0
+            || pendingNonTurnLoop > pending
+            || registered < 0 || completed < 0
             || overflow < 0 || completed + pending != registered
+            || pendingNonTurnLoop != pending -
+                (byFamily.GetValueOrDefault("TURN_LOOP"))
             || pendingIds.Length != pending
             || byFamily.Values.Any(n => n < 0)
             || byFamily.Values.Sum() != pending)
@@ -1123,6 +1128,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
             "native_async_task_checkpoint", Next(),
             Data: JsonSerializer.SerializeToElement(new {
                 site, turn, tracked_pending_task_count = pending,
+                tracked_pending_non_turn_loop_count = pendingNonTurnLoop,
+                tracked_pending_turn_loop_count = pending - pendingNonTurnLoop,
                 tracked_pending_by_family = byFamily,
                 registered_task_count = registered,
                 observed_completed_task_count = completed,
