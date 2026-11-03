@@ -318,4 +318,50 @@ public sealed class PrototypeAiEnvironmentTests
         Assert.DoesNotContain("played_card_ids", observationJson,
             StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void BundleRewardShowsOnlyCurrentOfferedBundles()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var state = environment.Reset("public-card-bundle-v1");
+        state = engine.Step(
+            state, Assert.Single(engine.GetLegalActions(state))).State;
+
+        var bundles = new[]
+        {
+            new[] { "proto.silent.strike", "proto.silent.defend" },
+            new[] { "proto.silent.neutralize" }
+        };
+        var reward = new RewardState(
+            SourceRoom: "bundle_fixture",
+            CardOptions: [],
+            PotionOption: null,
+            RelicOption: null,
+            CardResolved: false,
+            PotionResolved: true,
+            RelicResolved: true,
+            EndsAct: false,
+            CardBundles: bundles);
+        state = state with
+        {
+            Phase = RunPhase.Reward,
+            World = state.World! with { Reward = reward }
+        };
+
+        var visible = Assert.IsType<PrototypeAiReward>(
+            environment.ObservePublic(state).Reward);
+        Assert.Equal(bundles[0], visible.CardBundles![0]);
+        Assert.Equal(bundles[1], visible.CardBundles[1]);
+
+        // No retained bundle contents after the choice is resolved.
+        state = state with
+        {
+            World = state.World! with
+            {
+                Reward = reward with { CardResolved = true }
+            }
+        };
+        Assert.Null(environment.ObservePublic(state).Reward!.CardBundles);
+    }
 }
