@@ -267,6 +267,7 @@ public sealed class PrototypeAiEnvironmentTests
             Cards = combat.Cards.Select(card => card.InstanceId == handCardId
                 ? card with
                 {
+                    CardId = "proto.silent.strike",
                     Enchantment = enchantment,
                     CombatEnergyCostDelta = 1,
                     TemporaryEnergyCost = temporaryCost,
@@ -295,6 +296,8 @@ public sealed class PrototypeAiEnvironmentTests
         Assert.Equal(enchantment, card.Enchantment);
         Assert.Equal(1, card.CombatEnergyCostDelta);
         Assert.Equal(temporaryCost, card.TemporaryEnergyCost);
+        Assert.Equal(PrototypeCardCostKind.Fixed, card.CostKind);
+        Assert.Equal(1, card.EffectiveEnergyCost);
         Assert.True(card.EnchantmentTriggeredThisCombat);
         Assert.Equal(PrototypeCardKeyword.Retain,
             Assert.Single(card.KeywordOverrides!).Keyword);
