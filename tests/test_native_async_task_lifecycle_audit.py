@@ -98,6 +98,23 @@ class AsyncTaskLifecycleAuditTests(unittest.TestCase):
         self.assertEqual("SOURCE_TRACKED_TASK_LIFECYCLE_OBSERVED_UNCERTIFIED",
                          report["status"])
 
+    def test_expected_running_turn_loop_is_not_unfinished_transient_work(self):
+        rows = make_records(
+            task("registered", family="TURN_LOOP"),
+            player_frame(1),
+            checkpoint("PLAYER_TURN_START", turn=1, pending_ids=(1,),
+                       family="TURN_LOOP"),
+            checkpoint("COMBAT_TEARDOWN", pending_ids=(1,),
+                       family="TURN_LOOP"))
+        report = audit_native_task_lifecycle(rows)
+        self.assertEqual("SOURCE_TRACKED_TASK_LIFECYCLE_OBSERVED_UNCERTIFIED",
+                         report["status"])
+        cp = report["player_checkpoint_covered_counts"][0]
+        self.assertEqual(1, cp["tracked_pending_turn_loop_count"])
+        self.assertEqual(0, cp["tracked_pending_non_turn_loop_count"])
+        self.assertTrue(cp["observed_non_turn_loop_tasks_quiescent"])
+        self.assertFalse(cp["native_settlement_certified"])
+
     def test_legacy_sidecars_are_unmodified_when_hook_is_disabled(self):
         rows = make_records(player_frame(1), enabled=False)
         self.assertEqual("NOT_CAPTURED_OPTIONAL",
