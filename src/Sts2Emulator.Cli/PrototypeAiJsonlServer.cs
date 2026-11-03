@@ -10637,8 +10637,10 @@ internal static class PrototypeAiJsonlServer
                             _ => throw new ArgumentException(
                                 $"Unsupported Overgrowth map profile '{mapProfileId}'.")
                         };
-                        // Compact selection is an explicit research-only
-                        // extension, never enabled for native/fidelity resets.
+                        // Compact selection is a research-only, explicitly
+                        // requested action/observation mode independent of map
+                        // layout. Native/fidelity resets remain unchanged
+                        // because they omit this flag.
                         if (request.TryGetProperty("compact_card_selection", out var compact))
                         {
                             if (compact.ValueKind is not
@@ -10646,13 +10648,7 @@ internal static class PrototypeAiJsonlServer
                                 throw new ArgumentException(
                                     "compact_card_selection must be boolean.");
                             if (compact.ValueKind == JsonValueKind.True)
-                            {
-                                if (mapProfileId !=
-                                    ExperimentalFixedRouteOvergrowthMapV111.ProfileId)
-                                    throw new ArgumentException(
-                                        "Compact card selection requires experimental fixed route.");
                                 state = state with { ExperimentalCompactCardSelection = true };
-                            }
                         }
                         var handle = Store(state);
                         Write(new
