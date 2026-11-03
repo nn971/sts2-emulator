@@ -1,6 +1,8 @@
 """Incremental SSE -> persistent independent emulator coordinator contracts."""
 from __future__ import annotations
 
+import base64
+import struct
 import copy
 import io
 import json
@@ -18,6 +20,7 @@ from native_live_fidelity_coordinator import (
     _NoRedirect, _loopback_base, parse_sse, follow,
 )
 from test_native_turn_checkpoint_replay import fixture, FakeSession, source as native_source
+from test_native_intermediate_rng_audit import capture as rng_capture
 
 
 def source_records():
@@ -134,6 +137,86 @@ class LiveCoordinatorTests(unittest.TestCase):
             deferred.consume(event)
         self.assertEqual(1, deferred.post_card_probe["deferred_native_windows"])
         self.assertEqual(0, deferred.post_card_probe["emulator_comparisons"])
+
+    @staticmethod
+    def _source_rng_window_coordinator(*, rng_emulator_shift=0,
+                                       native_before_shift=0,
+                                       missing_before=False):
+        """Synthetic source-stable post-card window with 15 RNG streams."""
+        rows = source_records()
+        after = native_source(1, [], [1], [0], hp=34)
+        after["combat"]["energy"] = 2
+        rows[4]["state"] = copy.deepcopy(after)
+        rows[5]["state"] = copy.deepcopy(after)
+        for index in range(5, len(rows)):
+            rows[index]["ordinal"] += 2
+        post = rng_capture(6, "after_action")
+        pre = rng_capture(8, "before_action", 2,
+                          shift=native_before_shift)
+        rows.insert(5, post)
+        if not missing_before:
+            rows.insert(7, pre)
+        live = synthetic_coordinator(probe_post_card_windows=True)
+        streams = []
+        for entry in post["data"]["streams"]:
+            cursor = entry["cursor"]
+            streams.append({
+                "stream_id": entry["stream_id"],
+                "codec": "sts2-v111-xoshiro256-starstar-v1",
+                "call_count": cursor["Counter"] + rng_emulator_shift,
+                "state_bytes": base64.b64encode(struct.pack(
+                    "<QQQQ", *(cursor[f"State{i}"] for i in range(4)))
+                ).decode("ascii"),
+            })
+        live.session.root.child.snapshot["state"]["native_run_rng"] = {
+            "streams": streams}
+        return live, rows
+
+    def test_intermediate_rng_matches_independent_emulator(self):
+        live, rows = self._source_rng_window_coordinator()
+        for event in simulate_sidecar(rows[:8]):
+            live.consume(event)
+        stats = live.post_card_probe
+        self.assertEqual(1, stats["source_stable_windows"])
+        self.assertEqual(1, stats["rng_source_stable_windows"])
+        self.assertEqual(1, stats["rng_emulator_compared"])
+        self.assertEqual(1, stats["rng_emulator_15_stream_matches"])
+        self.assertEqual(0, stats["rng_emulator_differences"])
+        self.assertIsNone(stats["first_rng_difference"])
+        self.assertFalse(stats["tracked_rng_stream_inventory_exhaustive"])
+        self.assertNotIn("post_card_action_probe", live._receipt())
+        self.assertFalse(live.stopped)
+
+    def test_intermediate_rng_mismatch_is_local_diagnostic_only(self):
+        live, rows = self._source_rng_window_coordinator(
+            rng_emulator_shift=1)
+        for event in simulate_sidecar(rows[:8]):
+            live.consume(event)
+        stats = live.post_card_probe
+        self.assertEqual(1, stats["rng_emulator_differences"])
+        self.assertEqual("run.stream_0",
+                         stats["first_rng_difference"]["stream_id"])
+        self.assertEqual("RNG_STREAM_DIFFERENCE",
+                         stats["first_rng_difference"]["status"])
+        self.assertNotIn("native", stats["first_rng_difference"])
+        self.assertNotIn("emulator", stats["first_rng_difference"])
+        self.assertFalse(live.stopped)
+
+    def test_intermediate_source_rng_changed_or_missing_defers_emulator_check(self):
+        live, rows = self._source_rng_window_coordinator(
+            native_before_shift=1)
+        for event in simulate_sidecar(rows[:8]):
+            live.consume(event)
+        self.assertEqual(1, live.post_card_probe["rng_source_changed_windows"])
+        self.assertEqual(0, live.post_card_probe["rng_emulator_compared"])
+        self.assertFalse(live.stopped)
+
+        missing, source = self._source_rng_window_coordinator(missing_before=True)
+        for event in simulate_sidecar(source[:8]):
+            missing.consume(event)
+        self.assertEqual(1, missing.post_card_probe["rng_source_unverifiable_windows"])
+        self.assertEqual(0, missing.post_card_probe["rng_emulator_compared"])
+        self.assertFalse(missing.stopped)
 
     def test_guarded_monitor_enabled_by_default_on_real_coordinator(self):
         _, start, _, _ = fixture()
