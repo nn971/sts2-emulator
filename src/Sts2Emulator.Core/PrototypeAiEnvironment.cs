@@ -26,7 +26,11 @@ public sealed record PrototypeAiCard(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     PrototypeCardKeywordOverride[]? KeywordOverrides = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    bool? EnchantmentTriggeredThisCombat = null);
+    bool? EnchantmentTriggeredThisCombat = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCardCostKind? CostKind = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? EffectiveEnergyCost = null);
 
 public sealed record PrototypeAiRelic(
     string RelicId,
@@ -538,7 +542,8 @@ public sealed class PrototypeAiEnvironment
                     IsTemporary: false,
                     card.PersistentState.Clone(),
                     Enchantment: card.Enchantment is null
-                        ? null : card.Enchantment with { })).ToArray(),
+                        ? null : card.Enchantment with { },
+                    CostKind: PrototypeContent.Card(card.CardId).Cost.Kind)).ToArray(),
             Relics: state.Player.Relics.Select(relic =>
                 new PrototypeAiRelic(
                     relic.RelicId,
@@ -995,6 +1000,7 @@ public sealed class PrototypeAiEnvironment
                 : throw new InvalidOperationException(
                     $"Combat observation references missing card {instanceId}.");
 
+            var cost = PrototypeGameEngine.PublicCardEnergyCost(combat, card);
             return new PrototypeAiCard(
                 card.InstanceId,
                 card.CardId,
@@ -1012,7 +1018,9 @@ public sealed class PrototypeAiEnvironment
                     ? null : card.KeywordOverrides.Select(keyword =>
                         keyword with { }).ToArray(),
                 EnchantmentTriggeredThisCombat:
-                    card.EnchantmentTriggeredThisCombat);
+                    card.EnchantmentTriggeredThisCombat,
+                CostKind: cost.Kind,
+                EffectiveEnergyCost: cost.EffectiveEnergyCost);
         }
 
         return new PrototypeAiCombat(
