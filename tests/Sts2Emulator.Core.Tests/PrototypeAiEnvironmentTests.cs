@@ -299,7 +299,9 @@ public sealed class PrototypeAiEnvironmentTests
         Assert.Equal(1, card.CombatEnergyCostDelta);
         Assert.Equal(temporaryCost, card.TemporaryEnergyCost);
         Assert.Equal(PrototypeCardCostKind.Fixed, card.CostKind);
-        Assert.Equal(1, card.EffectiveEnergyCost);
+        // A temporary cost is an override: the +1 local delta only
+        // applies to the ordinary cost path in the engine.
+        Assert.Equal(0, card.EffectiveEnergyCost);
         Assert.True(card.EnchantmentTriggeredThisCombat);
         Assert.Equal(PrototypeCardKeyword.Retain,
             Assert.Single(card.KeywordOverrides!).Keyword);
