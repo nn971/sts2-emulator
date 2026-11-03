@@ -1014,7 +1014,16 @@ public sealed class PrototypeAiEnvironment
                 card.IsTemporary,
                 card.State.Clone(),
                 card.Affliction is null
-                    ? null : card.Affliction with { },
+                    ? null : card.Affliction with
+                    {
+                        // A source reference is public only if it can join
+                        // an enemy already visible in this combat. Otherwise
+                        // it is private provenance, not a learned feature.
+                        SourceEnemyInstanceId =
+                            combat.Enemies.Any(enemy =>
+                                enemy.InstanceId == card.Affliction.SourceEnemyInstanceId)
+                            ? card.Affliction.SourceEnemyInstanceId : null
+                    },
                 Enchantment: card.Enchantment is null
                     ? null : card.Enchantment with { },
                 CombatEnergyCostDelta: card.CombatEnergyCostDelta,
