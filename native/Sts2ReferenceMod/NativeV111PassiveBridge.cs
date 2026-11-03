@@ -127,6 +127,10 @@ internal static class NativeV111PassiveBridge
     internal static void NativeRngHookFailure(string exceptionType) =>
         _actionEnvelopes?.ObservationFailure("native_rng_source_hook", exceptionType);
 
+    internal static void NativeTaskHookFailure(string exceptionType) =>
+        _actionEnvelopes?.ObservationFailure(
+            "native_async_task_source_hook", exceptionType);
+
     internal static void NativeInputHookFailure(string exceptionType)
     {
         _actionEnvelopes?.ObservationFailure("native_input_source_hook", exceptionType);
@@ -711,6 +715,10 @@ internal static class NativeV111PassiveBridge
             // Executor callbacks must stay attached even when the stricter
             // decision trace has stopped due to an unsupported player prompt.
             AttachActionExecutor();
+            // Task reference registrations may be posted by async native
+            // methods, but their observations and all journal writes happen
+            // here on the ordinary game frame thread.
+            NativeV111AsyncTaskHooks.PollFrame();
             JsonElement? frameState = null;
             if (_actionEnvelopes is not null && _adapter is not null)
             {
@@ -740,6 +748,7 @@ internal static class NativeV111PassiveBridge
                     playerState.Phase.ToString(),
                     CaptureNativeQueueQuiescence(),
                     CaptureNativeAutomaticEffectEvidence(combat));
+                NativeV111AsyncTaskHooks.PlayerCheckpoint(playerState.TurnNumber);
                 ObservedPlayerStartTurns.Add(playerState.TurnNumber);
             }
             if (_recording is null || _adapter is null || _choiceInterrupted) return;
@@ -971,7 +980,9 @@ internal static class NativeV111PassiveBridge
             nativeManualPlayHookInstalled: NativeV111InputHooks.HasManualPlayHook,
             nativeUiPlayBeginHookInstalled: NativeV111InputHooks.HasUiPlayBeginHook,
             nativeUiGateHookInstalled: NativeV111InputHooks.HasUiGateHook,
+            nativeAsyncTaskHookInstalled: NativeV111AsyncTaskHooks.IsInstalled,
             eventSink: record => _liveEvents?.PublishFidelityRecord(record) ?? true);
+        NativeV111AsyncTaskHooks.BeginCombat(_actionEnvelopes);
         if (!string.IsNullOrWhiteSpace(actualSeed))
             _actionEnvelopes.NativeRunIdentity(actualSeed, actualAscension);
         // A source-audited initial shuffle executes before the rendered
@@ -1300,6 +1311,9 @@ internal static class NativeV111PassiveBridge
         _agentFeed?.EndCombat(reason);
         _liveEvents?.PublishPublicStatus("COMBAT_COMPLETE");
         NativeV111RngHook.EndCombat();
+        // Close task observer before terminal is appended; pending tasks
+        // remain explicitly pending rather than being invented completed.
+        NativeV111AsyncTaskHooks.EndCombat();
         var recording = _recording;
         var actionEnvelopes = _actionEnvelopes;
         if (recording is null && actionEnvelopes is null && _combat is null)
