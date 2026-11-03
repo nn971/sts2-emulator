@@ -30,7 +30,7 @@ internal static class NativeV111AsyncTaskHooks
     internal static void TryInstall()
     {
         if (IsInstalled ||
-            Environment.GetEnvironmentVariable("STS2_FIDELITY_TASK_HOOK") != "1")
+            System.Environment.GetEnvironmentVariable("STS2_FIDELITY_TASK_HOOK") != "1")
             return;
         if (!NativeV111PassiveBridge.ReadyForNativeRngHook)
         {
