@@ -105,6 +105,10 @@ public sealed class NativeAsyncTaskTrackerTests
             r.GetProperty("data").GetProperty("site").GetString() == "COMBAT_TEARDOWN");
         Assert.Equal(1, terminal.GetProperty("data")
             .GetProperty("tracked_pending_task_count").GetInt32());
+        Assert.Equal(0, terminal.GetProperty("data")
+            .GetProperty("tracked_pending_non_turn_loop_count").GetInt32());
+        Assert.Equal(1, terminal.GetProperty("data")
+            .GetProperty("tracked_pending_turn_loop_count").GetInt32());
         Assert.Equal("NAMED_ASYNC_ENTRYPOINTS_ONLY",
             terminal.GetProperty("data").GetProperty("coverage").GetString());
         Assert.Equal("OBSERVED", rows.Last().GetProperty("data")
