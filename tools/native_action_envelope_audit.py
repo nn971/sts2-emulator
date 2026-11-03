@@ -13,6 +13,7 @@ import math
 from native_phase_handoff_audit import audit_phase_handoffs
 from native_awaited_turn_witness_audit import audit_awaited_turn_witnesses
 from native_idle_async_exposure_audit import audit_idle_frame_exposures
+from native_async_task_lifecycle_audit import audit_native_task_lifecycle
 from native_action_window_audit import audit_action_windows
 from native_intermediate_rng_audit import audit_native_rng_windows
 from collections import Counter
@@ -322,6 +323,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_phase_handoff": None,
         "awaited_turn_witnesses": None,
         "idle_async_exposures": None,
+        "native_async_task_lifecycle": None,
         "post_card_windows": None,
         "post_card_tracked_rng_windows": None,
         "player_checkpoint_phase_callback_pairs": 0,
@@ -417,7 +419,9 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_hand_menu", "native_hand_menu_revision",
         "native_hand_menu_closed", "native_manual_play_result",
         "native_ui_play_begin", "native_ui_hand_gate",
-        "native_turn_checkpoint", "native_phase_handoff", "terminal",
+        "native_turn_checkpoint", "native_phase_handoff",
+        "native_async_task_lifecycle", "native_async_task_checkpoint",
+        "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -1242,6 +1246,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     report["awaited_turn_witnesses"] = audit_awaited_turn_witnesses(
         records, report["turn_boundary_candidates"], phase_handoff)
     report["idle_async_exposures"] = audit_idle_frame_exposures(records)
+    report["native_async_task_lifecycle"] = audit_native_task_lifecycle(records)
+    strict_failures.extend(report["native_async_task_lifecycle"]["errors"])
     report["post_card_windows"] = audit_action_windows(records)
     report["post_card_tracked_rng_windows"] = audit_native_rng_windows(
         records, source_windows=report["post_card_windows"]["source_windows"])
