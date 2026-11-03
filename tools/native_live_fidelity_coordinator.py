@@ -373,14 +373,15 @@ class IncrementalFidelityCoordinator:
             self.post_card_probe["deferred_native_windows"] += 1
             return
         self.post_card_probe["source_stable_windows"] += 1
+        snapshot = json.loads(self.state.save_snapshot())
         self._pending_rng_window = {
             "post_rng": post_rng,
             "prior_card_action_id": previous["action_id"],
             "completion_ordinal": left,
             "next_start_ordinal": right,
             "next_action_id": record.get("action_id"),
+            "emulator_snapshot": snapshot,
         }
-        snapshot = json.loads(self.state.save_snapshot())
         difference = first_difference(second, snapshot, self.crosswalk)
         if difference is not None and difference.get("reason") in (
                 "MISSING_COMBAT_PROJECTION", "SCALAR_UNOBSERVED",
@@ -437,7 +438,7 @@ class IncrementalFidelityCoordinator:
             stats["rng_source_unverifiable_windows"] += 1
             return
         stats["rng_source_stable_windows"] += 1
-        result = _check_rng(streams, json.loads(self.state.save_snapshot()))
+        result = _check_rng(streams, pending["emulator_snapshot"])
         if result["status"] == "SOURCE_BRACKETED_15_STREAMS_AGREE":
             stats["rng_emulator_compared"] += 1
             stats["rng_emulator_15_stream_matches"] += 1
