@@ -99,8 +99,10 @@ class AwaitedTurnWitnessTests(unittest.TestCase):
                                 and (r.get("data") or {}).get("native_side")
                                     == "Player")])
         result = summary(rows)
-        self.assertEqual(1, result["bounded_awaited_and_idle_frame_witnesses"])
-        self.assertEqual(1, result["turns_without_full_witness"])
+        # A globally invalid source callback sequence disqualifies even
+        # an earlier isolated frame from a full phase-chain witness.
+        self.assertEqual(0, result["bounded_awaited_and_idle_frame_witnesses"])
+        self.assertEqual(2, result["turns_without_full_witness"])
         self.assertEqual("TURN_HANDOFF_AWAIT_CHAIN_UNVERIFIED",
                          result["witnesses"][1]["handoff_kind"])
         self.assertEqual("SOURCE_BOUNDED_TURN_WITNESSES_PARTIAL",
