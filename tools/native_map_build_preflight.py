@@ -56,6 +56,19 @@ TURN_CHECKPOINT_METADATA_MEMBERS = frozenset({
      "property", "CombatState"),
     ("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSynchronizer",
      "field", "_requestedActionsWaitingForPlayerTurn"),
+    # Source-pinned optional passive Task-reference lifecycle entrypoints.
+    # Existence is a compile precondition, not runtime hook certification.
+    ("MegaCrit.Sts2.Core.GameActions.GameAction", "method", "Execute"),
+    ("MegaCrit.Sts2.Core.GameActions.GameAction", "field", "_executionTask"),
+    ("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+     "method", "AssignTaskAndWaitForPauseOrCompletion"),
+    ("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+     "method", "WaitForPauseOrCompletionWithoutAssigningTask"),
+    ("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+     "method", "WaitForCompletion"),
+    ("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+     "property", "Task"),
+    ("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "RunTurnLoopAfter"),
     ("MegaCrit.Sts2.Core.GameActions.ReadyToBeginEnemyTurnAction", "type", ""),
     ("MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction", "type", ""),
 })
