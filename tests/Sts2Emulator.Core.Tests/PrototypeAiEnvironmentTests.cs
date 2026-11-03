@@ -264,6 +264,8 @@ public sealed class PrototypeAiEnvironmentTests
             Cost: 0, Expiry: PrototypeTemporaryCardCostExpiry.EndOfTurn);
         var changedCombat = combat with
         {
+            // Isolate card-local cost from the starter relic's free-play effect.
+            Relics = [],
             Cards = combat.Cards.Select(card => card.InstanceId == handCardId
                 ? card with
                 {
