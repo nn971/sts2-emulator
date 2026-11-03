@@ -76,6 +76,24 @@ class IdleAsyncExposureAuditTests(unittest.TestCase):
         self.assertEqual("$.combat.energy", w["first_projection_difference_path"])
         self.assertFalse(result["native_settlement_certified"])
 
+    def test_task_completion_observed_between_idle_frame_and_input(self):
+        records = [
+            checkpoint(),
+            row("native_async_task_lifecycle", 2, data={
+                "task_id": 3, "family": "HOOK_TASK_BODY",
+                "phase": "completed", "task_status": "RAN_TO_COMPLETION",
+            }),
+            row("native_input_request", 3),
+            action(4),
+        ]
+        result = audit_idle_frame_exposures(records)
+        self.assertEqual(1, result["windows_with_preinput_tracked_activity"])
+        self.assertEqual(1, result["windows"][0]["preinput_event_counts"][
+            "native_async_task_lifecycle"])
+        self.assertEqual("TRACKED_SOURCE_ACTIVITY_OBSERVED_BEFORE_INPUT",
+                         result["windows"][0]["preinput_activity_observation"])
+        self.assertFalse(result["native_settlement_certified"])
+
     def test_activity_after_input_is_not_mislabeled_as_delayed_work(self):
         records = [
             checkpoint(),
