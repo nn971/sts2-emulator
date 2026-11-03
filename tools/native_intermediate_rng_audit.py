@@ -83,9 +83,10 @@ def compare_source_rng_window(post: dict | None, pre: dict | None, *,
     return "SOURCE_15_TRACKED_RNG_STREAMS_STABLE", a
 
 
-def audit_native_rng_windows(records: list[dict]) -> dict:
+def audit_native_rng_windows(records: list[dict], *, source_windows=None) -> dict:
     """Audit 15 tracked streams at every public-projection-stable card window."""
-    windows = audit_action_windows(records).get("source_windows", [])
+    windows = (source_windows if source_windows is not None
+               else audit_action_windows(records).get("source_windows", []))
     by_ordinal = {r.get("ordinal"): r for r in records
                   if isinstance(r, dict)
                   and r.get("type") == "native_rng_stream_checkpoint"
