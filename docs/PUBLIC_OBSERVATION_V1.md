@@ -33,6 +33,7 @@ tested. Do not silently treat v0 and v1 observations as identical.
 | `potion_slots_occupied` | Public inventory | Non-null potion slots | Filled positions |
 | `potion_slots_empty` | Public inventory | Null potion slots | Empty positions |
 | `potions[].slot` | Public inventory | Potion slot index | Retains noncontiguous inventory positions (existing field) |
+| `reward.card_bundles` | Public pending bundle-choice screen | `RewardState.CardBundles` while the card reward is unresolved | Exact visible bundle contents; omitted once resolved |
 
 `combat.*[]` above means the visible hand, discard, exhaust, play piles
 and, only when the compact research selection is active, pending selection
