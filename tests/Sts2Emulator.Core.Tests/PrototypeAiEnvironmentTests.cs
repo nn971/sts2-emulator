@@ -236,7 +236,7 @@ public sealed class PrototypeAiEnvironmentTests
         Assert.Null(frame.Observation.Deck[0].Enchantment);
         Assert.Equal(enchantment, frame.Observation.Deck[1].Enchantment);
         Assert.NotEqual(
-            CanonicalJson.Serialize(frame.Observation.Deck[0]),
+            CanonicalJson.Serialize(frame.Observation.Deck[0] with { InstanceId = 901 }),
             CanonicalJson.Serialize(frame.Observation.Deck[1]));
     }
 
