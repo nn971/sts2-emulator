@@ -147,7 +147,8 @@ class AwaitedTurnWitnessTests(unittest.TestCase):
         self.assertEqual("SOURCE_PHASE_HANDOFF_ORDER_OBSERVED",
                          audit_phase_handoffs(rows)["status"])
         paused = sidecar([r for r in rows[1:-2]])
-        self.assertEqual(0, summary(paused)["player_turns_observed"])
+        self.assertEqual(1, summary(paused)["player_turns_observed"])
+        self.assertEqual(1, summary(paused)["bounded_awaited_and_idle_frame_witnesses"])
 
     def test_legacy_checkpoint_without_source_callbacks_is_unverified(self):
         rows = sidecar([player_frame(1)])
