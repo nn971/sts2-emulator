@@ -108,6 +108,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         bool nativeManualPlayHookInstalled = false,
         bool nativeUiPlayBeginHookInstalled = false,
         bool nativeUiGateHookInstalled = false,
+        bool nativeAsyncTaskHookInstalled = false,
         Func<NativeActionEnvelopeRecord, bool>? eventSink = null)
     {
         _gameBuild = gameBuild;
@@ -122,6 +123,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 source = "native_action_executor_and_combat_history",
                 coverage = "callback_order_and_observed_snapshots_only",
                 native_rng_hook_installed = nativeRngHookInstalled,
+                native_async_task_hook_installed = nativeAsyncTaskHookInstalled,
                 native_rng_double_hook_installed = nativeRngDoubleHookInstalled,
                 native_rng_bool_hook_installed = nativeRngBoolHookInstalled,
                 native_rng_float_hook_installed = nativeRngFloatHookInstalled,
@@ -1064,6 +1066,74 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
             {
                 previous_count = previouslyObserved,
                 new_count = newLength
+            })));
+    }
+
+    /// <summary>
+    /// One observer-only source Task reference registered or first observed
+    /// finished at an ordinary native game frame. No task continuation is
+    /// attached and no game action is dispatched.
+    /// </summary>
+    public void NativeAsyncTaskLifecycle(
+        long taskId, string family, string source, string phase, string status)
+    {
+        if (_closed) return;
+        if (taskId <= 0
+            || phase is not ("registered" or "completed")
+            || status is not ("PENDING" or "FAULTED" or
+                              "CANCELED" or "RAN_TO_COMPLETION"))
+        {
+            ObservationFailure("native_async_task_lifecycle",
+                "INVALID_TASK_REFERENCE_OBSERVATION");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_async_task_lifecycle", Next(),
+            Data: JsonSerializer.SerializeToElement(new {
+                task_id = taskId, family, source, phase, task_status = status,
+                source_version = "v0.111.0",
+                observation_basis = "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME",
+                native_task_mutations = 0,
+                native_settlement_certified = false
+            })));
+    }
+
+    /// <summary>
+    /// Eventual task completion is observed only when Polled by the native
+    /// frame. A zero tracked count never certifies the entire game Task graph.
+    /// </summary>
+    public void NativeAsyncTaskCheckpoint(int? turn, string site,
+        int pending, IReadOnlyDictionary<string,int> byFamily,
+        int registered, int completed, int overflow, long[] pendingIds)
+    {
+        if (_closed) return;
+        if ((site != "PLAYER_TURN_START" && site != "COMBAT_TEARDOWN")
+            || (site == "PLAYER_TURN_START" && (turn is null || turn < 1))
+            || pending < 0 || registered < 0 || completed < 0
+            || overflow < 0 || completed + pending != registered
+            || pendingIds.Length != pending
+            || byFamily.Values.Any(n => n < 0)
+            || byFamily.Values.Sum() != pending)
+        {
+            ObservationFailure("native_async_task_checkpoint",
+                "INVALID_TASK_CHECKPOINT_COUNTS");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_async_task_checkpoint", Next(),
+            Data: JsonSerializer.SerializeToElement(new {
+                site, turn, tracked_pending_task_count = pending,
+                tracked_pending_by_family = byFamily,
+                registered_task_count = registered,
+                observed_completed_task_count = completed,
+                registration_overflow = overflow,
+                pending_task_ids = pendingIds,
+                source_version = "v0.111.0",
+                observation_basis = "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME",
+                coverage = NativeAsyncTaskTracker.Coverage,
+                native_settlement_certified = false,
+                exhaustive_native_task_inventory = false,
+                native_task_mutations = 0
             })));
     }
 
