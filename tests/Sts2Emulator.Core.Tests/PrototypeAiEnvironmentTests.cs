@@ -258,6 +258,9 @@ public sealed class PrototypeAiEnvironmentTests
 
         var combat = state.World!.Combat!;
         var handCardId = combat.Hand[0];
+        var sourceEnemyId = combat.Enemies[0].InstanceId;
+        var affliction = new PrototypeCardAffliction(
+            PrototypeCardAfflictionKind.Bound, SourceEnemyInstanceId: sourceEnemyId);
         var enchantment = new PrototypeCardEnchantment(
             PrototypeCardEnchantmentKind.Sharp, Amount: 3);
         var temporaryCost = new PrototypeTemporaryCardCost(
@@ -270,6 +273,7 @@ public sealed class PrototypeAiEnvironmentTests
                 ? card with
                 {
                     CardId = "proto.silent.strike",
+                    Affliction = affliction,
                     Enchantment = enchantment,
                     CombatEnergyCostDelta = 1,
                     TemporaryEnergyCost = temporaryCost,
@@ -296,6 +300,7 @@ public sealed class PrototypeAiEnvironmentTests
         var result = Assert.IsType<PrototypeAiCombat>(observation.Combat);
         var card = result.Hand.Single(item => item.InstanceId == handCardId);
         Assert.Equal(enchantment, card.Enchantment);
+        Assert.Equal(sourceEnemyId, card.Affliction!.SourceEnemyInstanceId);
         Assert.Equal(1, card.CombatEnergyCostDelta);
         Assert.Equal(temporaryCost, card.TemporaryEnergyCost);
         Assert.Equal(PrototypeCardCostKind.Fixed, card.CostKind);
@@ -312,6 +317,22 @@ public sealed class PrototypeAiEnvironmentTests
         Assert.Equal(3, history.AttacksPlayedLastTurn);
         Assert.Equal(9, history.CardsPlayedThisCombat);
         Assert.Equal(4, history.ManualCardsPlayedThisTurn);
+
+        // An absent source enemy must not leak opaque combat provenance.
+        var hiddenSource = affliction with { SourceEnemyInstanceId = int.MaxValue };
+        var hiddenCombat = changedCombat with
+        {
+            Cards = changedCombat.Cards.Select(value => value.InstanceId == handCardId
+                ? value with { Affliction = hiddenSource } : value).ToArray()
+        };
+        var hiddenState = state with
+        {
+            World = state.World! with { Combat = hiddenCombat }
+        };
+        var redacted = environment.ObservePublic(hiddenState).Combat!.Hand
+            .Single(item => item.InstanceId == handCardId);
+        Assert.Equal(PrototypeCardAfflictionKind.Bound, redacted.Affliction!.Kind);
+        Assert.Null(redacted.Affliction.SourceEnemyInstanceId);
 
         var observationJson = CanonicalJson.Serialize(observation);
         Assert.DoesNotContain(state.RunSeed, observationJson, StringComparison.Ordinal);
