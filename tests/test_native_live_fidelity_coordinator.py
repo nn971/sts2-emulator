@@ -149,13 +149,15 @@ class LiveCoordinatorTests(unittest.TestCase):
         rows[4]["state"] = copy.deepcopy(after)
         rows[5]["state"] = copy.deepcopy(after)
         for index in range(5, len(rows)):
-            rows[index]["ordinal"] += 2
+            rows[index]["ordinal"] += 1 if index == 5 else 2
         post = rng_capture(6, "after_action")
         pre = rng_capture(8, "before_action", 2,
                           shift=native_before_shift)
         rows.insert(5, post)
-        if not missing_before:
-            rows.insert(7, pre)
+        rows.insert(7, pre if not missing_before else {
+            "type": "frame_state", "ordinal": 8,
+            "data": {"frame_index": 12},
+        })
         live = synthetic_coordinator(probe_post_card_windows=True)
         streams = []
         for entry in post["data"]["streams"]:
@@ -212,7 +214,7 @@ class LiveCoordinatorTests(unittest.TestCase):
         self.assertFalse(live.stopped)
 
         missing, source = self._source_rng_window_coordinator(missing_before=True)
-        for event in simulate_sidecar(source[:8]):
+        for event in simulate_sidecar(source[:9]):
             missing.consume(event)
         self.assertEqual(1, missing.post_card_probe["rng_source_unverifiable_windows"])
         self.assertEqual(0, missing.post_card_probe["rng_emulator_compared"])
