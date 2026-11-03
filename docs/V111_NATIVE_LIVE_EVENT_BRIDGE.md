@@ -1046,3 +1046,86 @@ step would need native task-lifecycle coverage for the identified
 pending hook / task continuations, coupled to explicit scope and
 epoch teardown checks. Until such hooks exist,
 `native_settlement_certified=false` remains correct.
+
+
+## Optional read-only native async task lifecycle (2026-11-04)
+
+The original six-turn Silent A10 replay has now passed the bounded
+pre-input and intermediate RNG checks. Its **six** playable native
+frames all have source-observed awaited-turn witnesses and no tracked
+mechanical or RNG events before the next human input. That remains a
+**bounded** observation: the pinned game's `GameAction.Execute`,
+`HookPlayerChoiceContext` and independently scheduled turn loop
+can hold tasks that outlive a callback.
+
+The next capture can opt into **five pinned source method post-fixes**
+in `NativeV111AsyncTaskHooks.cs`:
+
+- `GameAction.Execute`: observe the wrapper step `Task` and the
+  separate private `_executionTask`. The wrapper can complete upon
+  a player-choice pause while the underlying action body remains live.
+- `HookPlayerChoiceContext.AssignTaskAndWaitForPauseOrCompletion`
+  and `WaitForPauseOrCompletionWithoutAssigningTask`: observe the
+  passed-in hook body `Task` separately from the pause-or-completion
+  wrapper `Task<bool>`.
+- `HookPlayerChoiceContext.WaitForCompletion`: observe the final
+  completion barrier Task and the context's underlying hook task.
+- `CombatManager.RunTurnLoopAfter`: track the original combat
+  turn-loop Task. Its active state is **expected** throughout combat.
+
+All original calls and return values are unchanged. The postfixes
+only enqueue original managed `Task` references. The Inspector
+samples `Task.IsCompleted`, `IsFaulted` and `IsCanceled`
+on **ordinary Godot game frames**. It attaches **no continuations**,
+awaits none of the native tasks, performs no RNG calls, and uses a
+bounded per-combat registry of at most **32,768** distinct references.
+An exhausted registry is reported explicitly as partial coverage.
+A task completed before the first poll is labeled as observed at
+that first frame; an observer never infers its exact completion time.
+
+Every sample is recorded in the existing native action-envelope
+sidecar as `native_async_task_lifecycle`, and each first playable
+player-turn checkpoint is immediately followed by
+`native_async_task_checkpoint`. Teardown records a final checkpoint.
+The checkpoint distinguishes `tracked_pending_non_turn_loop_count`
+from the normally ongoing `tracked_pending_turn_loop_count`.
+The strict audit's `native_async_task_lifecycle` section checks
+registration/completion ordering, task reference IDs, per-family
+counts, source-frame pairing, teardown, pinned provenance and zero
+mutations. Missing or contradictory records fail the source audit.
+Older captures with the opt-in hook disabled remain supported.
+
+**Coverage:** These are named entrypoints and the references they
+expose, not all tasks, Godot signals, external callbacks, scene-tree
+animations, or every native combat subsystem. Consequently all task
+checkpoints retain `native_settlement_certified=false`,
+`exhaustive_native_task_inventory=false`. A zero **transient**
+pending-task count means no *covered non-turn-loop* task references
+remain at that observed frame.
+
+**Deployment gate (do not skip):** this native patch set has a new
+metadata contract requiring the pinned v0.111 method names and
+`GameAction._executionTask` field, and an explicit additional opt-in
+environment variable:
+
+```fish
+set -gx STS2_FIDELITY_TASK_HOOK 1
+```
+
+Keep `STS2_FIDELITY_CAPTURE=1` and the expected pinned game DLL
+SHA-256 gate. Re-run `tools/native_map_build_preflight.py` against
+the original installed v0.111 DLL and stage the mod outside the
+game. This is the **offline compile and metadata gate**; it does not
+execute the game. Only after a successful local compiled preflight
+should the updated DLL/PCK/manifest be installed while the game is
+closed. Check the original-game log for
+`TASK_HOOK_STATUS=PINNED_TASK_REFERENCES_INSTALLED` on the next
+controlled native launch. The `UNAVAILABLE` outcome means this
+optional observer is disabled; source events must never advertise
+comprehensive coverage in that case.
+
+The integration workflow includes both standalone .NET tracker
+regression tests and adversarial Python source-journal tests.
+A new actual-game run is needed **only after** the pinned local
+native compilation and installation gate succeeds. The already
+captured six-turn replay remains valid as the no-hook baseline.
