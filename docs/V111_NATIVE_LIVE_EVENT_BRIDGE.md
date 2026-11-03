@@ -965,3 +965,84 @@ python tools/native_action_envelope_audit.py \
 jq '.status, .awaited_turn_witnesses' \
     /tmp/native-awaited-turn-witness-audit.json
 ```
+
+
+## Which asynchronous tasks can outlive an observed idle frame? (2026-11-03)
+
+The pinned v0.111 source gives several precise, different task barriers:
+
+- `GameAction.Execute` awaits `WhenAny(_executionTask,
+  _pauseForPlayerChoiceTaskSource.Task)`. The **pause path returns with
+  the underlying task still alive**. The `action_completed` callback
+  corresponds to the finished path; `nested_choice_pause` and
+  `action_resumed` capture the separate suspension lifecycle.
+  Source: `Core/GameActions/GameAction.cs`, `Execute`.
+- `ActionExecutor.AfterActionExecuted` runs inside the action's finish
+  callback, **before** the executor clears `CurrentlyRunningAction`
+  and before its subsequent awaited `CombatManager.CheckWinCondition`
+  call. The next action's `BeforeActionExecuted` is a later
+  boundary. For a completed card play followed by the next player
+  action, the observed native equality and 15-stream equality across
+  the two callbacks therefore span the awaited win check as well,
+  *when combat is in progress*. Source:
+  `Core/GameActions/ActionExecutor.cs`, `ExecuteActions` and
+  `AfterActionFinished`.
+- `HookPlayerChoiceContext.AssignTaskAndWaitForPauseOrCompletion`
+  and `WaitForPauseOrCompletionWithoutAssigningTask` can **return
+  on a choice pause**; `WaitForCompletion` is the stronger method
+  that awaits the hook task and, if present, the generated game
+  action's completion. Source:
+  `Core/GameActions/Multiplayer/HookPlayerChoiceContext.cs`.
+- `CombatManager.RunAutoPrePlayPhase` awaits player setup,
+  `CheckForEmptyHand` and `Hook.AfterAutoPrePlayPhaseEntered`
+  before assigning `Phase=Play`. The later playable native
+  frame, tracked queue/executor flags and turn callbacks provide a
+  **bounded start-of-turn hook-completion witness** in the existing
+  `awaited_turn_witnesses` audit. Source:
+  `Core/Combat/CombatManager.cs`, `StartTurn` and
+  `RunAutoPrePlayPhase`.
+- `CombatManager.RunTurnLoopAfter` is scheduled via
+  `TaskHelper.RunSafely`; the previous combat turn loop can
+  briefly survive teardown until its continuation completes.
+  Starting a new combat waits for it with an explicit timeout.
+  Source: `Core/Combat/CombatManager.cs`,
+  `AfterCombatRoomLoaded` and
+  `WaitForPreviousTurnLoopToFinish`.
+
+**New passive post-idle exposure audit.**
+`tools/native_idle_async_exposure_audit.py` adds
+`idle_async_exposures` to the strict native action-envelope audit.
+For every recorded player-turn playable checkpoint it looks forward
+until the first `native_input_request` and next canonical player
+action. It counts any *observed* source RNG primitive calls, history
+entries, automatic action starts, phase callbacks, choice pauses and
+shuffle operations **before the input request**. It also compares
+the idle-frame projection with the following action's pre-state, but
+labels a difference `DIFFERENT_BEFORE_EXECUTOR_ACTION` without
+attributing it to automatic effects: input handling can change state
+before the action executor begins.
+
+Windows without an input-request marker or without a following
+canonical action remain explicitly qualified. Absence of tracked
+events is merely `NO_TRACKED_ACTIVITY_OBSERVED` in the measured
+interval, **never proof that the original game's async-task inventory
+is empty**. In particular, a future turn-loop continuation, untracked
+external hook or a pending paused choice task may still run.
+
+Run this on the preserved pinned original-game capture; no game
+launch or native mod rebuild is needed:
+
+```fish
+cd ~/projects/sts2-inspector
+python tools/native_action_envelope_audit.py \
+  "/mnt/d/SteamLibrary/sts2-inspector-traces/passive-20261102-121956051-e8c8ed546a234bdcb6498e17e1f5f3f9.actions.jsonl" \
+  --out /tmp/native-idle-async-exposures.json
+jq '.status, .idle_async_exposures' /tmp/native-idle-async-exposures.json
+```
+
+This milestone clarifies the **observable task boundaries** with
+existing source events. The next genuine settlement-certification
+step would need native task-lifecycle coverage for the identified
+pending hook / task continuations, coupled to explicit scope and
+epoch teardown checks. Until such hooks exist,
+`native_settlement_certified=false` remains correct.
