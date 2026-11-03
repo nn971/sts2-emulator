@@ -38,6 +38,10 @@ def checkpoint(site, *, turn=None, pending_ids=(), n_registered=1,
     return {"type": "native_async_task_checkpoint", "data": {
         "site": site, "turn": turn,
         "tracked_pending_task_count": len(pending_ids),
+        "tracked_pending_non_turn_loop_count":
+            0 if family == "TURN_LOOP" else len(pending_ids),
+        "tracked_pending_turn_loop_count":
+            len(pending_ids) if family == "TURN_LOOP" else 0,
         "tracked_pending_by_family":
             {family: len(pending_ids)} if pending_ids else {},
         "registered_task_count": n_registered,
