@@ -199,4 +199,116 @@ public sealed class PrototypeAiEnvironmentTests
         Assert.Equal(originalHash, CanonicalJson.Sha256(state));
         Assert.NotEqual(originalHash, CanonicalJson.Sha256(branch));
     }
+
+    [Fact]
+    public void PublicObservationKeepsEnchantedDeckVariantsAndEmptyPotionSlots()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var state = environment.Reset("public-modifier-capacity-v1");
+        var enchantment = new PrototypeCardEnchantment(
+            PrototypeCardEnchantmentKind.Nimble, Amount: 2);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck =
+                [
+                    new CardInstance(900, "proto.silent.strike", 0,
+                        PrototypeJson.EmptyObject()),
+                    new CardInstance(901, "proto.silent.strike", 0,
+                        PrototypeJson.EmptyObject(), enchantment)
+                ],
+                PotionSlots =
+                [
+                    null,
+                    new PotionInstance("proto.potion.test", PrototypeJson.EmptyObject()),
+                    null
+                ]
+            }
+        };
+
+        var frame = environment.Observe(state);
+        Assert.Equal("prototype-ai-v1", frame.SchemaId);
+        Assert.Equal(3, frame.Observation.PotionSlotCapacity);
+        Assert.Equal(1, frame.Observation.PotionSlotsOccupied);
+        Assert.Equal(2, frame.Observation.PotionSlotsEmpty);
+        Assert.Equal(1, Assert.Single(frame.Observation.Potions).Slot);
+        Assert.Null(frame.Observation.Deck[0].Enchantment);
+        Assert.Equal(enchantment, frame.Observation.Deck[1].Enchantment);
+        Assert.NotEqual(
+            CanonicalJson.Serialize(frame.Observation.Deck[0]),
+            CanonicalJson.Serialize(frame.Observation.Deck[1]));
+    }
+
+    [Fact]
+    public void PublicCombatProjectsVisibleModifiersAndPlayHistory()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var state = environment.Reset("public-combat-history-v1");
+        state = engine.Step(state, Assert.Single(engine.GetLegalActions(state))).State;
+        var action = engine.GetLegalActions(state).First(candidate =>
+        {
+            var nodeId = candidate.ReadPayload<ChooseMapNodePayload>().NodeId;
+            return state.World!.Map.AvailableNodes()
+                .Single(node => node.NodeId == nodeId)
+                .RoomType == PrototypeRoomType.Combat;
+        });
+        state = engine.Step(state, action).State;
+
+        var combat = state.World!.Combat!;
+        var handCardId = combat.Hand[0];
+        var enchantment = new PrototypeCardEnchantment(
+            PrototypeCardEnchantmentKind.Sharp, Amount: 3);
+        var temporaryCost = new PrototypeTemporaryCardCost(
+            Cost: 0, Expiry: PrototypeTemporaryCardCostExpiry.EndOfTurn);
+        var changedCombat = combat with
+        {
+            Cards = combat.Cards.Select(card => card.InstanceId == handCardId
+                ? card with
+                {
+                    Enchantment = enchantment,
+                    CombatEnergyCostDelta = 1,
+                    TemporaryEnergyCost = temporaryCost,
+                    KeywordOverrides =
+                    [
+                        new PrototypeCardKeywordOverride(
+                            PrototypeCardKeyword.Retain, true,
+                            PrototypeCardKeywordOverrideExpiry.EndOfTurn)
+                    ],
+                    EnchantmentTriggeredThisCombat = true
+                }
+                : card).ToArray(),
+            Counters = new PrototypeCombatCounters(
+                CardsPlayedThisTurn: 4,
+                AttacksPlayedThisTurn: 2,
+                SkillsPlayedThisTurn: 1,
+                AttacksPlayedLastTurn: 3,
+                CardsPlayedThisCombat: 9,
+                ManualCardsPlayedThisTurn: 4)
+        };
+        state = state with { World = state.World with { Combat = changedCombat } };
+
+        var observation = environment.ObservePublic(state);
+        var result = Assert.IsType<PrototypeAiCombat>(observation.Combat);
+        var card = result.Hand.Single(item => item.InstanceId == handCardId);
+        Assert.Equal(enchantment, card.Enchantment);
+        Assert.Equal(1, card.CombatEnergyCostDelta);
+        Assert.Equal(temporaryCost, card.TemporaryEnergyCost);
+        Assert.True(card.EnchantmentTriggeredThisCombat);
+        Assert.Equal(PrototypeCardKeyword.Retain,
+            Assert.Single(card.KeywordOverrides!).Keyword);
+        var history = Assert.IsType<PrototypeAiCombatHistory>(result.History);
+        Assert.Equal(4, history.CardsPlayedThisTurn);
+        Assert.Equal(2, history.AttacksPlayedThisTurn);
+        Assert.Equal(1, history.SkillsPlayedThisTurn);
+        Assert.Equal(3, history.AttacksPlayedLastTurn);
+        Assert.Equal(9, history.CardsPlayedThisCombat);
+        Assert.Equal(4, history.ManualCardsPlayedThisTurn);
+
+        var observationJson = CanonicalJson.Serialize(observation);
+        Assert.DoesNotContain(state.RunSeed, observationJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("played_card_ids", observationJson,
+            StringComparison.OrdinalIgnoreCase);
+    }
 }
