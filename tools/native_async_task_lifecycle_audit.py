@@ -113,6 +113,8 @@ def audit_native_task_lifecycle(records: list[dict]) -> dict:
             site = data.get("site")
             turn = data.get("turn")
             pending = data.get("tracked_pending_task_count")
+            transient = data.get("tracked_pending_non_turn_loop_count")
+            turn_loops = data.get("tracked_pending_turn_loop_count")
             by_family = data.get("tracked_pending_by_family")
             ids = data.get("pending_task_ids")
             totals = (data.get("registered_task_count"),
@@ -122,6 +124,9 @@ def audit_native_task_lifecycle(records: list[dict]) -> dict:
                 or data.get("coverage") != COVERAGE
                 or data.get("exhaustive_native_task_inventory") is not False
                 or type(pending) is not int or pending < 0
+                or type(transient) is not int or transient < 0
+                or type(turn_loops) is not int or turn_loops < 0
+                or transient + turn_loops != pending
                 or not isinstance(by_family, dict)
                 or not isinstance(ids, list)
                 or any(type(x) is not int for x in ids)
@@ -131,7 +136,8 @@ def audit_native_task_lifecycle(records: list[dict]) -> dict:
                 or type(overflow) is not int or overflow < last_overflow
                 or any(f not in FAMILIES or type(v) is not int or v < 0
                        for f,v in by_family.items())
-                or by_family != dict(Counter(f for f, _ in opened.values()))):
+                or by_family != dict(Counter(f for f, _ in opened.values()))
+                or turn_loops != by_family.get("TURN_LOOP", 0)):
                 result["errors"].append(f"Invalid task checkpoint counts at {ordinal}")
             if type(overflow) is int and overflow >= 0:
                 last_overflow = overflow
@@ -152,8 +158,10 @@ def audit_native_task_lifecycle(records: list[dict]) -> dict:
                         "turn": turn,
                         "ordinal": ordinal,
                         "tracked_pending_task_count": pending,
-                        "observed_covered_task_quiescence": pending == 0
-                            and overflow == 0,
+                        "tracked_pending_non_turn_loop_count": transient,
+                        "tracked_pending_turn_loop_count": turn_loops,
+                        "observed_non_turn_loop_tasks_quiescent":
+                            transient == 0 and overflow == 0,
                         "native_settlement_certified": False,
                     })
             elif turn is not None:
