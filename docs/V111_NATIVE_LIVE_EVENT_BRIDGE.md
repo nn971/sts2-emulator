@@ -866,3 +866,48 @@ Before the **next** native-game session, re-run
 then install the newly staged DLL/PCK/manifest while the game is closed.
 No original-game restart is necessary to inspect the existing saved
 967-record sidecar offline.
+
+
+## Paired tracked-native RNG snapshots at action boundaries (2026-11-03)
+
+The pinned v0.111 native first-combat sidecar contains a source
+`native_rng_stream_checkpoint` immediately after each observed
+`PlayCardAction` completion and immediately after the following
+`action_started`. At all **16** public-projection-stable card/next-action
+windows, those **15 individually named native persistent stream** cursors
+are identical on both sides (counter and all four 64-bit state words).
+This is a **bounded source/source observation**. The native capture
+explicitly labels `complete_native_rng_inventory=false`, so no
+exhaustive RNG or automatic-effect settlement claim follows.
+
+`tools/native_intermediate_rng_audit.py` validates the strict
+`completion_ordinal+1` / `next_action_start_ordinal+1` source
+snapshots, phase labels, unique stream names, all 15 counters and
+64-bit state words. Missing/malformed or changed intervals are
+reported separately, and its compact summary is included under
+`post_card_tracked_rng_windows` in the strict action-envelope audit.
+
+The persistent independent emulator coordinator now **also compares
+the emulator's typed native RNG provider state** at those exact
+source-stable post-card boundaries when both native snapshots
+agree. It uses the existing stream-codec / four-word / call-count
+comparison contract used for turn checkpoints. The local
+`--probe-post-card-windows` report contains
+`rng_source_stable_windows`, `rng_source_changed_windows`,
+`rng_source_unverifiable_windows`, `rng_emulator_compared`,
+`rng_emulator_15_stream_matches`, `rng_emulator_differences`,
+`rng_emulator_unavailable` and a small
+`first_rng_difference` with stream ID and source ordinal.
+
+**RNG results are diagnostic-only:** they are excluded from authenticated
+F8 feedback and never trigger a new terminal error. Source snapshots
+may omit RNG paths that exist elsewhere in the original game, and
+the emulator's native RNG provider must be checked against a real
+sidecar before promoting intermediate RNG equality into the accepted
+lockstep contract. All results retain
+`native_settlement_certified=false`.
+
+Re-run the preserved sidecar with the same original command and
+`--probe-post-card-windows`; the report will now include the RNG
+comparison counters. **No original-game launch or native mod rebuild
+is needed for this offline step.**
