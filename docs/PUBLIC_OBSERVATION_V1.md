@@ -21,7 +21,10 @@ tested. Do not silently treat v0 and v1 observations as identical.
 | `deck[].enchantment` | Public inventory | `CardInstance.Enchantment` | Current persistent card enchantment, including amount/disabled |
 | `combat.hand/discard_pile/exhaust_pile/play_pile/selection_candidates[].enchantment` | Visible cards/candidate dialogs | `CombatCardInstance.Enchantment` | Enchantment of that concrete visible card |
 | `combat.*[].affliction` | Visible cards/candidates | `CombatCardInstance.Affliction` | Card-local affliction, already exported |
-| `combat.*[].combat_energy_cost_delta` | Visible card-local cost modifier | `CombatCardInstance.CombatEnergyCostDelta` | Delta, **not** final effective cost |
+| `combat.*[].combat_energy_cost_delta` | Visible card-local cost modifier | `CombatCardInstance.CombatEnergyCostDelta` | Raw delta |
+| `combat.*[].cost_kind` | Visible card cost symbol | `PrototypeContent.Card(card.CardId).Cost.Kind` | Fixed or X |
+| `combat.*[].effective_energy_cost` | Visible current fixed-card cost | Same `ResolveFixedCardEnergyCost` used by play/affordability | Exact fixed energy cost including relics, powers and afflictions; absent for X |
+| `deck[].cost_kind` | Public card catalog | Card definition | Fixed or X; no combat-local effective cost |
 | `combat.*[].temporary_energy_cost` | Visible card-local cost override | `CombatCardInstance.TemporaryEnergyCost` | Current override and expiry |
 | `combat.*[].keyword_overrides` | Visible card keyword state | `CombatCardInstance.KeywordOverrides` | Applied keyword overrides and expiry |
 | `combat.*[].enchantment_triggered_this_combat` | Publicly reconstructible activation | `CombatCardInstance.EnchantmentTriggeredThisCombat` | Known use state for revealed card |
@@ -43,9 +46,9 @@ codec must read `state`, not `persistent_state`.
 
 ## Still outstanding from the roadmap
 
-- Calculate and expose the **actual current effective cost** using the same
-  action-eligibility mechanics as the engine, with dynamic contexts covered.
-  The delta and override added in this slice are not a substitute.
+- Validate fixed-card current effective cost and X-cost classification across
+  relic, power, affliction and dynamic-cost fixtures. X-cost cards retain the
+  visible X symbol, so `effective_energy_cost` is absent for them.
 - Add full cross-phase field-path coverage fixtures and machine-readable
   omitted/visible classifications (including nested reward/shop/event offers).
 - Match the v1 schema in the AI parser, validate missing versus zero, and
