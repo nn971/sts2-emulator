@@ -21,6 +21,7 @@ TRACKED = (
     "history_entry", "native_phase_handoff", "action_started",
     "nested_choice_pause", "action_resumed",
     "native_shuffle_operation", "native_initial_hp_roll",
+    "native_async_task_lifecycle",
 )
 INPUT = frozenset(("native_input_request",))
 CANONICAL = frozenset(("play_card", "end_turn"))
