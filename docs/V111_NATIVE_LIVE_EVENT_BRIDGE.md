@@ -911,3 +911,57 @@ Re-run the preserved sidecar with the same original command and
 `--probe-post-card-windows`; the report will now include the RNG
 comparison counters. **No original-game launch or native mod rebuild
 is needed for this offline step.**
+
+
+## Bounded awaited-turn + idle-frame witnesses (2026-11-03)
+
+`tools/native_awaited_turn_witness_audit.py` now links each **observed
+playable player-turn checkpoint** to independent source chronology and
+the native queue/tracked-effect flags. The strict action-envelope audit
+exposes this summary under `awaited_turn_witnesses`.
+
+For a normal turn after the first, the witness requires this ordered
+source chain:
+
+1. The previous player's phase-one await returned
+   (`AboutToSwitchToEnemyTurn`).
+2. Phase-two await returned and native side switched to Enemy
+   (`TurnEnded`).
+3. Enemy start hooks awaited and returned (`TurnStarted`).
+4. Enemy actions and end hooks awaited and returned; native side
+   switched back to Player (`TurnEnded`).
+5. Player setup / auto-preplay hooks reached the Play phase
+   (`TurnStarted` or a later witnessed playable frame after a
+   `HookPlayerChoiceContext` pause).
+6. A later source-observed native player frame has **all eight**
+   queue/executor flags and **all three** tracked-effect flags true.
+
+For extra turns, the audit recognizes the native source's own
+extra-player-turn branch; it does not invent an enemy turn.
+Missing/misordered callbacks, unobserved playable frames, active
+tracked effects and partial hook pauses are explicitly reported as
+`BOUNDARY_WITNESS_INCOMPLETE`. The first turn requires its player-start
+source callback and subsequent idle playable frame, not an invented
+earlier combat transition.
+
+This means **specific source-awaited hook chains plus one measured
+idle frame**. The output remains
+`SOURCE_BOUNDED_TURN_WITNESSES_OBSERVED_UNCERTIFIED` at best, always
+with `native_settlement_certified=false` and
+`arbitrary_delayed_effects_excluded=false`. The native original game
+can still schedule future or external tasks after those observations.
+The witness therefore augments mechanical diagnostics without
+changing native gameplay, the F8 acceptance status, the RNG provider,
+or the established independent emulator replay contract.
+
+The preserved original-game six-turn capture can be re-audited
+**offline, without another game launch**:
+
+```fish
+cd ~/projects/sts2-inspector
+python tools/native_action_envelope_audit.py \
+    "/mnt/d/SteamLibrary/sts2-inspector-traces/passive-20261102-121956051-e8c8ed546a234bdcb6498e17e1f5f3f9.actions.jsonl" \
+    --out /tmp/native-awaited-turn-witness-audit.json
+jq '.status, .awaited_turn_witnesses' \
+    /tmp/native-awaited-turn-witness-audit.json
+```
