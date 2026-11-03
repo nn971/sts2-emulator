@@ -60,6 +60,20 @@ internal static class Program
         new("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSynchronizer", "property", "CombatState"),
         new("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSynchronizer", "field",
             "_requestedActionsWaitingForPlayerTurn"),
+        // Optional read-only async lifecycle instrumentation. Metadata
+        // existence is checked even if STS2_FIDELITY_TASK_HOOK is disabled;
+        // the actual Harmony binding remains subject to runtime validation.
+        new("MegaCrit.Sts2.Core.GameActions.GameAction", "method", "Execute"),
+        new("MegaCrit.Sts2.Core.GameActions.GameAction", "field", "_executionTask"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+            "method", "AssignTaskAndWaitForPauseOrCompletion"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+            "method", "WaitForPauseOrCompletionWithoutAssigningTask"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+            "method", "WaitForCompletion"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+            "property", "Task"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "RunTurnLoopAfter"),
         new("MegaCrit.Sts2.Core.GameActions.ReadyToBeginEnemyTurnAction", "type", ""),
         new("MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction", "type", "")
     ];
