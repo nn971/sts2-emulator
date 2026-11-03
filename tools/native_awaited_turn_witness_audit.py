@@ -21,13 +21,18 @@ def audit_awaited_turn_witnesses(records: list[dict],
                                 phase_report: dict | None = None) -> dict:
     phase = phase_report if phase_report is not None else audit_phase_handoffs(records)
     milestones = phase.get("awaited_source_milestones", [])
-    starts = {
-        (row.get("data") or {}).get("turn"): row.get("ordinal")
-        for row in records if isinstance(row, dict)
-        and row.get("type") == "native_phase_handoff"
-        and (row.get("data") or {}).get("source_event") == "TURN_STARTED"
-        and (row.get("data") or {}).get("native_side") == "Player"
-    }
+    starts = {}
+    for row in records:
+        if not isinstance(row, dict) or row.get("type") != "native_phase_handoff":
+            continue
+        data = row.get("data")
+        if (not isinstance(data, dict)
+            or data.get("source_event") != "TURN_STARTED"
+            or data.get("native_side") != "Player"):
+            continue
+        turn = data.get("turn")
+        if type(turn) is int and type(row.get("ordinal")) is int:
+            starts[turn] = row["ordinal"]
 
     result = {
         "status": "NOT_CAPTURED",
