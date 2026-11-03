@@ -29,12 +29,13 @@ from native_lockstep_source_journal import build as build_source_journal
 from native_action_envelope_audit import (queue_quiescence_status,
                                          automatic_effect_evidence_status)
 from native_action_window_audit import _first_difference as native_window_difference
+from native_intermediate_rng_audit import compare_source_rng_window
 from native_lockstep_shadow import _resolve
 from native_run_bootstrap import run_bootstrap
 from native_run_prelude_audit import load as load_prelude, audit as audit_prelude
 from native_turn_checkpoint_replay import (
     check_prelude_pair, derive_crosswalk, first_difference,
-    _selected_choice, replay,
+    _selected_choice, replay, _check_rng,
 )
 
 RESULT_SCHEMA = "sts2-native-fidelity-result-v1"
@@ -149,6 +150,8 @@ class IncrementalFidelityCoordinator:
         self.probe_post_card_windows = probe_post_card_windows
         self._previous_card_completion = None
         self._last_phase_handoff_ordinal = 0
+        self._last_post_card_rng = None
+        self._pending_rng_window = None
         self.post_card_probe = {
             "source_stable_windows": 0,
             "emulator_comparisons": 0,
@@ -156,6 +159,15 @@ class IncrementalFidelityCoordinator:
             "deferred_native_windows": 0,
             "first_difference": None,
             "native_settlement_certified": False,
+            "rng_source_stable_windows": 0,
+            "rng_source_changed_windows": 0,
+            "rng_source_unverifiable_windows": 0,
+            "rng_emulator_compared": 0,
+            "rng_emulator_15_stream_matches": 0,
+            "rng_emulator_differences": 0,
+            "rng_emulator_unavailable": 0,
+            "first_rng_difference": None,
+            "tracked_rng_stream_inventory_exhaustive": False,
             "status": "DIAGNOSTIC_ONLY",
         }
 
@@ -344,6 +356,8 @@ class IncrementalFidelityCoordinator:
         """
         previous = self._previous_card_completion
         self._previous_card_completion = None
+        post_rng = self._last_post_card_rng
+        self._last_post_card_rng = None
         if previous is None:
             return
         first = previous.get("state")
@@ -359,6 +373,13 @@ class IncrementalFidelityCoordinator:
             self.post_card_probe["deferred_native_windows"] += 1
             return
         self.post_card_probe["source_stable_windows"] += 1
+        self._pending_rng_window = {
+            "post_rng": post_rng,
+            "prior_card_action_id": previous["action_id"],
+            "completion_ordinal": left,
+            "next_start_ordinal": right,
+            "next_action_id": record.get("action_id"),
+        }
         snapshot = json.loads(self.state.save_snapshot())
         difference = first_difference(second, snapshot, self.crosswalk)
         if difference is not None and difference.get("reason") in (
@@ -385,6 +406,65 @@ class IncrementalFidelityCoordinator:
                 "completion and next native action start; settlement unverified",
                 self.post_card_probe["first_difference"])
 
+    def _observe_rng_boundary(self, record: dict):
+        """Check source paired RNG snapshots and the emulator, for diagnostics.
+
+        The 15 observed persistent streams are *not* an exhaustive native
+        RNG inventory. A mismatch is recorded only in local diagnostics
+        until source/independent emulator RNG provenance is fully audited.
+        """
+        data = record.get("data")
+        phase = data.get("phase") if isinstance(data, dict) else None
+        prior = self._previous_card_completion
+        if (phase == "after_action" and prior is not None
+            and record.get("ordinal") == prior.get("ordinal", -2) + 1):
+            self._last_post_card_rng = record
+            return
+        pending = self._pending_rng_window
+        if pending is None or phase != "before_action":
+            return
+        self._pending_rng_window = None
+        stats = self.post_card_probe
+        status, streams = compare_source_rng_window(
+            pending["post_rng"], record,
+            completion_ordinal=pending["completion_ordinal"],
+            next_start_ordinal=pending["next_start_ordinal"],
+            next_action_id=pending["next_action_id"])
+        if status == "SOURCE_RNG_CHANGED_BETWEEN_CALLBACKS":
+            stats["rng_source_changed_windows"] += 1
+            return
+        if streams is None:
+            stats["rng_source_unverifiable_windows"] += 1
+            return
+        stats["rng_source_stable_windows"] += 1
+        result = _check_rng(streams, json.loads(self.state.save_snapshot()))
+        if result["status"] == "SOURCE_BRACKETED_15_STREAMS_AGREE":
+            stats["rng_emulator_compared"] += 1
+            stats["rng_emulator_15_stream_matches"] += 1
+        elif result["status"] == "RNG_STREAM_DIFFERENCE":
+            stats["rng_emulator_compared"] += 1
+            stats["rng_emulator_differences"] += 1
+            if stats["first_rng_difference"] is None:
+                # Preserve the identity of the first diverging stream,
+                # not its private 64-bit native RNG state words.
+                stats["first_rng_difference"] = {
+                    "card_action_id": pending.get("prior_card_action_id"),
+                    "next_action_start_ordinal": pending["next_start_ordinal"],
+                    "stream_id": result.get("stream_id"),
+                    "status": result["status"],
+                    "native_settlement": "SETTLEMENT_UNVERIFIED",
+                }
+        else:
+            stats["rng_emulator_unavailable"] += 1
+            if stats["first_rng_difference"] is None:
+                stats["first_rng_difference"] = {
+                    "card_action_id": pending.get("prior_card_action_id"),
+                    "next_action_start_ordinal": pending["next_start_ordinal"],
+                    "stream_id": result.get("stream_id"),
+                    "status": result["status"],
+                    "native_settlement": "SETTLEMENT_UNVERIFIED",
+                }
+
     def _process(self, record: dict):
         kind = record.get("type")
         if kind == "observation_failure" or kind == "anomaly":
@@ -394,6 +474,8 @@ class IncrementalFidelityCoordinator:
         self._bootstrap_if_ready()
         if self.stopped:
             return
+        if kind == "native_rng_stream_checkpoint":
+            self._observe_rng_boundary(record)
         if kind == "native_phase_handoff":
             # Constant-time guard for interposed native turn-loop callbacks;
             # avoids quadratic rescanning as a live combat journal grows.
@@ -451,6 +533,11 @@ class IncrementalFidelityCoordinator:
                     "containing_executor_action_id": record["action_id"],
                     **data})
         elif kind == "action_completed":
+            if self._pending_rng_window is not None:
+                # The next action has already reached completion without
+                # its expected immediate before_action RNG sample.
+                self.post_card_probe["rng_source_unverifiable_windows"] += 1
+                self._pending_rng_window = None
             aid = record.get("action_id")
             if aid in self.pending:
                 was_card = self.pending[aid]["action"].get("kind") == "play_card"
