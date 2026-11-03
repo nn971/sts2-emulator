@@ -16,7 +16,17 @@ public sealed record PrototypeAiCard(
     JsonElement State,
     // The native UI reveals an affliction on each visible card.
     // Never expose draw-pile order through this field.
-    PrototypeCardAffliction? Affliction = null);
+    PrototypeCardAffliction? Affliction = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCardEnchantment? Enchantment = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? CombatEnergyCostDelta = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeTemporaryCardCost? TemporaryEnergyCost = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCardKeywordOverride[]? KeywordOverrides = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    bool? EnchantmentTriggeredThisCombat = null);
 
 public sealed record PrototypeAiRelic(
     string RelicId,
@@ -56,6 +66,19 @@ public sealed record PrototypeAiEnemy(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     bool? IsMinion = null);
 
+/// <summary>
+/// Counts derived from observable card-play history, with no hidden draw order
+/// or unrevealed enemy actions. These are visible-history summaries, not
+/// private event subscribers.
+/// </summary>
+public sealed record PrototypeAiCombatHistory(
+    int CardsPlayedThisTurn,
+    int AttacksPlayedThisTurn,
+    int SkillsPlayedThisTurn,
+    int AttacksPlayedLastTurn,
+    int CardsPlayedThisCombat,
+    int ManualCardsPlayedThisTurn);
+
 public sealed record PrototypeAiCombat(
     int Turn,
     int Energy,
@@ -74,7 +97,9 @@ public sealed record PrototypeAiCombat(
     PrototypeAiCard[]? SelectionCandidates = null,
     // Cards already chosen in an opt-in sequential selection dialog.
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeAiCard[]? SelectionSelectedCards = null);
+    PrototypeAiCard[]? SelectionSelectedCards = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiCombatHistory? History = null);
 
 public sealed record PrototypeAiMapNode(
     string NodeId,
@@ -242,7 +267,11 @@ public sealed record PrototypeAiObservation(
     int? DefeatTotalNonMinionEnemyHp = null,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    int? DefeatRemainingNonMinionEnemyHp = null);
+    int? DefeatRemainingNonMinionEnemyHp = null,
+    // Slots are fixed-capacity player-visible inventory, even when empty.
+    int? PotionSlotCapacity = null,
+    int? PotionSlotsOccupied = null,
+    int? PotionSlotsEmpty = null);
 
 public sealed record PrototypeAiFrame(
     string SchemaId,
@@ -273,7 +302,7 @@ public sealed record PrototypeAiRolloutFrame(
 /// </summary>
 public sealed class PrototypeAiEnvironment
 {
-    public const string SchemaId = "prototype-ai-v0";
+    public const string SchemaId = "prototype-ai-v1";
 
     private readonly PrototypeGameEngine _engine = new();
 
@@ -507,7 +536,9 @@ public sealed class PrototypeAiEnvironment
                     card.CardId,
                     card.UpgradeLevel,
                     IsTemporary: false,
-                    card.PersistentState.Clone())).ToArray(),
+                    card.PersistentState.Clone(),
+                    Enchantment: card.Enchantment is null
+                        ? null : card.Enchantment with { })).ToArray(),
             Relics: state.Player.Relics.Select(relic =>
                 new PrototypeAiRelic(
                     relic.RelicId,
@@ -700,7 +731,10 @@ public sealed class PrototypeAiEnvironment
             DefeatTotalNonMinionEnemyHp: world is { Combat: null, TerminalOutcome: "defeat" }
                 ? world.DefeatTotalNonMinionEnemyHp : null,
             DefeatRemainingNonMinionEnemyHp: world is { Combat: null, TerminalOutcome: "defeat" }
-                ? world.DefeatRemainingNonMinionEnemyHp : null);
+                ? world.DefeatRemainingNonMinionEnemyHp : null,
+            PotionSlotCapacity: state.Player.PotionSlots.Length,
+            PotionSlotsOccupied: state.Player.PotionSlots.Count(potion => potion is not null),
+            PotionSlotsEmpty: state.Player.PotionSlots.Count(potion => potion is null));
     }
 
     /// <summary>
@@ -968,8 +1002,17 @@ public sealed class PrototypeAiEnvironment
                 card.IsTemporary,
                 card.State.Clone(),
                 card.Affliction is null
-                    ? null
-                    : card.Affliction with { });
+                    ? null : card.Affliction with { },
+                Enchantment: card.Enchantment is null
+                    ? null : card.Enchantment with { },
+                CombatEnergyCostDelta: card.CombatEnergyCostDelta,
+                TemporaryEnergyCost: card.TemporaryEnergyCost is null
+                    ? null : card.TemporaryEnergyCost with { },
+                KeywordOverrides: card.KeywordOverrides is null
+                    ? null : card.KeywordOverrides.Select(keyword =>
+                        keyword with { }).ToArray(),
+                EnchantmentTriggeredThisCombat:
+                    card.EnchantmentTriggeredThisCombat);
         }
 
         return new PrototypeAiCombat(
@@ -1016,6 +1059,13 @@ public sealed class PrototypeAiEnvironment
                     .Select(Card).ToArray(),
             SelectionSelectedCards: exposeCompactSelection
                 && combat.PendingChoice?.SequentialSelectedCardInstanceIds
-                is { } selected ? selected.Select(Card).ToArray() : null);
+                is { } selected ? selected.Select(Card).ToArray() : null,
+            History: new PrototypeAiCombatHistory(
+                combat.CounterState.CardsPlayedThisTurn,
+                combat.CounterState.AttacksPlayedThisTurn,
+                combat.CounterState.SkillsPlayedThisTurn,
+                combat.CounterState.AttacksPlayedLastTurn,
+                combat.CounterState.CardsPlayedThisCombat,
+                combat.CounterState.ManualCardsPlayedThisTurn));
     }
 }
