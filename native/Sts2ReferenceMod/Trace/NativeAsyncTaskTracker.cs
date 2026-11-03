@@ -86,8 +86,10 @@ public sealed class NativeAsyncTaskTracker
         var byFamily = _pending.Values.GroupBy(x => x.Family)
             .ToDictionary(g => g.Key, g => g.Count(),
                 StringComparer.Ordinal);
+        var transientPending = _pending.Values.Count(
+            x => x.Family != "TURN_LOOP");
         _recorder.NativeAsyncTaskCheckpoint(turn, site,
-            _pending.Count, byFamily, _registered, _completed,
+            _pending.Count, transientPending, byFamily, _registered, _completed,
             _overflow, _pending.Keys.OrderBy(id => id).ToArray());
     }
 
