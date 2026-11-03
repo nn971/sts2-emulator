@@ -12,6 +12,7 @@ import json
 import math
 from native_phase_handoff_audit import audit_phase_handoffs
 from native_awaited_turn_witness_audit import audit_awaited_turn_witnesses
+from native_idle_async_exposure_audit import audit_idle_frame_exposures
 from native_action_window_audit import audit_action_windows
 from native_intermediate_rng_audit import audit_native_rng_windows
 from collections import Counter
@@ -320,6 +321,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "source_tracked_effect_idle_player_checkpoints": 0,
         "native_phase_handoff": None,
         "awaited_turn_witnesses": None,
+        "idle_async_exposures": None,
         "post_card_windows": None,
         "post_card_tracked_rng_windows": None,
         "player_checkpoint_phase_callback_pairs": 0,
@@ -1239,6 +1241,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     report["native_phase_handoff"] = phase_handoff
     report["awaited_turn_witnesses"] = audit_awaited_turn_witnesses(
         records, report["turn_boundary_candidates"], phase_handoff)
+    report["idle_async_exposures"] = audit_idle_frame_exposures(records)
     report["post_card_windows"] = audit_action_windows(records)
     report["post_card_tracked_rng_windows"] = audit_native_rng_windows(
         records, source_windows=report["post_card_windows"]["source_windows"])
