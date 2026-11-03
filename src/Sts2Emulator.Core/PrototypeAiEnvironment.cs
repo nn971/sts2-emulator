@@ -167,7 +167,10 @@ public sealed record PrototypeAiReward(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeAiRewardCardReroll[]? AvailableCardRerolls = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeAiExtraPotionReward[]? PendingExtraPotionRewards = null);
+    PrototypeAiExtraPotionReward[]? PendingExtraPotionRewards = null,
+    // The visible choices in an active choose-a-bundle reward screen.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string[][]? CardBundles = null);
 
 public sealed record PrototypeAiEventDeckChoice(
     string ChoiceId,
@@ -660,6 +663,9 @@ public sealed class PrototypeAiEnvironment
                             .Select(index => new PrototypeAiExtraPotionReward(
                                 index, extraPotions[index]))
                             .ToArray()
+                        : null,
+                    world.Reward is { CardResolved: false, CardBundles: { } bundles }
+                        ? bundles.Select(cards => (string[])cards.Clone()).ToArray()
                         : null),
             Shop: world?.Shop is null
                 ? null
