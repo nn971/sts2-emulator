@@ -1236,7 +1236,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     phase_handoff = audit_phase_handoffs(records)
     report["native_phase_handoff"] = phase_handoff
     report["post_card_windows"] = audit_action_windows(records)
-    report["post_card_tracked_rng_windows"] = audit_native_rng_windows(records)
+    report["post_card_tracked_rng_windows"] = audit_native_rng_windows(
+        records, source_windows=report["post_card_windows"]["source_windows"])
     strict_failures.extend(phase_handoff["errors"])
     report["native_hand_menu_open_lifetimes"] = sorted(
         menu_id for menu_id, menu in menus_by_id.items() if not menu["closed"])
