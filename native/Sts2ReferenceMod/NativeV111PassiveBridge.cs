@@ -61,6 +61,10 @@ internal static class NativeV111PassiveBridge
     private static MegaCrit.Sts2.Core.Runs.RunState? _macroRunState;
     private static readonly List<(MerchantEntry Entry,
         Action<PurchaseStatus, MerchantEntry> Handler)> _shopHandlers = [];
+    private static readonly Dictionary<object, int> _shopSourceSlots =
+        new(ReferenceEqualityComparer.Instance);
+    private static readonly Dictionary<object, int> _shopLastSourceCosts =
+        new(ReferenceEqualityComparer.Instance);
     private static readonly FieldInfo? NativeMerchantBaseCostField =
         typeof(MerchantEntry).GetField("_cost",
             BindingFlags.Instance | BindingFlags.NonPublic);
@@ -232,6 +236,18 @@ internal static class NativeV111PassiveBridge
 
     internal static void NativeMacroRewardsSkipped() =>
         _macroEnvelopes?.RewardsSkipped();
+
+    internal static void NativeMacroShopCostObserved(MerchantEntry entry, int cost)
+    {
+        if (_macroEnvelopes is null || !_shopSourceSlots.TryGetValue(
+                entry, out int slot))
+            return;
+        if (_shopLastSourceCosts.TryGetValue(entry, out int prior)
+            && prior == cost)
+            return;
+        _shopLastSourceCosts[entry] = cost;
+        _macroEnvelopes.ShopSourceCostObserved(slot, cost);
+    }
 
     internal static void NativeMacroRunEnded(bool victory)
     {
@@ -695,6 +711,8 @@ internal static class NativeV111PassiveBridge
         foreach (var (entry, handler) in _shopHandlers)
             entry.PurchaseCompleted -= handler;
         _shopHandlers.Clear();
+        _shopSourceSlots.Clear();
+        _shopLastSourceCosts.Clear();
     }
 
     private static void CaptureMacroShop(string cause)
@@ -711,6 +729,7 @@ internal static class NativeV111PassiveBridge
                 throw new MissingFieldException("MerchantEntry._cost");
             var offers = merchant.Inventories[0].AllEntries.Select((entry, slot) =>
             {
+                _shopSourceSlots[entry] = slot;
                 int baseCost = (int)(NativeMerchantBaseCostField.GetValue(entry)
                     ?? throw new InvalidOperationException("SOURCE_BASE_COST_MISSING"));
                 string? model = entry switch
