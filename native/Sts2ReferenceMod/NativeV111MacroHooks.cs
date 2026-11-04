@@ -22,7 +22,7 @@ internal static class NativeV111MacroHooks
     internal static void TryInstall()
     {
         if (IsInstalled ||
-            Environment.GetEnvironmentVariable("STS2_FIDELITY_MACRO_HOOK") != "1")
+            System.Environment.GetEnvironmentVariable("STS2_FIDELITY_MACRO_HOOK") != "1")
             return;
         if (!NativeV111PassiveBridge.ReadyForNativeRngHook)
         {
