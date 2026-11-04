@@ -149,7 +149,8 @@ public sealed class PrototypePowerTests
             else
             {
                 Assert.Equal(1, enemy.Statuses["proto.status.poison"]);
-                Assert.Empty(enemy.PowerStates);
+                Assert.Equal(1, Assert.Single(enemy.PowerStates)
+                    .LegacyStatusStacks);
             }
         });
         Assert.Equal(1, Assert.Single(combat.PlayerPowers).Stacks);

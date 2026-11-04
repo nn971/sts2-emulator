@@ -84,8 +84,13 @@ public sealed class PrototypeEnemyEffectPowerCatalogTests
 
         // Legacy card status and a separate canonical relic power may both
         // be present, and both applications must contribute their stacks.
-        var combined = legacy with { Powers = canonical.Powers };
+        var combined = legacy with
+        {
+            Powers = [new PrototypePowerInstanceState(
+                "proto.power.weak", 4, 7, LegacyStatusStacks: 2)]
+        };
         Assert.Equal(4, combined.EnemyEffectStacks("proto.status.weak"));
+        Assert.Equal(2, combined.Statuses["proto.status.weak"]);
         // Staged migration preserves distinct power instances and fork identity.
         var fork = canonical.Fork();
         Assert.NotSame(canonical.Powers, fork.Powers);
@@ -164,7 +169,8 @@ public sealed class PrototypeEnemyEffectPowerCatalogTests
             legacy, 11, "proto.status.weak", 2);
         Assert.Equal(2, Assert.Single(legacy.Enemies)
             .Statuses["proto.status.weak"]);
-        Assert.Empty(Assert.Single(legacy.Enemies).PowerStates);
+        Assert.Equal(2, Assert.Single(Assert.Single(legacy.Enemies).PowerStates)
+            .LegacyStatusStacks);
     }
 
     [Fact]

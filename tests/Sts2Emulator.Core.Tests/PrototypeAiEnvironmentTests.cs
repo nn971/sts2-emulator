@@ -534,15 +534,12 @@ public sealed class PrototypeAiEnvironmentTests
         var combat = Assert.IsType<CombatState>(state.World!.Combat);
         var enemy = combat.Enemies[0] with
         {
-            Statuses = new Dictionary<string, int>(StringComparer.Ordinal)
-            {
-                ["proto.status.weak"] = 2,
-                ["proto.status.poison"] = 3
-            },
             Powers = combat.Enemies[0].PowerStates.Concat(
             [
-                new PrototypePowerInstanceState("proto.power.weak", 1, 900),
-                new PrototypePowerInstanceState("proto.power.poison", 4, 901),
+                new PrototypePowerInstanceState("proto.power.weak", 3, 900,
+                    LegacyStatusStacks: 2),
+                new PrototypePowerInstanceState("proto.power.poison", 7, 901,
+                    LegacyStatusStacks: 3),
                 new PrototypePowerInstanceState("proto.power.strength", 2, 902)
             ]).ToArray()
         };
