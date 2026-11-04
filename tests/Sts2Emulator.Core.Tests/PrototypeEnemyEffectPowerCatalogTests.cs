@@ -352,4 +352,47 @@ public sealed class PrototypeEnemyEffectPowerCatalogTests
             .EnemyEffectStacks("proto.status.poison"));
         Assert.NotSame(recovered.Enemies, fork.Enemies);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LethalPoisonStillProcessesOtherEnemiesInSameTurn(
+        bool canonicalEnemyEffects)
+    {
+        // Both modes must dispatch the first enemy's death and continue
+        // processing poison on the surviving enemy in formation order.
+        var first = EffectEnemy(hp: 2);
+        var second = EffectEnemy(hp: 12) with { InstanceId = 12 };
+        var combat = EffectCombat(first) with
+        {
+            Enemies = [first, second],
+            CanonicalEnemyEffectPowers = canonicalEnemyEffects
+        };
+        combat = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+            combat, 11, "proto.status.poison", 3);
+        combat = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+            combat, 12, "proto.status.poison", 2);
+
+        var rng = PrototypeRng.CreateBundle(
+            "p1-lethal-poison-" + canonicalEnemyEffects);
+        combat = PrototypeGameEngine.ResolveEnemyStatusStageForSourceRegression(
+            combat, PrototypeTurnStage.EnemyTurnStart, rng);
+        var dead = Assert.Single(combat.Enemies,
+            enemy => enemy.InstanceId == 11);
+        var alive = Assert.Single(combat.Enemies,
+            enemy => enemy.InstanceId == 12);
+        Assert.Equal(0, dead.Hp);
+        Assert.Equal(10, alive.Hp);
+        Assert.Equal(1, alive.EnemyEffectStacks("proto.status.poison"));
+
+        combat = PrototypeGameEngine.ResolveEnemyStatusStageForSourceRegression(
+            combat, PrototypeTurnStage.EnemyTurnStart, rng);
+        dead = Assert.Single(combat.Enemies,
+            enemy => enemy.InstanceId == 11);
+        alive = Assert.Single(combat.Enemies,
+            enemy => enemy.InstanceId == 12);
+        Assert.Equal(0, dead.Hp);
+        Assert.Equal(9, alive.Hp);
+        Assert.Equal(0, alive.EnemyEffectStacks("proto.status.poison"));
+    }
 }
