@@ -84,6 +84,65 @@ public sealed class SemanticCardSelectionV111Tests
     }
 
     [Fact]
+    public void NonCompactDrawPileChoicePublishesOnlySelectedCandidates()
+    {
+        // Use a normal public-v0 entry rather than a synthetic semantic
+        // deck/Nature fixture. This must pass with the pinned H16 emulator.
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var run = environment.Reset("p2-h16-public-draw-pile-candidates");
+        run = engine.Step(run, Assert.Single(engine.GetLegalActions(run))).State;
+        var combatEntrance = engine.GetLegalActions(run).First(action =>
+        {
+            var payload = action.ReadPayload<ChooseMapNodePayload>();
+            return run.World!.Map.AvailableNodes()
+                .Single(node => node.NodeId == payload.NodeId)
+                .RoomType == PrototypeRoomType.Combat;
+        });
+        run = engine.Step(run, combatEntrance).State;
+        var combat = run.World!.Combat!;
+        Assert.NotEmpty(combat.Hand);
+        var selectedId = combat.Hand[0];
+        var hiddenDraw = combat with
+        {
+            Hand = combat.Hand.Skip(1).ToArray(),
+            DrawPile = combat.DrawPile.Append(selectedId).ToArray()
+        };
+        var ordinary = run with
+        {
+            ExperimentalCompactCardSelection = false,
+            World = run.World with { Combat = hiddenDraw }
+        };
+        var ordinaryFrame = environment.Observe(ordinary);
+        Assert.Null(ordinaryFrame.Observation.Combat!.SelectionCandidates);
+        Assert.Equal(hiddenDraw.DrawPile.Length,
+            ordinaryFrame.Observation.Combat.DrawPileCount);
+
+        var selection = PendingSelection(ordinary, PrototypeCardZone.DrawPile,
+            PrototypeCardSelectionResolutionKind.MoveToHand, [selectedId]);
+        var before = CanonicalJson.Sha256(selection);
+        var frame = environment.Observe(selection);
+        var publicCombat = frame.Observation.Combat!;
+        var candidate = Assert.Single(publicCombat.SelectionCandidates!);
+
+        Assert.Equal(selectedId, candidate.InstanceId);
+        Assert.Equal(hiddenDraw.Cards.Single(card =>
+            card.InstanceId == selectedId).CardId, candidate.CardId);
+        Assert.Equal(hiddenDraw.DrawPile.Length, publicCombat.DrawPileCount);
+        Assert.DoesNotContain(publicCombat.Hand, card =>
+            card.InstanceId == selectedId);
+        Assert.DoesNotContain(publicCombat.DiscardPile, card =>
+            card.InstanceId == selectedId);
+        Assert.DoesNotContain(publicCombat.ExhaustPile, card =>
+            card.InstanceId == selectedId);
+        Assert.Contains(frame.LegalActions, action =>
+            action.Kind == "select_cards" &&
+            action.Payload.Deserialize<SelectCardsPayload>() is { } chosen &&
+            chosen.CardInstanceIds.SequenceEqual([selectedId]));
+        Assert.Equal(before, CanonicalJson.Sha256(selection));
+    }
+
+    [Fact]
     public void RealHandSelectionCommitsTwoCardsToKnownTopInSourceOrder()
     {
         var (run, _) = PlayerWithSemanticDeck("semantic-select-top-two");

@@ -63,9 +63,10 @@ internal sealed class SemanticOperationProfiler
         counter.MaxTicks = Math.Max(counter.MaxTicks, elapsedTicks);
     }
 
-    public object SnapshotH8() => new
+    public object SnapshotH8(
+        string schemaId = "sts2-h8-nested-hotpath-performance-v1") => new
     {
-        schemaId = "sts2-h8-nested-hotpath-performance-v1",
+        schemaId,
         enabled = Enabled,
         processId = Environment.ProcessId,
         stopwatchFrequency = Stopwatch.Frequency,

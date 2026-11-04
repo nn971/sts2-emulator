@@ -76,6 +76,9 @@ internal static class PrototypeAiJsonlServer
         long nextH15Handle = 1;
         var semanticProfiler = new SemanticOperationProfiler();
         var h8Profiler = new SemanticOperationProfiler();
+        // Separate, opt-in P2.2 counters for H16/public-v0 fused JSONL.
+        // Default server behavior has no native profiler overhead.
+        var p2FusedProfiler = new SemanticOperationProfiler();
         string? activeOperation = null;
         long activeStarted = 0;
         long activeAllocated = 0;
@@ -3301,10 +3304,28 @@ internal static class PrototypeAiJsonlServer
                 !activeOperation.StartsWith("semantic_perf_", StringComparison.Ordinal);
             var started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
             var allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
-            output.WriteLine(JsonSerializer.Serialize(
+            var p2FusedMeasure = p2FusedProfiler.Enabled &&
+                StringComparer.Ordinal.Equals(activeOperation,
+                    "batch_rollout_step_frame");
+            var p2SerializeStarted = p2FusedMeasure
+                ? SemanticOperationProfiler.Timestamp() : 0L;
+            var p2SerializeAllocated = p2FusedMeasure
+                ? SemanticOperationProfiler.Allocated() : 0L;
+            var responseJson = JsonSerializer.Serialize(
                 response,
-                new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            if (p2FusedMeasure)
+                p2FusedProfiler.Record("fused.outer_json_serialize",
+                    p2SerializeStarted, p2SerializeAllocated);
+            var p2WriteStarted = p2FusedMeasure
+                ? SemanticOperationProfiler.Timestamp() : 0L;
+            var p2WriteAllocated = p2FusedMeasure
+                ? SemanticOperationProfiler.Allocated() : 0L;
+            output.WriteLine(responseJson);
             output.Flush();
+            if (p2FusedMeasure)
+                p2FusedProfiler.Record("fused.write_flush",
+                    p2WriteStarted, p2WriteAllocated);
             if (measure)
             {
                 semanticProfiler.Record("sub.semantic_wire_response", started, allocated);
@@ -11229,6 +11250,40 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "p2_h16_fused_perf_reset":
+                    {
+                        p2FusedProfiler.Reset();
+                        Write(new
+                        {
+                            requestId, ok = true,
+                            schemaId = "sts2-p2-h16-fused-native-profile-v1"
+                        });
+                        break;
+                    }
+
+                    case "p2_h16_fused_perf_read":
+                    {
+                        Write(new
+                        {
+                            requestId, ok = true,
+                            profile = p2FusedProfiler.SnapshotH8(
+                                "sts2-p2-h16-fused-native-profile-v1")
+                        });
+                        break;
+                    }
+
+                    case "p2_h16_fused_perf_stop":
+                    {
+                        p2FusedProfiler.Stop();
+                        Write(new
+                        {
+                            requestId, ok = true,
+                            profile = p2FusedProfiler.SnapshotH8(
+                                "sts2-p2-h16-fused-native-profile-v1")
+                        });
+                        break;
+                    }
+
                     case "batch_rollout_step_frame":
                     {
                         var policyId = RequiredString(request, "policy_id");
@@ -11261,8 +11316,48 @@ internal static class PrototypeAiJsonlServer
                                     : throw new InvalidOperationException(
                                         $"Unknown state handle '{parentHandle}'.");
 
+                                var p2Measure = p2FusedProfiler.Enabled;
+                                var started = p2Measure
+                                    ? SemanticOperationProfiler.Timestamp() : 0L;
+                                var allocated = p2Measure
+                                    ? SemanticOperationProfiler.Allocated() : 0L;
                                 var stepped = environment.RolloutStepFrame(state, actionId);
+                                if (p2Measure)
+                                    p2FusedProfiler.Record(
+                                        "fused.environment_step_frame",
+                                        started, allocated);
+
+                                started = p2Measure
+                                    ? SemanticOperationProfiler.Timestamp() : 0L;
+                                allocated = p2Measure
+                                    ? SemanticOperationProfiler.Allocated() : 0L;
                                 var childHandle = Store(stepped.State, parentHandle);
+                                if (p2Measure)
+                                    p2FusedProfiler.Record(
+                                        "fused.store_child_handle",
+                                        started, allocated);
+
+                                started = p2Measure
+                                    ? SemanticOperationProfiler.Timestamp() : 0L;
+                                allocated = p2Measure
+                                    ? SemanticOperationProfiler.Allocated() : 0L;
+                                var payloadJson = CanonicalJson.Serialize(
+                                    stepped.Observation);
+                                if (p2Measure)
+                                    p2FusedProfiler.Record(
+                                        "fused.canonical_observation_json",
+                                        started, allocated);
+
+                                started = p2Measure
+                                    ? SemanticOperationProfiler.Timestamp() : 0L;
+                                allocated = p2Measure
+                                    ? SemanticOperationProfiler.Allocated() : 0L;
+                                var legalActions =
+                                    stepped.LegalActions.Select(ActionWire).ToArray();
+                                if (p2Measure)
+                                    p2FusedProfiler.Record(
+                                        "fused.legal_action_projection",
+                                        started, allocated);
                                 return new
                                 {
                                     parent = parentHandle,
@@ -11270,8 +11365,8 @@ internal static class PrototypeAiJsonlServer
                                     terminal = stepped.State.Phase == RunPhase.Terminal,
                                     policyId,
                                     schemaId = PrototypeAiEnvironment.SchemaId,
-                                    payloadJson = CanonicalJson.Serialize(stepped.Observation),
-                                    legalActions = stepped.LegalActions.Select(ActionWire).ToArray()
+                                    payloadJson,
+                                    legalActions
                                 };
                             })
                             .ToArray();
@@ -11457,6 +11552,40 @@ internal static class PrototypeAiJsonlServer
                             requestId,
                             ok = true,
                             exactHash = CanonicalJson.Sha256(state)
+                        });
+                        break;
+                    }
+
+                    case "p2_exact_continuation_receipt":
+                    {
+                        // P2.1 preflight only. Return opaque fingerprints, never
+                        // the hidden RNG contents or provider-private controls.
+                        // The ordinary RunState snapshot projection may omit
+                        // members of its [JsonIgnore] Simulation.Stochastic
+                        // envelope. Fingerprint that envelope explicitly.
+                        var state = RequireState(request);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            schemaId = "sts2-p2-exact-continuation-receipt-v1",
+                            hashAlgorithm = "sha256-canonical-json",
+                            exactHash = CanonicalJson.Sha256(state),
+                            runStochasticHash =
+                                CanonicalJson.Sha256(state.Stochastic),
+                            worldStochasticHash = state.World is null
+                                ? null : CanonicalJson.Sha256(
+                                    state.World.Stochastic),
+                            combatNativeRngHash =
+                                state.World?.Combat?.NativeRng is { } combatRng
+                                    ? CanonicalJson.Sha256(combatRng)
+                                    : null,
+                            referenceNaturePresent =
+                                state.Stochastic.ReferenceNature is not null,
+                            semanticOtherChancePresent =
+                                state.Stochastic.SemanticOtherChance is not null,
+                            semanticRewardAuditPresent =
+                                state.Stochastic.SemanticRewardAudit is not null
                         });
                         break;
                     }

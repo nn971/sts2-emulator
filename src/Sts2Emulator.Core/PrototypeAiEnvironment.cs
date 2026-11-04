@@ -1010,12 +1010,18 @@ public sealed class PrototypeAiEnvironment
                 .Select(power => new PrototypeAiPower(
                     power.PowerId, power.Stacks))
                 .ToArray(),
-            SelectionCandidates: !exposeCompactSelection
-                || combat.PendingChoice is null
-                ? null : combat.PendingChoice.CandidateCardInstanceIds
-                    .Select(Card).ToArray(),
-            SelectionSelectedCards: exposeCompactSelection
-                && combat.PendingChoice?.SequentialSelectedCardInstanceIds
-                is { } selected ? selected.Select(Card).ToArray() : null);
+            // An active select_cards prompt reveals the candidate cards to
+            // the player, including cards drawn from a hidden-order zone.
+            // Publish only the prompt's candidate IDs and public attributes;
+            // the rest of DrawPile remains private. Compact action enumeration
+            // is a separate research-only feature.
+            SelectionCandidates: combat.PendingChoice is
+                { ChoiceId: "select_cards" } choice
+                ? choice.CandidateCardInstanceIds.Select(Card).ToArray()
+                : null,
+            SelectionSelectedCards: combat.PendingChoice is
+                { ChoiceId: "select_cards",
+                  SequentialSelectedCardInstanceIds: { } selected }
+                ? selected.Select(Card).ToArray() : null);
     }
 }
