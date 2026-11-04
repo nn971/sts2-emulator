@@ -35,6 +35,63 @@ public sealed class NativeActionEnvelopeRecorderTests
     }
 
     [Fact]
+    public async Task PlayerTurnRecordsSourceQueueQuiescenceWithoutCertifyingSettlement()
+    {
+        var all = new NativeQueueQuiescenceEvidence(
+            QueueIsEmpty: true, QueueCompletionSucceeded: true,
+            ExecutorNotRunning: true, ExecutorCompletionSucceeded: true,
+            NoCurrentlyRunningAction: true, ExecutorNotPaused: true,
+            SynchronizerPlayPhase: true, NoDeferredPlayerRequests: true);
+        Assert.True(all.SourceQuiescent);
+        Assert.False((all with { NoDeferredPlayerRequests = false }).SourceQuiescent);
+        Assert.False((all with { QueueCompletionSucceeded = false }).SourceQuiescent);
+        Assert.False((all with { ExecutorCompletionSucceeded = false }).SourceQuiescent);
+        var records = await Record(recorder =>
+        {
+            recorder.TurnBoundaryCandidate(
+                "PLAYER_TURN_START", 1, State(3), "Player", "Play", all);
+            recorder.Finish("Combat ended", State(3));
+        });
+        var data = Assert.Single(records, r =>
+            r.GetProperty("type").GetString() == "native_turn_checkpoint")
+            .GetProperty("data");
+        Assert.Equal("SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME",
+            data.GetProperty("queue_quiescence_status").GetString());
+        Assert.True(data.GetProperty("queue_evidence")
+            .GetProperty("queue_is_empty").GetBoolean());
+        Assert.True(data.GetProperty("queue_evidence")
+            .GetProperty("no_deferred_player_requests").GetBoolean());
+        Assert.Equal("SETTLEMENT_UNVERIFIED",
+            data.GetProperty("settlement_status").GetString());
+        Assert.False(data.GetProperty("complete_native_queue_verified").GetBoolean());
+        Assert.False(data.GetProperty("native_phase_handoff_order_verified").GetBoolean());
+    }
+
+    [Fact]
+    public async Task IncompleteOrEnemyQueueEvidenceCannotBecomeSettlementProof()
+    {
+        var evidence = new NativeQueueQuiescenceEvidence(
+            true, true, true, true, true, true, true, false);
+        var records = await Record(recorder =>
+        {
+            recorder.TurnBoundaryCandidate(
+                "PLAYER_TURN_START", 1, State(3), "Player", "Play", evidence);
+            recorder.TurnBoundaryCandidate(
+                "ENEMY_TURN_START", 1, State(3), "Player", "End");
+            recorder.Finish("Combat ended", State(3));
+        });
+        var checkpoints = records.Where(r =>
+            r.GetProperty("type").GetString() == "native_turn_checkpoint").ToArray();
+        Assert.Equal("SOURCE_QUEUE_QUIESCENCE_UNVERIFIED",
+            checkpoints[0].GetProperty("data")
+                .GetProperty("queue_quiescence_status").GetString());
+        Assert.Equal("NOT_CAPTURED", checkpoints[1].GetProperty("data")
+            .GetProperty("queue_quiescence_status").GetString());
+        Assert.Equal(JsonValueKind.Null, checkpoints[1].GetProperty("data")
+            .GetProperty("queue_evidence").ValueKind);
+    }
+
+    [Fact]
     public void NativeHandChoiceFlowBindsOnlyOneMatchingSourceReservation()
     {
         Assert.Equal("UNVERIFIED", NativeHandChoiceFlow.Current().Status);

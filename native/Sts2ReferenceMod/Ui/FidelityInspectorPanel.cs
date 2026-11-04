@@ -3,6 +3,7 @@ using System.Text.Json;
 using Godot;
 using Sts2Emulator.Trace;
 using Sts2ReferenceMod.Trace;
+using Sts2ReferenceMod.Transport;
 
 namespace Sts2ReferenceMod.Ui;
 
@@ -21,15 +22,25 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
     private long _lastEventSeq = -1;
     private PanelContainer? _panel;
     private Label? _status;
+    private Label? _liveDiagnostic;
     private Label? _decision;
     private TextEdit? _content;
     private Button? _back;
     private Button? _forward;
     private string _sourceStatus = "RNG source hook: UNKNOWN";
     private string _agentStatus = "Agent spectator: DISABLED";
+    private string _liveFidelityStatus = "External emulator: NOT_CONNECTED";
 
-    public override void _Ready()
+    public override void _Ready() => Initialize();
+
+    /// <summary>Explicit initialization for dynamically loaded native mod
+    /// assemblies. Godot may not dispatch the managed _Ready override for a
+    /// CanvasLayer class that was loaded outside its script registry. The
+    /// observer's game-thread OnFrame calls this before showing the panel.
+    /// This is safe if Godot also calls _Ready during AddChild.</summary>
+    public void Initialize()
     {
+        if (_panel is not null) return;
         Layer = 90;
         Visible = false;
 
@@ -48,6 +59,8 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
         column.AddChild(title);
         _status = new Label { Text = "Native-only; parity comparison pending." };
         column.AddChild(_status);
+        _liveDiagnostic = new Label { Text = _liveFidelityStatus };
+        column.AddChild(_liveDiagnostic);
 
         var buttons = new HBoxContainer();
         column.AddChild(buttons);
@@ -102,7 +115,34 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
         if (Visible) Refresh();
     }
 
-    public void Toggle() { Visible = !Visible; if (Visible) Refresh(); }
+    /// <summary>Called on the Godot main thread with a detached, validated
+    /// coordinator receipt; status remains explicitly uncertified.</summary>
+    public void SetFidelityResult(NativeLiveFidelityResult? result, string? transportFailure)
+    {
+        var next = transportFailure is not null
+            ? "External emulator: JOURNAL_FAILED " + transportFailure
+            : result is null
+                ? "External emulator: NOT_CONNECTED"
+                : "External emulator: " + result.Status
+                    + " · player checkpoints " + result.PlayerCheckpointsMatched
+                    + " · through seq " + result.ThroughSequence
+                    + (result.FirstDifferencePath is null ? ""
+                        : " · first diff " + result.FirstDifferencePath);
+        if (next == _liveFidelityStatus) return;
+        _liveFidelityStatus = next;
+        if (_liveDiagnostic is not null)
+            _liveDiagnostic.Text = next;
+        if (Visible) Refresh();
+    }
+
+    public void SetShown(bool shown)
+    {
+        Initialize();
+        Visible = shown;
+        if (shown) Refresh();
+    }
+
+    public void Toggle() => SetShown(!Visible);
 
     public void Tick()
     {
@@ -130,7 +170,10 @@ public sealed partial class FidelityInspectorPanel : CanvasLayer
         _back.Disabled = _cursor == 0;
         _forward.Disabled = count == 0 || _cursor == count - 1;
         _status.Text = (_session?.IsIncomplete == true ? "INCOMPLETE_CAPTURE" : "Native-only capture")
-            + " · " + _sourceStatus + " · " + _agentStatus + " · parity NOT_TESTED";
+            + " · " + _sourceStatus + " · " + _agentStatus
+            + " · native parity NOT_CERTIFIED";
+        if (_liveDiagnostic is not null)
+            _liveDiagnostic.Text = _liveFidelityStatus;
         if (count == 0)
         {
             _decision.Text = "Awaiting first stable native combat decision";

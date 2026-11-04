@@ -10,8 +10,94 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from native_phase_handoff_audit import audit_phase_handoffs
+from native_awaited_turn_witness_audit import audit_awaited_turn_witnesses
+from native_idle_async_exposure_audit import audit_idle_frame_exposures
+from native_async_task_lifecycle_audit import audit_native_task_lifecycle
+from native_action_window_audit import audit_action_windows
+from native_intermediate_rng_audit import audit_native_rng_windows
 from collections import Counter
 from pathlib import Path
+
+
+def _is_json_number(value: object) -> bool:
+    """Accept float lexeme-preserving JSON parsers while rejecting booleans.
+
+    Fidelity transport retains native scientific-notation spelling inside a
+    float subclass so that its original C# payload fingerprint is verifiable.
+    Source mechanics audit must check numeric value rather than parser class.
+    """
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+QUEUE_QUIESCENCE_FLAGS = (
+    "queue_is_empty", "queue_completion_succeeded",
+    "executor_not_running", "executor_completion_succeeded",
+    "no_currently_running_action", "executor_not_paused",
+    "synchronizer_play_phase", "no_deferred_player_requests",
+)
+
+
+AUTOMATIC_EFFECT_FLAGS = (
+    "no_active_card_or_potion_effect_body",
+    "no_player_turn_end_transition",
+    "enemy_turn_not_started",
+)
+
+
+def automatic_effect_evidence_status(data: dict, *, player_start: bool) -> str:
+    """Validate bounded source effect-depth evidence, not global settlement."""
+    if ("automatic_effect_evidence" not in data
+        and "automatic_effect_evidence_status" not in data):
+        return "NOT_CAPTURED_LEGACY"
+    evidence = data.get("automatic_effect_evidence")
+    status = data.get("automatic_effect_evidence_status")
+    if evidence is None:
+        if status != "NOT_CAPTURED":
+            raise ValueError("Missing tracked-effect evidence cannot imply idle effects")
+        return status
+    if (not player_start or not isinstance(evidence, dict)
+        or set(evidence) != set(AUTOMATIC_EFFECT_FLAGS)
+        or any(type(evidence[k]) is not bool for k in AUTOMATIC_EFFECT_FLAGS)):
+        raise ValueError("Malformed or misplaced source tracked-effect evidence")
+    expected = (
+        "SOURCE_TRACKED_EFFECT_BODY_INACTIVE_AT_FRAME"
+        if all(evidence[k] for k in AUTOMATIC_EFFECT_FLAGS)
+        else "SOURCE_TRACKED_EFFECT_ACTIVITY_UNVERIFIED"
+    )
+    if status != expected:
+        raise ValueError("Tracked-effect status contradicts native source flags")
+    return status
+
+
+def queue_quiescence_status(data: dict, *, player_start: bool) -> str:
+    """Validate optional native source snapshot, preserving old sidecars.
+
+    This proves a queue/executor observation at *one frame*, never that
+    future async hooks cannot enqueue further automatic game actions.
+    """
+    if ("queue_evidence" not in data and
+        "queue_quiescence_status" not in data):
+        return "NOT_CAPTURED_LEGACY"
+    evidence = data.get("queue_evidence")
+    status = data.get("queue_quiescence_status")
+    if evidence is None:
+        if status != "NOT_CAPTURED":
+            raise ValueError("Missing queue evidence cannot imply quiescence")
+        return status
+    if (not player_start or not isinstance(evidence, dict)
+        or set(evidence) != set(QUEUE_QUIESCENCE_FLAGS)
+        or any(type(evidence[k]) is not bool
+               for k in QUEUE_QUIESCENCE_FLAGS)):
+        raise ValueError("Malformed or misplaced native queue evidence")
+    expected = (
+        "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME"
+        if all(evidence[k] for k in QUEUE_QUIESCENCE_FLAGS)
+        else "SOURCE_QUEUE_QUIESCENCE_UNVERIFIED"
+    )
+    if status != expected:
+        raise ValueError("Native queue quiescence claim contradicts source flags")
+    return status
 
 
 def diff_scalars(before: dict, after: dict) -> dict:
@@ -168,15 +254,36 @@ def observed_indicators(actions: list[dict], records: list[dict]) -> dict:
 
 
 def _unchanged_combat_end_checkpoint(records: list[dict], reset_ordinal: int) -> bool:
-    """Recognize the pinned v111 terminal callback sequence, fail-closed.
+    """Recognize the bounded native terminal sequence with optional Task hooks.
 
-    An after_action checkpoint, optionally followed by read-only frame polls,
-    precedes the history reset; a combat_end checkpoint follows it before
-    the terminal record. This only verifies equality of *observed* streams.
+    Sequence: action_completed, after_action RNG checkpoint, any completed
+    task-reference observations, rendered frame polls, history_reset,
+    combat_end RNG checkpoint, optional COMBAT_TEARDOWN task checkpoint,
+    terminal. Every intervening task observation is non-mutating and its
+    lifecycle is independently checked by audit_native_task_lifecycle().
+    Both source RNG checkpoints must have identical observed stream states.
     """
-    if reset_ordinal + 1 >= len(records):
+    header = (records[0].get("data") or {}) if records else {}
+    task_hook = header.get("native_async_task_hook_installed") is True
+    suffix = records[reset_ordinal:]  # reset_ordinal is 1-based
+    if len(suffix) == 2:
+        end_checkpoint, terminal = suffix
+    elif len(suffix) == 3 and task_hook:
+        end_checkpoint, task_checkpoint, terminal = suffix
+        task_data = task_checkpoint.get("data") or {}
+        if (task_checkpoint.get("type") != "native_async_task_checkpoint"
+            or task_data.get("site") != "COMBAT_TEARDOWN"
+            or task_data.get("turn") is not None
+            or task_data.get("tracked_pending_non_turn_loop_count") != 0
+            or task_data.get("registration_overflow") != 0
+            or task_data.get("observation_basis")
+                != "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME"
+            or task_data.get("native_settlement_certified") is not False
+            or task_data.get("exhaustive_native_task_inventory") is not False
+            or task_data.get("native_task_mutations") != 0):
+            return False
+    else:
         return False
-    end_checkpoint, terminal = records[reset_ordinal:reset_ordinal + 2]
     if (end_checkpoint.get("type") != "native_rng_stream_checkpoint"
         or terminal.get("type") != "terminal"):
         return False
@@ -188,11 +295,25 @@ def _unchanged_combat_end_checkpoint(records: list[dict], reset_ordinal: int) ->
         or not end["streams"]):
         return False
 
-    # reset_ordinal is 1-based, so the last record before the reset
-    # is records[reset_ordinal - 2]. Accept intervening frame polls only.
     prior_index = reset_ordinal - 2
-    while prior_index >= 0 and records[prior_index].get("type") == "frame_state":
-        prior_index -= 1
+    while prior_index >= 0:
+        row = records[prior_index]
+        if row.get("type") == "frame_state":
+            prior_index -= 1
+            continue
+        if row.get("type") == "native_async_task_lifecycle" and task_hook:
+            data = row.get("data") or {}
+            if (data.get("phase") != "completed"
+                or data.get("task_status") not in
+                    ("FAULTED", "CANCELED", "RAN_TO_COMPLETION")
+                or data.get("observation_basis")
+                    != "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME"
+                or data.get("native_settlement_certified") is not False
+                or data.get("native_task_mutations") != 0):
+                return False
+            prior_index -= 1
+            continue
+        break
     if prior_index < 1:
         return False
     preceding = records[prior_index]
@@ -209,7 +330,6 @@ def _unchanged_combat_end_checkpoint(records: list[dict], reset_ordinal: int) ->
         or before.get("streams") != end.get("streams")):
         return False
     return True
-
 
 def audit(records: list[dict], error: str | None = None) -> dict:
     report = {
@@ -232,6 +352,16 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_ui_hand_gates": [],
         "native_ui_play_begins": [],
         "turn_boundary_candidates": [],
+        "source_queue_quiescent_player_checkpoints": 0,
+        "source_tracked_effect_idle_player_checkpoints": 0,
+        "native_phase_handoff": None,
+        "awaited_turn_witnesses": None,
+        "idle_async_exposures": None,
+        "native_async_task_lifecycle": None,
+        "post_card_windows": None,
+        "post_card_tracked_rng_windows": None,
+        "player_checkpoint_phase_callback_pairs": 0,
+        "player_checkpoints_without_observed_start_callback": 0,
         "native_input_requests": [],
         "native_input_outcomes": [],
         "native_player_choices": [],
@@ -323,7 +453,9 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         "native_hand_menu", "native_hand_menu_revision",
         "native_hand_menu_closed", "native_manual_play_result",
         "native_ui_play_begin", "native_ui_hand_gate",
-        "native_turn_checkpoint", "terminal",
+        "native_turn_checkpoint", "native_phase_handoff",
+        "native_async_task_lifecycle", "native_async_task_checkpoint",
+        "terminal",
     }
     running: dict[int, dict] = {}
     completed: dict[int, dict] = {}
@@ -334,12 +466,18 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     last_frame_hash = None
     strict_failures: list[str] = []
     input_requests: dict[int, dict] = {}
+    # The source request prefix runs before executor admission. An input can
+    # be queued while an earlier action remains active, before another
+    # distinct stable player decision is observable.
+    active_actions_at_input_request: dict[int, list[int]] = {}
+    request_return_states: dict[int, str] = {}
     request_outcomes: set[int] = set()
     choices_seen: set[tuple[int, int]] = set()
     hand_menus_seen: set[int] = set()
     menus_by_choice: dict[tuple[int, int], dict] = {}
     menus_by_id: dict[int, dict] = {}
     turn_checkpoint_ids: set[tuple[str, int]] = set()
+    player_turn_start_callbacks: dict[int, int] = {}
     for ordinal, record in enumerate(records, 1):
         typ = record.get("type")
         if record.get("ordinal") != ordinal:
@@ -378,6 +516,11 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     or source.get("native_type") != record.get("native_type")):
                     strict_failures.append(
                         f"Invalid source request/executor link at ordinal {ordinal}")
+                elif "submission_ordinal" in (record.get("data") or {}) and (
+                    record["data"]["submission_ordinal"] != source["ordinal"]
+                    or record["data"].get("strict_legal_menu") != "NOT_CAPTURED"):
+                    strict_failures.append(
+                        f"Invalid source submission link at ordinal {ordinal}")
                 else:
                     report["source_request_execution_links"] += 1
         elif typ == "action_resumed":
@@ -407,9 +550,32 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 "pre_state_present": isinstance(start.get("state"), dict),
                 "post_state_present": isinstance(record.get("state"), dict),
             }
+        elif typ == "native_phase_handoff":
+            data = record.get("data") or {}
+            if (data.get("source_event") == "TURN_STARTED"
+                and data.get("native_side") == "Player"):
+                turn = data.get("turn")
+                if type(turn) is not int or turn in player_turn_start_callbacks:
+                    strict_failures.append(
+                        f"Duplicate or invalid native player start at {ordinal}")
+                elif ("PLAYER_TURN_START", turn) in turn_checkpoint_ids:
+                    strict_failures.append(
+                        f"Native player start followed its frame checkpoint at {ordinal}")
+                else:
+                    player_turn_start_callbacks[turn] = ordinal
         elif typ == "native_turn_checkpoint":
             data = record.get("data") or {}
             kind, turn = data.get("kind"), data.get("turn")
+            try:
+                quiescence = queue_quiescence_status(
+                    data, player_start=kind == "PLAYER_TURN_START")
+            except ValueError:
+                quiescence = "INVALID_QUEUE_EVIDENCE"
+            try:
+                effect_status = automatic_effect_evidence_status(
+                    data, player_start=kind == "PLAYER_TURN_START")
+            except ValueError:
+                effect_status = "INVALID_AUTOMATIC_EFFECT_EVIDENCE"
             player_start = kind == "PLAYER_TURN_START"
             enemy_start = kind == "ENEMY_TURN_START"
             key = (kind, turn)
@@ -434,6 +600,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 and isinstance(data.get("native_side"), str)
                 and isinstance(data.get("player_phase"), str)
                 and data.get("settlement_status") == "SETTLEMENT_UNVERIFIED"
+                and quiescence != "INVALID_QUEUE_EVIDENCE"
+                and effect_status != "INVALID_AUTOMATIC_EFFECT_EVIDENCE"
                 and data.get("complete_native_queue_verified") is False
                 and data.get("native_phase_handoff_order_verified") is False
                 and data.get("original_native_legal_menu") == "NOT_VERIFIED"
@@ -452,6 +620,17 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     f"Invalid native turn-boundary candidate at {ordinal}")
             else:
                 turn_checkpoint_ids.add(key)
+                if player_start:
+                    if turn in player_turn_start_callbacks:
+                        report["player_checkpoint_phase_callback_pairs"] += 1
+                    else:
+                        # The first turn's callback can precede OpenCombat.
+                        # Missing callback evidence is reported, not invented.
+                        report["player_checkpoints_without_observed_start_callback"] += 1
+                if effect_status == "SOURCE_TRACKED_EFFECT_BODY_INACTIVE_AT_FRAME":
+                    report["source_tracked_effect_idle_player_checkpoints"] += 1
+                if quiescence == "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME":
+                    report["source_queue_quiescent_player_checkpoints"] += 1
                 report["turn_boundary_candidates"].append({
                     "ordinal": ordinal, "kind": kind, "turn": turn,
                     "observation_site": data["observation_site"],
@@ -459,6 +638,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     "native_side": data["native_side"],
                     "player_phase": data["player_phase"],
                     "settlement_status": "SETTLEMENT_UNVERIFIED",
+                    "queue_quiescence_status": quiescence,
+                    "automatic_effect_evidence_status": effect_status,
                     "emulator_parity": "NOT_TESTED",
                 })
         elif typ == "frame_state":
@@ -494,12 +675,30 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 or data.get("legal_menu_reconstructed") is not False):
                 strict_failures.append(f"Invalid strict input gap at ordinal {ordinal}")
             else:
+                action_start = running[aid]
+                request_id = (action_start.get("data") or {}).get(
+                    "input_request_id")
+                prior = active_actions_at_input_request.get(request_id, [])
+                source_queued_while_busy = (
+                    bool(prior) and aid not in prior
+                    and request_return_states.get(request_id)
+                        == "WaitingForExecution"
+                    and all(prior_id in completed for prior_id in prior))
                 report["strict_input_gaps"].append({
                     "ordinal": ordinal,
                     "action_id": aid,
                     "last_reported_gate": data.get("last_reported_gate"),
                     "decision_generation": data["decision_generation"],
                     "last_captured_generation": data["last_captured_generation"],
+                    "source_request_id": request_id,
+                    "source_active_action_ids_at_request": prior,
+                    "source_request_return_action_state":
+                        request_return_states.get(request_id),
+                    "source_queued_input_evidence": (
+                        "REQUEST_QUEUED_WHILE_PRIOR_EXECUTOR_ACTION_ACTIVE"
+                        if source_queued_while_busy else "UNVERIFIED"),
+                    "strict_decision_boundary_recovered": False,
+                    "legal_menu_reconstructed": False,
                 })
         elif typ == "native_run_identity":
             data = record.get("data") or {}
@@ -529,13 +728,37 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 or not isinstance(record.get("native_type"), str)):
                 strict_failures.append(f"Invalid native input request at {ordinal}")
             else:
+                # Pre-v2 sidecars omit these fields. New source-time evidence
+                # must agree with the actual ordered executor timeline and
+                # must never assert that a full legal menu was observed.
+                coverage = data.get("submission_state_coverage")
+                if coverage is not None:
+                    observed_ids = data.get(
+                        "active_executor_action_ids_at_submission")
+                    expected_ids = sorted(running)
+                    if (coverage != (
+                            "SOURCE_CANONICAL_STATE_AT_REQUEST"
+                            if isinstance(record.get("state"), dict)
+                            else "UNOBSERVED")
+                        or not isinstance(observed_ids, list)
+                        or any(type(i) is not int for i in observed_ids)
+                        or sorted(observed_ids) != expected_ids
+                        or len(observed_ids) != len(expected_ids)
+                        or data.get("submitted_while_executor_active") is not
+                            bool(expected_ids)
+                        or data.get("strict_legal_menu") != "NOT_CAPTURED"):
+                        strict_failures.append(
+                            f"Invalid native submission evidence at ordinal {ordinal}")
                 input_requests[request_id] = record
+                active_actions_at_input_request[request_id] = sorted(running)
                 report["native_input_requests"].append({
                     "ordinal": ordinal,
                     "input_request_id": request_id,
                     "native_type": record["native_type"],
                     "canonical_action": record.get("canonical_action"),
                     "acceptance": "UNVERIFIED",
+                    "submission_state_coverage": coverage or "LEGACY_UNVERIFIED",
+                    "active_executor_action_ids_at_submission": sorted(running),
                 })
         elif typ == "native_input_outcome":
             data = record.get("data") or {}
@@ -561,10 +784,13 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     "ActionQueueSynchronizer.RequestEnqueue.postfix"
                 or data.get("human_origin") != "UNVERIFIED"
                 or data.get("legal_menu_verified") is not False
-                or data.get("queue_result") != expected):
+                or data.get("queue_result") != expected
+                or ("submission_ordinal" in data and
+                    data["submission_ordinal"] != request["ordinal"])):
                 strict_failures.append(f"Invalid native input outcome at {ordinal}")
             else:
                 request_outcomes.add(request_id)
+                request_return_states[request_id] = native_state
                 report["native_input_outcomes"].append({
                     "ordinal": ordinal, "input_request_id": request_id,
                     "native_action_id": action_id,
@@ -995,12 +1221,12 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             float_min = data.get("float_min")
             float_max = data.get("float_max")
             value_valid = (
-                (kind == "unit_double" and type(scalar) in (float, int)
+                (kind == "unit_double" and _is_json_number(scalar)
                  and 0 <= scalar < 1 and boolean is None)
                 or (kind == "boolean" and type(boolean) is bool
                     and scalar is None)
                 or (kind == "range_float" and scalar is None and boolean is None
-                    and all(type(x) in (float, int) for x in
+                    and all(_is_json_number(x) for x in
                             (float_value, float_min, float_max))
                     and all(math.isfinite(x) for x in
                             (float_value, float_min, float_max))
@@ -1053,7 +1279,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             details = record.get("data") or {}
             next_record = records[ordinal] if ordinal < len(records) else None
             with_end_checkpoint = _unchanged_combat_end_checkpoint(records, ordinal)
-            terminal = (records[ordinal + 1] if with_end_checkpoint
+            terminal = (records[-1] if with_end_checkpoint
                         else next_record)
             final_reason = ((terminal or {}).get("data") or {}).get("reason")
             terminal_cleanup = (not running and terminal is not None
@@ -1101,6 +1327,20 @@ def audit(records: list[dict], error: str | None = None) -> dict:
         elif typ == "stable_decision" and not isinstance(record.get("state"), dict):
             strict_failures.append(f"Missing stable decision state at {ordinal}")
 
+    # Validate turn-loop callbacks independently of frame-derived candidates.
+    # Partial captures remain partial; source event ordering alone cannot
+    # certify completion of future asynchronous automatic effects.
+    phase_handoff = audit_phase_handoffs(records)
+    report["native_phase_handoff"] = phase_handoff
+    report["awaited_turn_witnesses"] = audit_awaited_turn_witnesses(
+        records, report["turn_boundary_candidates"], phase_handoff)
+    report["idle_async_exposures"] = audit_idle_frame_exposures(records)
+    report["native_async_task_lifecycle"] = audit_native_task_lifecycle(records)
+    strict_failures.extend(report["native_async_task_lifecycle"]["errors"])
+    report["post_card_windows"] = audit_action_windows(records)
+    report["post_card_tracked_rng_windows"] = audit_native_rng_windows(
+        records, source_windows=report["post_card_windows"]["source_windows"])
+    strict_failures.extend(phase_handoff["errors"])
     report["native_hand_menu_open_lifetimes"] = sorted(
         menu_id for menu_id, menu in menus_by_id.items() if not menu["closed"])
     final = records[-1].get("data") or {}

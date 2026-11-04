@@ -6,6 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_action_envelope_audit import audit, diff_scalars, infer_choice_discard
+from native_live_offline_replay import _LexicalFloat, _digest
 
 
 def sample():
@@ -42,6 +43,59 @@ def sample():
 
 
 class EnvelopeAuditTests(unittest.TestCase):
+    def test_source_rng_float_lexemes_pass_strict_numeric_audit(self):
+        rows = sample()
+        rng = {
+            "type": "native_rng_scalar_boundary",
+            "data": {
+                "operation_kind": "range_float",
+                "selected_double": None, "selected_bool": None,
+                "selected_float": _LexicalFloat("-5.0546736E-05"),
+                "float_min": -1, "float_max": 1,
+                "cursor_before": {"counter": 12},
+                "cursor_after": {"counter": 13},
+                "origin": "source_primitive_hook",
+                "source_hook_observed": True,
+                "source_version": "v0.111.0",
+                "site_id": "synthetic-float",
+                "stream_id": "run.synthetic",
+                "owner_id": "synthetic",
+                "attributed": True,
+            },
+        }
+        rows.insert(-1, rng)
+        for ordinal, row in enumerate(rows, 1):
+            row["ordinal"] = ordinal
+        original_fingerprint = _digest(rng)
+        report = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(1, report["native_rng_float_source_calls"])
+        self.assertEqual(original_fingerprint, _digest(rng))
+
+        rows[-2]["data"]["float_min"] = True
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(rows)["status"])
+        rows[-2]["data"]["float_min"] = -1
+        rows[-2]["data"]["selected_float"] = float("nan")
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(rows)["status"])
+
+    def test_unit_double_lexical_subclass_is_not_mistaken_for_boolean(self):
+        rows = sample()
+        rows.insert(-1, {"type": "native_rng_scalar_boundary",
+            "data": {"operation_kind": "unit_double",
+                     "selected_double": _LexicalFloat("0.0554321"),
+                     "selected_bool": None, "selected_float": None,
+                     "float_min": None, "float_max": None,
+                     "cursor_before": {"counter": 3},
+                     "cursor_after": {"counter": 4},
+                     "origin": "source_primitive_hook",
+                     "source_hook_observed": True,
+                     "source_version": "v0.111.0"}})
+        for ordinal, row in enumerate(rows, 1):
+            row["ordinal"] = ordinal
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", audit(rows)["status"])
+        rows[-2]["data"]["selected_double"] = True
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(rows)["status"])
+
     def test_turn_start_candidates_are_provisional_and_source_ordered(self):
         records = sample()
         player_state = {"combat": {"turn": 1}, "player": {"hp": 50}}
@@ -106,6 +160,66 @@ class EnvelopeAuditTests(unittest.TestCase):
         forged = copy.deepcopy(records)
         forged[8]["data"]["complete_native_queue_verified"] = True
         self.assertEqual("INCOMPLETE_CAPTURE", run(forged)["status"])
+
+        # Versioned source queue/executor evidence is verified independently
+        # of the native full-settlement contract. Old traces stay valid.
+        enhanced = copy.deepcopy(records)
+        checkpoint = next(x for x in enhanced if
+                          x.get("type") == "native_turn_checkpoint" and
+                          x.get("data", {}).get("kind") == "PLAYER_TURN_START")
+        checkpoint["data"]["queue_evidence"] = {
+            "queue_is_empty": True,
+            "queue_completion_succeeded": True,
+            "executor_not_running": True,
+            "executor_completion_succeeded": True,
+            "no_currently_running_action": True,
+            "executor_not_paused": True,
+            "synchronizer_play_phase": True,
+            "no_deferred_player_requests": True,
+        }
+        checkpoint["data"]["queue_quiescence_status"] = (
+            "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME")
+        observed = run(enhanced)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", observed["status"])
+        self.assertEqual(1, observed["source_queue_quiescent_player_checkpoints"])
+        self.assertEqual("SETTLEMENT_UNVERIFIED",
+                         observed["turn_boundary_candidates"][0][
+                             "settlement_status"])
+
+        for corrupted in ("boolean", "missing_flag", "forged_status",
+                          "wrong_turn", "settlement_promoted"):
+            changed = copy.deepcopy(enhanced)
+            player = next(x for x in changed if
+                          x.get("type") == "native_turn_checkpoint" and
+                          x.get("data", {}).get("kind") == "PLAYER_TURN_START")
+            if corrupted == "boolean":
+                player["data"]["queue_evidence"]["queue_is_empty"] = 1
+            elif corrupted == "missing_flag":
+                del player["data"]["queue_evidence"]["executor_not_running"]
+            elif corrupted == "forged_status":
+                player["data"]["queue_evidence"]["no_deferred_player_requests"] = False
+            elif corrupted == "wrong_turn":
+                enemy = next(x for x in changed if
+                             x.get("type") == "native_turn_checkpoint" and
+                             x.get("data", {}).get("kind") == "ENEMY_TURN_START")
+                enemy["data"]["queue_evidence"] = player["data"]["queue_evidence"]
+                enemy["data"]["queue_quiescence_status"] = (
+                    "SOURCE_QUEUE_QUIESCENCE_UNVERIFIED")
+            else:
+                player["data"]["settlement_status"] = "SETTLEMENT_VERIFIED"
+            self.assertEqual("INCOMPLETE_CAPTURE", run(changed)["status"],
+                             corrupted)
+
+        incomplete = copy.deepcopy(enhanced)
+        partial = next(x for x in incomplete if
+                       x.get("type") == "native_turn_checkpoint" and
+                       x.get("data", {}).get("kind") == "PLAYER_TURN_START")
+        partial["data"]["queue_evidence"]["no_deferred_player_requests"] = False
+        partial["data"]["queue_quiescence_status"] = (
+            "SOURCE_QUEUE_QUIESCENCE_UNVERIFIED")
+        report = run(incomplete)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual(0, report["source_queue_quiescent_player_checkpoints"])
 
     def test_disabled_and_installed_rng_hooks_remain_distinct(self):
         default = audit(sample())
@@ -667,6 +781,192 @@ class EnvelopeAuditTests(unittest.TestCase):
                             "data": {"history_index": 4,
                                      "missing_fields": []}})
         self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
+
+    def test_terminal_clear_with_tracked_task_completion_and_teardown(self):
+        rows = sample()
+        rows[0]["data"]["native_async_task_hook_installed"] = True
+        rows[-1]["data"]["reason"] = "Combat ended"
+        streams = [{"stream_id": "run.shuffle", "owner_id": "run",
+                    "cursor": {"Counter": 22, "State0": 1, "State1": 2,
+                               "State2": 3, "State3": 4}}]
+
+        def rng(phase):
+            return {"type": "native_rng_stream_checkpoint", "data": {
+                "phase": phase, "source": "native_rng_object_to_serializable",
+                "rng_draws_performed": 0,
+                "scope": "15_persistent_streams_in_observed_combat",
+                "streams": copy.deepcopy(streams),
+                "complete_native_rng_inventory": False,
+                "exact_rng_parity": "NOT_TESTED"}}
+
+        def task(task_id, family, source, phase, status):
+            return {"type": "native_async_task_lifecycle", "data": {
+                "task_id": task_id, "family": family,
+                "source": source, "phase": phase, "task_status": status,
+                "source_version": "v0.111.0",
+                "observation_basis": "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME",
+                "native_task_mutations": 0,
+                "native_settlement_certified": False}}
+
+        teardown = {"type": "native_async_task_checkpoint", "data": {
+            "site": "COMBAT_TEARDOWN", "turn": None,
+            "tracked_pending_task_count": 1,
+            "tracked_pending_non_turn_loop_count": 0,
+            "tracked_pending_turn_loop_count": 1,
+            "tracked_pending_by_family": {"TURN_LOOP": 1},
+            "registered_task_count": 2,
+            "observed_completed_task_count": 1,
+            "registration_overflow": 0, "pending_task_ids": [1],
+            "source_version": "v0.111.0",
+            "observation_basis": "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME",
+            "coverage": "NAMED_ASYNC_ENTRYPOINTS_ONLY",
+            "native_settlement_certified": False,
+            "exhaustive_native_task_inventory": False,
+            "native_task_mutations": 0}}
+        rows[2:2] = [
+            task(1, "TURN_LOOP", "CombatManager.RunTurnLoopAfter",
+                 "registered", "PENDING"),
+            task(2, "GAME_ACTION_BODY", "GameAction._executionTask",
+                 "registered", "PENDING"),
+        ]
+        rows[-1:-1] = [
+            rng("after_action"),
+            task(2, "GAME_ACTION_BODY", "GameAction._executionTask",
+                 "completed", "RAN_TO_COMPLETION"),
+            {"type": "frame_state", "state": {"combat": {"energy": 2}},
+             "data": {"frame_index": 7, "state_hash": "terminal-frame"}},
+            {"type": "history_reset",
+             "data": {"previous_count": 5, "new_count": 0}},
+            rng("combat_end"), teardown,
+        ]
+
+        def check(src):
+            for i, row in enumerate(src, 1):
+                row["ordinal"] = i
+            return audit(src)
+
+        result = check(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, result["terminal_history_clears"])
+        self.assertEqual([], result["native_async_task_lifecycle"]["errors"])
+        self.assertEqual(1, result["native_async_task_lifecycle"]["pending_at_teardown"])
+
+        # A registered but still pending task is not a completion witness.
+        altered = copy.deepcopy(rows)
+        entry = next(r for r in altered if r["type"] ==
+                     "native_async_task_lifecycle" and
+                     r["data"]["phase"] == "completed")
+        entry["data"]["phase"] = "registered"
+        self.assertEqual("INCOMPLETE_CAPTURE", check(altered)["status"])
+
+        # A transient body still pending at teardown prevents treating the
+        # history reset as a fully observed terminal cleanup sequence.
+        altered = copy.deepcopy(rows)
+        cp = next(r for r in altered if r["type"] ==
+                  "native_async_task_checkpoint")
+        cp["data"]["tracked_pending_non_turn_loop_count"] = 1
+        self.assertEqual("INCOMPLETE_CAPTURE", check(altered)["status"])
+
+        altered = copy.deepcopy(rows)
+        cp = next(r for r in altered if r["type"] ==
+                  "native_async_task_checkpoint")
+        cp["data"]["site"] = "PLAYER_TURN_START"
+        self.assertEqual("INCOMPLETE_CAPTURE", check(altered)["status"])
+
+        # Any changed tracked native RNG state remains a failure.
+        altered = copy.deepcopy(rows)
+        end = [r for r in altered if r["type"] ==
+               "native_rng_stream_checkpoint"][-1]
+        end["data"]["streams"][0]["cursor"]["Counter"] += 1
+        self.assertEqual("INCOMPLETE_CAPTURE", check(altered)["status"])
+
+    def test_queued_input_explains_busy_executor_without_recovering_strict_boundary(self):
+        rows = [copy.deepcopy(sample()[0]), copy.deepcopy(sample()[1]),
+                copy.deepcopy(sample()[2]), copy.deepcopy(sample()[3])]
+        canonical = {"kind": "play_card",
+                     "payload": {"card_instance_id": 3}}
+        rows += [
+            {"type": "native_input_request", "native_type": "PlayCardAction",
+             "canonical_action": copy.deepcopy(canonical), "data": {
+                 "input_request_id": 1,
+                 "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                 "native_acceptance": "UNVERIFIED",
+                 "human_origin": "UNVERIFIED", "input_injected": False}},
+            {"type": "native_input_outcome", "native_type": "PlayCardAction",
+             "data": {
+                 "input_request_id": 1,
+                 "source": "ActionQueueSynchronizer.RequestEnqueue.postfix",
+                 "native_action_id": 7,
+                 "native_action_state": "WaitingForExecution",
+                 "queue_result": "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+                 "human_origin": "UNVERIFIED", "legal_menu_verified": False}},
+            copy.deepcopy(sample()[7]),
+            {"type": "action_started", "action_id": 2,
+             "native_type": "PlayCardAction",
+             "parent_action_id": None,
+             "canonical_action": copy.deepcopy(canonical),
+             "state": copy.deepcopy(sample()[2]["state"]),
+             "data": {"input_request_id": 1}},
+            {"type": "strict_input_gap", "action_id": 2, "data": {
+                 "reason": "executor_action_without_unique_strict_decision",
+                 "last_reported_gate": "WAITING_FOR_DECISION:ACTION_EXECUTOR_BUSY",
+                 "decision_generation": 1, "last_captured_generation": 0,
+                 "human_input_origin_verified": False,
+                 "legal_menu_reconstructed": False}},
+            {"type": "action_completed", "action_id": 2,
+             "state": copy.deepcopy(sample()[7]["state"])},
+            copy.deepcopy(sample()[-1]),
+        ]
+        rows[4]["state"] = copy.deepcopy(sample()[2]["state"])
+        rows[4]["data"].update({
+            "submission_state_coverage": "SOURCE_CANONICAL_STATE_AT_REQUEST",
+            "active_executor_action_ids_at_submission": [1],
+            "submitted_while_executor_active": True,
+            "strict_legal_menu": "NOT_CAPTURED",
+        })
+        rows[5]["data"]["submission_ordinal"] = 5
+        rows[7]["data"].update({
+            "submission_ordinal": 5, "strict_legal_menu": "NOT_CAPTURED",
+        })
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual("SOURCE_CANONICAL_STATE_AT_REQUEST",
+                         report["native_input_requests"][0]["submission_state_coverage"])
+        for invalid_kind in ("wrong_active", "forged_menu", "wrong_snapshot",
+                             "wrong_outcome_link", "wrong_executor_link"):
+            invalid = copy.deepcopy(rows)
+            request = invalid[4]
+            if invalid_kind == "wrong_active":
+                request["data"]["active_executor_action_ids_at_submission"] = []
+            elif invalid_kind == "forged_menu":
+                request["data"]["strict_legal_menu"] = "VERIFIED"
+            elif invalid_kind == "wrong_snapshot":
+                request["data"]["submission_state_coverage"] = "UNOBSERVED"
+            elif invalid_kind == "wrong_outcome_link":
+                invalid[5]["data"]["submission_ordinal"] = 99
+            else:
+                invalid[7]["data"]["submission_ordinal"] = 99
+            self.assertEqual("INCOMPLETE_CAPTURE", audit(invalid)["status"],
+                             invalid_kind)
+        gap = report["strict_input_gaps"][0]
+        self.assertEqual([1], gap["source_active_action_ids_at_request"])
+        self.assertEqual("WaitingForExecution",
+                         gap["source_request_return_action_state"])
+        self.assertEqual("REQUEST_QUEUED_WHILE_PRIOR_EXECUTOR_ACTION_ACTIVE",
+                         gap["source_queued_input_evidence"])
+        self.assertFalse(gap["strict_decision_boundary_recovered"])
+
+        # Without the prior active action, the audit cannot assert queuing
+        # behind another executor action.
+        reordered = copy.deepcopy(rows)
+        active_start = reordered.pop(2)
+        reordered.insert(6, active_start)
+        # This deliberate malformed source order also fails the global audit.
+        for i, row in enumerate(reordered, 1):
+            row["ordinal"] = i
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(reordered)["status"])
 
     def test_legacy_choice_resume_is_qualified_not_rewritten(self):
         records = sample()

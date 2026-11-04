@@ -14,10 +14,50 @@ namespace Sts2ReferenceMod.Trace;
 public sealed record NativeHandMenuOption(
     long CombatCardId, string ModelId, int UiHandIndex);
 
+/// <summary>
+/// Read-only source assertions at a single native player-frame boundary.
+/// A completed queue/executor pair and zero deferred requests prove
+/// instantaneous quiescence, not completion of asynchronous effects that
+/// may enqueue future native actions.
+/// </summary>
+public sealed record NativeQueueQuiescenceEvidence(
+    bool QueueIsEmpty,
+    bool QueueCompletionSucceeded,
+    bool ExecutorNotRunning,
+    bool ExecutorCompletionSucceeded,
+    bool NoCurrentlyRunningAction,
+    bool ExecutorNotPaused,
+    bool SynchronizerPlayPhase,
+    bool NoDeferredPlayerRequests)
+{
+    public bool SourceQuiescent =>
+        QueueIsEmpty && QueueCompletionSucceeded &&
+        ExecutorNotRunning && ExecutorCompletionSucceeded &&
+        NoCurrentlyRunningAction && ExecutorNotPaused &&
+        SynchronizerPlayPhase && NoDeferredPlayerRequests;
+}
+
+/// <summary>
+/// Source-native, read-only card/potion effect-body and turn handoff flags at
+/// the sampled player frame. These fields track only CombatManager's explicit
+/// effect depth and phase flags; they do not cover arbitrary delayed hooks.
+/// </summary>
+public sealed record NativeAutomaticEffectEvidence(
+    bool NoActiveCardOrPotionEffectBody,
+    bool NoPlayerTurnEndTransition,
+    bool EnemyTurnNotStarted)
+{
+    public bool TrackedEffectBodyInactive =>
+        NoActiveCardOrPotionEffectBody &&
+        NoPlayerTurnEndTransition &&
+        EnemyTurnNotStarted;
+}
+
 public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
 {
     public const string Schema = "native-action-envelope-v1";
     private readonly AsyncTraceWriter _writer;
+    private readonly Func<NativeActionEnvelopeRecord, bool>? _eventSink;
     private readonly Dictionary<object, long> _running =
         new(ReferenceEqualityComparer.Instance);
     private readonly List<long> _activeOrder = [];
@@ -28,6 +68,10 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     // RequestEnqueue can defer a request or cancel it. Only a later
     // ActionExecutor callback proves execution of the same action object.
     private readonly Dictionary<object, long> _requested =
+        new(ReferenceEqualityComparer.Instance);
+    // A request's source ordinal is stable even when a later native queue
+    // callback runs synchronously or requests are admitted out of order.
+    private readonly Dictionary<object, long> _requestOrdinals =
         new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<(string Kind, int Turn)> _turnCheckpoints = [];
     private long _nextInputRequestId;
@@ -67,9 +111,12 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
         bool nativeHandChoiceFlowHookInstalled = false,
         bool nativeManualPlayHookInstalled = false,
         bool nativeUiPlayBeginHookInstalled = false,
-        bool nativeUiGateHookInstalled = false)
+        bool nativeUiGateHookInstalled = false,
+        bool nativeAsyncTaskHookInstalled = false,
+        Func<NativeActionEnvelopeRecord, bool>? eventSink = null)
     {
         _gameBuild = gameBuild;
+        _eventSink = eventSink;
         _writer = new AsyncTraceWriter(path, queueCapacity);
         Write(new NativeActionEnvelopeRecord(
             Type: "header", Ordinal: Next(),
@@ -80,6 +127,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 source = "native_action_executor_and_combat_history",
                 coverage = "callback_order_and_observed_snapshots_only",
                 native_rng_hook_installed = nativeRngHookInstalled,
+                native_async_task_hook_installed = nativeAsyncTaskHookInstalled,
                 native_rng_double_hook_installed = nativeRngDoubleHookInstalled,
                 native_rng_bool_hook_installed = nativeRngBoolHookInstalled,
                 native_rng_float_hook_installed = nativeRngFloatHookInstalled,
@@ -183,15 +231,33 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     {
         if (_closed) return;
         ArgumentNullException.ThrowIfNull(action);
+        if (_requested.ContainsKey(action))
+        {
+            ObservationFailure("native_input_request",
+                "DUPLICATE_NATIVE_REQUEST_OBJECT");
+            return;
+        }
         long id = ++_nextInputRequestId;
-        _requested[action] = id;
+        long ordinal = Next();
+        _requested.Add(action, id);
+        _requestOrdinals.Add(action, ordinal);
+        // This is the state at RequestEnqueue entry, even when another
+        // action is still executing. It is never promoted to a complete
+        // strict legal-action menu or an idle player decision.
+        long[] active = _activeOrder.ToArray();
         Write(new NativeActionEnvelopeRecord(
-            "native_input_request", Next(), NativeType: nativeType,
+            "native_input_request", ordinal, NativeType: nativeType,
             CanonicalAction: canonicalAction, State: Snapshot(state),
             Data: JsonSerializer.SerializeToElement(new
             {
                 input_request_id = id,
                 source = "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                submission_state_coverage = state.HasValue
+                    ? "SOURCE_CANONICAL_STATE_AT_REQUEST"
+                    : "UNOBSERVED",
+                active_executor_action_ids_at_submission = active,
+                submitted_while_executor_active = active.Length != 0,
+                strict_legal_menu = "NOT_CAPTURED",
                 native_acceptance = "UNVERIFIED",
                 human_origin = "UNVERIFIED",
                 input_injected = false
@@ -530,6 +596,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
             Data: JsonSerializer.SerializeToElement(new
             {
                 input_request_id = requestId,
+                submission_ordinal = _requestOrdinals[action],
                 native_action_state = nativeState,
                 native_action_id = nativeActionId,
                 queue_result = result,
@@ -615,7 +682,9 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 ? JsonSerializer.SerializeToElement(new
                 {
                     input_request_id = requestId,
+                    submission_ordinal = _requestOrdinals[action],
                     request_execution_link = "SAME_NATIVE_ACTION_OBJECT",
+                    strict_legal_menu = "NOT_CAPTURED",
                     human_origin = "UNVERIFIED"
                 })
                 : null));
@@ -885,6 +954,54 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     }
 
     /// <summary>
+    /// Source event callbacks, emitted by CombatManager in its original turn
+    /// loop. TurnEnded is invoked AFTER CurrentSide has changed, while
+    /// AboutToSwitchToEnemyTurn precedes phase-two cleanup. These event
+    /// observations deliberately make no async-settlement claim.
+    /// </summary>
+    public void NativePhaseHandoff(
+        string sourceEvent, int turn, string nativeSide, string playerPhase,
+        string synchronizerState, bool endingPhaseOne, bool endingPhaseTwo,
+        bool enemyTurnStarted)
+    {
+        if (_closed) return;
+        if (sourceEvent is not ("ABOUT_TO_SWITCH_TO_ENEMY_TURN" or
+                "SIDE_SWITCHED" or "TURN_STARTED")
+            || turn <= 0
+            || nativeSide is not ("Player" or "Enemy")
+            || string.IsNullOrWhiteSpace(playerPhase)
+            || string.IsNullOrWhiteSpace(synchronizerState))
+        {
+            ObservationFailure("native_phase_handoff",
+                "INVALID_NATIVE_PHASE_OBSERVATION");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_phase_handoff", Next(),
+            Data: JsonSerializer.SerializeToElement(new
+            {
+                source_event = sourceEvent,
+                source_callback = sourceEvent switch
+                {
+                    "ABOUT_TO_SWITCH_TO_ENEMY_TURN" =>
+                        "CombatManager.AboutToSwitchToEnemyTurn",
+                    "SIDE_SWITCHED" => "CombatManager.TurnEnded",
+                    _ => "CombatManager.TurnStarted"
+                },
+                turn, native_side = nativeSide, player_phase = playerPhase,
+                synchronizer_state = synchronizerState,
+                ending_player_turn_phase_one = endingPhaseOne,
+                ending_player_turn_phase_two = endingPhaseTwo,
+                enemy_turn_started = enemyTurnStarted,
+                source_version = "v0.111.0",
+                observation_basis = "NATIVE_COMBAT_MANAGER_CALLBACK",
+                settlement_status = "SETTLEMENT_UNVERIFIED",
+                native_phase_handoff_order_verified = false,
+                rng_draws_performed_by_inspector = 0
+            })));
+    }
+
+    /// <summary>
     /// Source-observed turn-boundary candidate, captured without advancing
     /// game state. Neither a rendered idle frame nor a pre-executor callback
     /// proves that all native queue/animation hooks have settled. The source
@@ -893,7 +1010,8 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     /// </summary>
     public void TurnBoundaryCandidate(
         string kind, int turn, JsonElement state, string nativeSide,
-        string playerPhase)
+        string playerPhase, NativeQueueQuiescenceEvidence? queueEvidence = null,
+        NativeAutomaticEffectEvidence? effectEvidence = null)
     {
         if (_closed) return;
         bool playerStart = kind == "PLAYER_TURN_START";
@@ -920,6 +1038,37 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                     : "PRE_READY_TO_BEGIN_ENEMY_TURN_ACTION",
                 native_side = nativeSide,
                 player_phase = playerPhase,
+                // Optional source-pinned queue/executor observation. No
+                // stronger settlement certificate is implied by an empty
+                // queue at one particular rendered game frame.
+                queue_evidence = queueEvidence is null ? null : new
+                {
+                    queue_is_empty = queueEvidence.QueueIsEmpty,
+                    queue_completion_succeeded = queueEvidence.QueueCompletionSucceeded,
+                    executor_not_running = queueEvidence.ExecutorNotRunning,
+                    executor_completion_succeeded = queueEvidence.ExecutorCompletionSucceeded,
+                    no_currently_running_action = queueEvidence.NoCurrentlyRunningAction,
+                    executor_not_paused = queueEvidence.ExecutorNotPaused,
+                    synchronizer_play_phase = queueEvidence.SynchronizerPlayPhase,
+                    no_deferred_player_requests = queueEvidence.NoDeferredPlayerRequests
+                },
+                queue_quiescence_status = queueEvidence is null
+                    ? "NOT_CAPTURED" : queueEvidence.SourceQuiescent
+                    ? "SOURCE_QUEUE_AND_EXECUTOR_QUIESCENT_AT_FRAME"
+                    : "SOURCE_QUEUE_QUIESCENCE_UNVERIFIED",
+                automatic_effect_evidence = effectEvidence is null ? null : new
+                {
+                    no_active_card_or_potion_effect_body =
+                        effectEvidence.NoActiveCardOrPotionEffectBody,
+                    no_player_turn_end_transition =
+                        effectEvidence.NoPlayerTurnEndTransition,
+                    enemy_turn_not_started =
+                        effectEvidence.EnemyTurnNotStarted
+                },
+                automatic_effect_evidence_status = effectEvidence is null
+                    ? "NOT_CAPTURED" : effectEvidence.TrackedEffectBodyInactive
+                    ? "SOURCE_TRACKED_EFFECT_BODY_INACTIVE_AT_FRAME"
+                    : "SOURCE_TRACKED_EFFECT_ACTIVITY_UNVERIFIED",
                 settlement_status = "SETTLEMENT_UNVERIFIED",
                 complete_native_queue_verified = false,
                 native_phase_handoff_order_verified = false,
@@ -942,6 +1091,81 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
             {
                 previous_count = previouslyObserved,
                 new_count = newLength
+            })));
+    }
+
+    /// <summary>
+    /// One observer-only source Task reference registered or first observed
+    /// finished at an ordinary native game frame. No task continuation is
+    /// attached and no game action is dispatched.
+    /// </summary>
+    public void NativeAsyncTaskLifecycle(
+        long taskId, string family, string source, string phase, string status)
+    {
+        if (_closed) return;
+        if (taskId <= 0
+            || phase is not ("registered" or "completed")
+            || status is not ("PENDING" or "FAULTED" or
+                              "CANCELED" or "RAN_TO_COMPLETION"))
+        {
+            ObservationFailure("native_async_task_lifecycle",
+                "INVALID_TASK_REFERENCE_OBSERVATION");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_async_task_lifecycle", Next(),
+            Data: JsonSerializer.SerializeToElement(new {
+                task_id = taskId, family, source, phase, task_status = status,
+                source_version = "v0.111.0",
+                observation_basis = "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME",
+                native_task_mutations = 0,
+                native_settlement_certified = false
+            })));
+    }
+
+    /// <summary>
+    /// Eventual task completion is observed only when Polled by the native
+    /// frame. A zero tracked count never certifies the entire game Task graph.
+    /// </summary>
+    public void NativeAsyncTaskCheckpoint(int? turn, string site,
+        int pending, int pendingNonTurnLoop,
+        IReadOnlyDictionary<string,int> byFamily,
+        int registered, int completed, int overflow, long[] pendingIds)
+    {
+        if (_closed) return;
+        if ((site != "PLAYER_TURN_START" && site != "COMBAT_TEARDOWN")
+            || (site == "PLAYER_TURN_START" && (turn is null || turn < 1))
+            || pending < 0 || pendingNonTurnLoop < 0
+            || pendingNonTurnLoop > pending
+            || registered < 0 || completed < 0
+            || overflow < 0 || completed + pending != registered
+            || pendingNonTurnLoop != pending -
+                (byFamily.GetValueOrDefault("TURN_LOOP"))
+            || pendingIds.Length != pending
+            || byFamily.Values.Any(n => n < 0)
+            || byFamily.Values.Sum() != pending)
+        {
+            ObservationFailure("native_async_task_checkpoint",
+                "INVALID_TASK_CHECKPOINT_COUNTS");
+            return;
+        }
+        Write(new NativeActionEnvelopeRecord(
+            "native_async_task_checkpoint", Next(),
+            Data: JsonSerializer.SerializeToElement(new {
+                site, turn, tracked_pending_task_count = pending,
+                tracked_pending_non_turn_loop_count = pendingNonTurnLoop,
+                tracked_pending_turn_loop_count = pending - pendingNonTurnLoop,
+                tracked_pending_by_family = byFamily,
+                registered_task_count = registered,
+                observed_completed_task_count = completed,
+                registration_overflow = overflow,
+                pending_task_ids = pendingIds,
+                source_version = "v0.111.0",
+                observation_basis = "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME",
+                coverage = NativeAsyncTaskTracker.Coverage,
+                native_settlement_certified = false,
+                exhaustive_native_task_inventory = false,
+                native_task_mutations = 0
             })));
     }
 
@@ -972,6 +1196,11 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     private void Write(NativeActionEnvelopeRecord record)
     {
         if (!_writer.TryEnqueue(record)) _incomplete = true;
+        if (_eventSink is null) return;
+        // A live transport failure marks this recording incomplete. It never
+        // interrupts the game's executor or modifies accepted native actions.
+        try { if (!_eventSink(record)) _incomplete = true; }
+        catch (Exception) { _incomplete = true; }
     }
 
     private long Next() => ++_sequence;

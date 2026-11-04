@@ -27,12 +27,16 @@ public sealed class LocalBridgeServer : IAsyncDisposable
     private readonly byte[] _expectedToken;
     private readonly bool _spectatorOnly;
     private readonly NativeAgentBoundaryFeed? _agentFeed;
+    private readonly NativeLiveEventHub? _liveEvents;
+    private readonly byte[]? _fidelityToken;
+    private readonly CancellationTokenSource _shutdown = new();
     private Task? _loop;
 
     public LocalBridgeServer(
         DecisionCoordinator controller, EventJournal journal, string bearerToken,
         int port = 39221, bool spectatorOnly = false,
-        NativeAgentBoundaryFeed? agentFeed = null)
+        NativeAgentBoundaryFeed? agentFeed = null,
+        NativeLiveEventHub? liveEvents = null, string? fidelityToken = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bearerToken);
         if (port is < 1024 or > 65535)
@@ -41,6 +45,14 @@ public sealed class LocalBridgeServer : IAsyncDisposable
         _journal = journal;
         _spectatorOnly = spectatorOnly;
         _agentFeed = agentFeed;
+        _liveEvents = liveEvents;
+        if (fidelityToken is not null && fidelityToken.Length < 24)
+            throw new ArgumentException("Fidelity token must have at least 24 characters.");
+        _fidelityToken = fidelityToken is null ? null
+            : Encoding.UTF8.GetBytes("Bearer " + fidelityToken);
+        if (_fidelityToken is not null && _fidelityToken.AsSpan().SequenceEqual(
+                Encoding.UTF8.GetBytes("Bearer " + bearerToken)))
+            throw new ArgumentException("Public and fidelity credentials must differ.");
         if (spectatorOnly && agentFeed is null)
             throw new ArgumentException("Spectator transport requires a public feed.");
         _expectedToken = Encoding.UTF8.GetBytes("Bearer " + bearerToken);
@@ -49,12 +61,15 @@ public sealed class LocalBridgeServer : IAsyncDisposable
 
     /// <summary>
     /// The native game uses spectator-only mode. No transport path can submit
-    /// player actions, request pause/step, or serve privileged event journals.
+    /// player actions or request pause/step. A separate authenticated,
+    /// read-only fidelity channel exposes privileged observations.
     /// </summary>
     public LocalBridgeServer(NativeAgentBoundaryFeed feed, string bearerToken,
-        int port = 39221)
+        int port = 39221, NativeLiveEventHub? liveEvents = null,
+        string? fidelityToken = null)
         : this(new DecisionCoordinator(), new EventJournal(), bearerToken,
-            port, spectatorOnly: true, agentFeed: feed) { }
+            port, spectatorOnly: true, agentFeed: feed,
+            liveEvents: liveEvents, fidelityToken: fidelityToken) { }
 
     public void Start()
     {
@@ -79,29 +94,61 @@ public sealed class LocalBridgeServer : IAsyncDisposable
     {
         try
         {
+            var method = context.Request.HttpMethod;
+            var path = context.Request.Url?.AbsolutePath;
+            bool fidelityRoute = path is "/v1/fidelity/stream" or "/v1/fidelity/result"
+                or "/v1/fidelity/status";
+            var expected = fidelityRoute ? _fidelityToken : _expectedToken;
+            if (expected is null)
+            {
+                await SendAsync(context, 403, new { error = "FIDELITY_STREAM_DISABLED" })
+                    .ConfigureAwait(false);
+                return;
+            }
             var supplied = Encoding.UTF8.GetBytes(context.Request.Headers["Authorization"] ?? "");
-            if (supplied.Length != _expectedToken.Length ||
-                !CryptographicOperations.FixedTimeEquals(supplied, _expectedToken))
+            if (supplied.Length != expected.Length ||
+                !CryptographicOperations.FixedTimeEquals(supplied, expected))
             {
                 await SendAsync(context, 401, new { error = "UNAUTHORIZED" }).ConfigureAwait(false);
                 return;
             }
-
-            var method = context.Request.HttpMethod;
-            var path = context.Request.Url?.AbsolutePath;
             if (_spectatorOnly)
             {
                 if (method == "GET" && path == "/v1/agent/status")
                     await SendAsync(context, 200, _agentFeed!.Read().Status).ConfigureAwait(false);
                 else if (method == "GET" && path == "/v1/agent/boundary")
                     await SendAsync(context, 200, _agentFeed!.Read()).ConfigureAwait(false);
+                else if (method == "GET" && path == "/v1/public/stream"
+                    && _liveEvents is not null)
+                    await SendStreamAsync(context, NativeLiveEventHub.PublicChannel)
+                        .ConfigureAwait(false);
+                else if (method == "GET" && path == "/v1/fidelity/stream"
+                    && _liveEvents is not null)
+                    await SendStreamAsync(context, NativeLiveEventHub.FidelityChannel)
+                        .ConfigureAwait(false);
+                else if (method == "POST" && path == "/v1/fidelity/result"
+                    && _liveEvents is not null)
+                    await ReceiveFidelityResultAsync(context).ConfigureAwait(false);
+                else if (method == "GET" && path == "/v1/fidelity/status"
+                    && _liveEvents is not null)
+                    await SendAsync(context, 200, new
+                    {
+                        schema = "sts2-native-fidelity-status-v1",
+                        latest_result = _liveEvents.LatestFidelityResult,
+                        journal_failure = _liveEvents.Failure,
+                        last_source_sequence = _liveEvents.LastSequence(
+                            NativeLiveEventHub.FidelityChannel),
+                        native_settlement_certified = false,
+                        native_live_lockstep = false
+                    }).ConfigureAwait(false);
                 else
                     await SendAsync(context, 403, new
                     {
                         error = "NATIVE_SPECTATOR_READ_ONLY",
                         supported_endpoints = new[]
                         {
-                            "GET /v1/agent/status", "GET /v1/agent/boundary"
+                            "GET /v1/agent/status", "GET /v1/agent/boundary",
+                            "GET /v1/public/stream"
                         }
                     }).ConfigureAwait(false);
                 return;
@@ -169,6 +216,86 @@ public sealed class LocalBridgeServer : IAsyncDisposable
         }
     }
 
+    private async Task ReceiveFidelityResultAsync(HttpListenerContext context)
+    {
+        var bytes = await ReadBoundedAsync(context.Request.InputStream).ConfigureAwait(false);
+        if (bytes is null)
+        {
+            await SendAsync(context, 413, new { error = "BODY_TOO_LARGE" })
+                .ConfigureAwait(false);
+            return;
+        }
+        NativeLiveFidelityResult? update;
+        try { update = JsonSerializer.Deserialize<NativeLiveFidelityResult>(bytes, JsonOptions); }
+        catch (JsonException)
+        {
+            await SendAsync(context, 400, new { error = "INVALID_FIDELITY_RESULT_JSON" })
+                .ConfigureAwait(false);
+            return;
+        }
+        if (update is null)
+        {
+            await SendAsync(context, 400, new { error = "MISSING_FIDELITY_RESULT" })
+                .ConfigureAwait(false);
+            return;
+        }
+        string? rejected = _liveEvents!.AcceptFidelityResult(update);
+        await SendAsync(context, rejected is null ? 200 : 409,
+            rejected is null ? new { status = "ACCEPTED" } : new { status = rejected })
+            .ConfigureAwait(false);
+    }
+
+    private async Task SendStreamAsync(HttpListenerContext context, string channel)
+    {
+        if (_liveEvents is null)
+            throw new InvalidOperationException("No native live event journal.");
+        string? cursor = context.Request.Headers["Last-Event-ID"]
+            ?? context.Request.QueryString["after_seq"];
+        if (cursor is not null && (!long.TryParse(cursor, out long parsed) || parsed < 0))
+        {
+            await SendAsync(context, 400, new { error = "INVALID_EVENT_CURSOR" })
+                .ConfigureAwait(false);
+            return;
+        }
+        long sequence = cursor is null ? 0 : long.Parse(cursor);
+        try { _liveEvents.ReadAfter(channel, sequence, 1); }
+        catch (InvalidOperationException error)
+        {
+            await SendAsync(context, 409, new { error = error.Message })
+                .ConfigureAwait(false);
+            return;
+        }
+        context.Response.StatusCode = 200;
+        context.Response.SendChunked = true;
+        context.Response.ContentType = "text/event-stream; charset=utf-8";
+        context.Response.Headers.Add("Cache-Control", "no-store");
+        int polls = 0;
+        while (!_shutdown.IsCancellationRequested)
+        {
+            var batch = _liveEvents.ReadAfter(channel, sequence);
+            foreach (var evt in batch)
+            {
+                var body = JsonSerializer.Serialize(evt, JsonOptions);
+                var frame = Encoding.UTF8.GetBytes(
+                    $"id: {evt.Sequence}\nevent: native\ndata: {body}\n\n");
+                await context.Response.OutputStream.WriteAsync(frame,
+                    _shutdown.Token).ConfigureAwait(false);
+                sequence = evt.Sequence;
+            }
+            if (batch.Count == 0 && ++polls >= 25)
+            {
+                var heartbeat = Encoding.UTF8.GetBytes(": heartbeat\n\n");
+                await context.Response.OutputStream.WriteAsync(heartbeat,
+                    _shutdown.Token).ConfigureAwait(false);
+                polls = 0;
+            }
+            if (batch.Count > 0) polls = 0;
+            await context.Response.OutputStream.FlushAsync(_shutdown.Token)
+                .ConfigureAwait(false);
+            await Task.Delay(200, _shutdown.Token).ConfigureAwait(false);
+        }
+    }
+
     private static async Task<byte[]?> ReadBoundedAsync(Stream input)
     {
         using var buffer = new MemoryStream();
@@ -194,6 +321,7 @@ public sealed class LocalBridgeServer : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _shutdown.Cancel();
         _server.Stop();
         _server.Close();
         if (_loop is not null) await _loop.ConfigureAwait(false);

@@ -6,6 +6,7 @@ using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -18,6 +19,7 @@ using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Rooms;
+using MegaCrit.Sts2.Core.Rewards;
 using Sts2Emulator.Core;
 using Sts2Emulator.Trace;
 using Sts2ReferenceMod.Capture;
@@ -53,6 +55,19 @@ internal static class NativeV111PassiveBridge
     // Its first-combat link is retained even before a combat sidecar exists.
     private static NativeRunPreludeRecorder? _runPrelude;
     private static MegaCrit.Sts2.Core.Runs.RunState? _preludeRunState;
+    // Unlike the first-combat prelude, this source journal remains open
+    // across later rooms, rewards, shops, events and combats.
+    private static NativeMacroEnvelopeRecorder? _macroEnvelopes;
+    private static MegaCrit.Sts2.Core.Runs.RunState? _macroRunState;
+    private static readonly List<(MerchantEntry Entry,
+        Action<PurchaseStatus, MerchantEntry> Handler)> _shopHandlers = [];
+    private static readonly Dictionary<object, int> _shopSourceSlots =
+        new(ReferenceEqualityComparer.Instance);
+    private static readonly Dictionary<object, int> _shopLastSourceCosts =
+        new(ReferenceEqualityComparer.Instance);
+    private static readonly FieldInfo? NativeMerchantBaseCostField =
+        typeof(MerchantEntry).GetField("_cost",
+            BindingFlags.Instance | BindingFlags.NonPublic);
     // Generated ActModel queues are read after RunManager.GenerateRooms;
     // reflection is read-only and never asks a bag to generate or pull.
     private static readonly FieldInfo? NativeActRoomSetField =
@@ -60,6 +75,13 @@ internal static class NativeV111PassiveBridge
             BindingFlags.Instance | BindingFlags.NonPublic);
     private static readonly FieldInfo? NativeStandardMapRngField =
         typeof(StandardActMap).GetField("_rng",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+    // Source: Flaaax/STS2-source@706ef1c9, pinned v0.111.0.
+    // Play-phase requests may be deferred outside the ActionQueueSet. A
+    // drained ActionQueueSet alone must never conceal those pending requests.
+    private static readonly FieldInfo? NativeDeferredPlayerActionsField =
+        typeof(ActionQueueSynchronizer).GetField(
+            "_requestedActionsWaitingForPlayerTurn",
             BindingFlags.Instance | BindingFlags.NonPublic);
     private static bool _initialMapProjectionAttempted;
     private static bool _missingMapAtFirstInputReported;
@@ -81,6 +103,7 @@ internal static class NativeV111PassiveBridge
     private static bool _hookDisabled;
     private static NativeAgentBoundaryFeed? _agentFeed;
     private static LocalBridgeServer? _agentBridge;
+    private static NativeLiveEventHub? _liveEvents;
 
     // Only report changes in gate state: these diagnostics must not spam
     // every Godot frame or affect player input/RNG.
@@ -119,6 +142,10 @@ internal static class NativeV111PassiveBridge
     internal static void NativeRngHookFailure(string exceptionType) =>
         _actionEnvelopes?.ObservationFailure("native_rng_source_hook", exceptionType);
 
+    internal static void NativeTaskHookFailure(string exceptionType) =>
+        _actionEnvelopes?.ObservationFailure(
+            "native_async_task_source_hook", exceptionType);
+
     internal static void NativeInputHookFailure(string exceptionType)
     {
         _actionEnvelopes?.ObservationFailure("native_input_source_hook", exceptionType);
@@ -150,6 +177,14 @@ internal static class NativeV111PassiveBridge
                     error.GetType().Name);
             }
         }
+        if (_macroEnvelopes is not null && _macroRunState is not null)
+        {
+            try { ObserveMacroMapRequest(action); }
+            catch (Exception error)
+            {
+                _macroEnvelopes.Failure("macro_map_request", error.GetType().Name);
+            }
+        }
         if (_actionEnvelopes is null || _combat is null) return;
         _actionEnvelopes.NativeInputRequest(action,
             action.GetType().FullName ?? action.GetType().Name,
@@ -162,21 +197,93 @@ internal static class NativeV111PassiveBridge
     {
         _actionEnvelopes?.NativeInputOutcome(action, nativeState, nativeActionId);
         _runPrelude?.MapActionOutcome(action, nativeState, nativeActionId);
+        _macroEnvelopes?.MapOutcome(action, nativeState, nativeActionId);
         TryFinishRunPrelude();
     }
 
     internal static bool HasRunPrelude => _runPrelude is not null && _combat is null;
+    internal static bool HasMacroCapture =>
+        _macroEnvelopes is not null || HasRunPrelude;
+
+    internal static void NativeMacroFailure(string stage, string reason) =>
+        _macroEnvelopes?.Failure(stage, reason);
+
+    internal static void NativeMacroRewardOffered(RewardsSet set)
+    {
+        _macroEnvelopes?.RewardOffer(
+            set.Rewards.Select(r => new NativeRewardOfferView(
+                r, r.GetType().Name, r.IsPopulated,
+                r switch
+                {
+                    CardReward cards => cards.Cards.Select(c => c.Id.Entry).ToArray(),
+                    RelicReward relic when relic.Relic is { } item =>
+                        [item.Id.Entry],
+                    PotionReward potion when potion.Potion is { } item =>
+                        [item.Id.Entry],
+                    _ => []
+                },
+                r is GoldReward gold && gold.Amount >= 0
+                    ? gold.Amount : null,
+                r is CardReward or RelicReward or PotionReward
+                    or GoldReward or CardRemovalReward
+                    ? "SOURCE_POPULATED_REWARD_FIELDS"
+                    : "NOT_CAPTURED")).ToArray(),
+            set.Id, set.Player.NetId, !set.DisallowSkipping);
+    }
+
+    internal static void NativeMacroRewardSelected(Reward reward) =>
+        _macroEnvelopes?.RewardSelected(reward);
+
+    internal static void NativeMacroRewardsSkipped() =>
+        _macroEnvelopes?.RewardsSkipped();
+
+    internal static void NativeMacroShopCostObserved(MerchantEntry entry, int cost)
+    {
+        if (_macroEnvelopes is null || !_shopSourceSlots.TryGetValue(
+                entry, out int slot))
+            return;
+        if (_shopLastSourceCosts.TryGetValue(entry, out int prior)
+            && prior == cost)
+            return;
+        _shopLastSourceCosts[entry] = cost;
+        _macroEnvelopes.ShopSourceCostObserved(slot, cost);
+    }
+
+    internal static void NativeMacroRunEnded(bool victory)
+    {
+        if (_macroEnvelopes is not { } macro) return;
+        macro.Finish(victory ? "NATIVE_RUN_VICTORY" : "NATIVE_RUN_DEFEAT");
+        _macroEnvelopes = null;
+        _macroRunState = null;
+        DetachMacroShop();
+        _ = FinishMacroAsync(macro);
+    }
+
+    private static async Task FinishMacroAsync(NativeMacroEnvelopeRecorder recorder)
+    {
+        try { await recorder.DisposeAsync().ConfigureAwait(false); }
+        catch (Exception error)
+        {
+            GD.PushError("[Sts2ReferenceMod] MACRO_STATUS=WRITE_FAILED;" +
+                " reason=" + error.GetType().Name);
+        }
+    }
 
     internal static void NativeEventChoiceRequested(
         object token, string eventModelId, ulong ownerId, int selectedIndex,
         IReadOnlyList<NativeEventOptionView> options,
-        NativeEventRngView eventRng) =>
+        NativeEventRngView eventRng)
+    {
         _runPrelude?.EventChoiceRequested(
             token, eventModelId, ownerId, selectedIndex, options, eventRng);
+        _macroEnvelopes?.EventChoiceRequested(
+            token, eventModelId, selectedIndex, options);
+    }
 
     internal static void NativeEventChoiceReturned(object token)
     {
         _runPrelude?.EventChoiceReturned(token);
+        _macroEnvelopes?.EventChoiceReturned(token);
         TryFinishRunPrelude();
     }
 
@@ -317,6 +424,14 @@ internal static class NativeV111PassiveBridge
     {
         try
         {
+            DetachMacroShop();
+            if (_macroEnvelopes is { } previousMacro)
+            {
+                previousMacro.Finish("A new RunStarted replaced the prior run");
+                _macroEnvelopes = null;
+                _ = FinishMacroAsync(previousMacro);
+            }
+            _macroRunState = null;
             if (_runPrelude is not null)
             {
                 if (!_runPrelude.HasLinkedCombatRoomAndSettledMapRequests)
@@ -350,6 +465,13 @@ internal static class NativeV111PassiveBridge
                 path, BuildId, runId, seed, state.AscensionLevel,
                 state.Players[0].Character.Id.Entry, state.Act.Id.Entry,
                 state.Players.Count);
+            _macroRunState = state;
+            _macroEnvelopes = new NativeMacroEnvelopeRecorder(
+                Path.Combine(root, "macro-" +
+                    DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmssfff") +
+                    "-" + runId + ".jsonl"),
+                BuildId, runId, seed, state.AscensionLevel,
+                state.Players[0].Character.Id.Entry);
             CapturePreludeRng("run_started", state);
             CapturePreludeRoomQueues(state);
             // Launch() raises RunStarted after synchronizer construction in
@@ -407,6 +529,7 @@ internal static class NativeV111PassiveBridge
 
     private static void OnRunRoomEntered()
     {
+        CaptureMacroRoom();
         if (_runPrelude is null || _preludeRunState is not { } state
             || state.Players.Count != 1) return;
         try
@@ -524,6 +647,166 @@ internal static class NativeV111PassiveBridge
         }
     }
 
+    private static void ObserveMacroMapRequest(NativeGameAction action)
+    {
+        if (_macroEnvelopes is null || _macroRunState is null) return;
+        if (action is MoveToMapCoordAction move
+            && move.ToNetAction() is NetMoveToMapCoordAction destination)
+        {
+            var from = _macroRunState.CurrentMapCoord;
+            _macroEnvelopes.MapRequest(action, "map_move",
+                from?.col, from?.row,
+                destination.destination.col, destination.destination.row);
+        }
+        else if (action is VoteForMapCoordAction vote
+            && vote.ToNetAction() is NetVoteForMapCoordAction selection)
+        {
+            _macroEnvelopes.MapRequest(action, "map_vote",
+                selection.source.coord?.col, selection.source.coord?.row,
+                selection.destination?.coord.col,
+                selection.destination?.coord.row);
+        }
+    }
+
+    private static void TryCaptureMacroMap()
+    {
+        var recorder = _macroEnvelopes;
+        var state = _macroRunState;
+        if (recorder is null || state is null
+            || !recorder.NeedsMap(state.CurrentActIndex)
+            || state.Map is not StandardActMap map)
+            return;
+        try
+        {
+            if (NativeStandardMapRngField?.GetValue(map)
+                is not MegaCrit.Sts2.Core.Random.Rng mapRng)
+                throw new InvalidOperationException("SOURCE_MAP_RNG_UNAVAILABLE");
+            var points = map.GetAllMapPoints()
+                .Append(map.StartingMapPoint)
+                .Append(map.BossMapPoint)
+                .Concat(map.SecondBossMapPoint is { } second
+                    ? new[] { second } : Array.Empty<MapPoint>())
+                .OrderBy(p => p.coord.row).ThenBy(p => p.coord.col)
+                .Select(p => new NativeMapPointView(
+                    p.coord.col, p.coord.row, p.PointType.ToString(),
+                    p.CanBeModified,
+                    p.Children.OrderBy(c => c.coord.row)
+                        .ThenBy(c => c.coord.col)
+                        .Select(c => new NativeMapCoordView(
+                            c.coord.col, c.coord.row)).ToArray()))
+                .ToArray();
+            var rng = mapRng.ToSerializable();
+            recorder.MapSnapshot(state.CurrentActIndex, state.Act.Id.Entry,
+                points, new NativeMapRngView(rng.counter, rng.state0,
+                    rng.state1, rng.state2, rng.state3));
+        }
+        catch (Exception error)
+        {
+            recorder.Failure("macro_map_snapshot", error.GetType().Name);
+        }
+    }
+
+    private static void DetachMacroShop()
+    {
+        foreach (var (entry, handler) in _shopHandlers)
+            entry.PurchaseCompleted -= handler;
+        _shopHandlers.Clear();
+        _shopSourceSlots.Clear();
+        _shopLastSourceCosts.Clear();
+    }
+
+    private static void CaptureMacroShop(string cause)
+    {
+        var recorder = _macroEnvelopes;
+        var state = _macroRunState;
+        if (recorder is null || state is null
+            || state.CurrentRoom is not MerchantRoom merchant
+            || merchant.Inventories.Count != 1 || state.Players.Count != 1)
+            return;
+        try
+        {
+            if (NativeMerchantBaseCostField is null)
+                throw new MissingFieldException("MerchantEntry._cost");
+            var offers = merchant.Inventories[0].AllEntries.Select((entry, slot) =>
+            {
+                _shopSourceSlots[entry] = slot;
+                int baseCost = (int)(NativeMerchantBaseCostField.GetValue(entry)
+                    ?? throw new InvalidOperationException("SOURCE_BASE_COST_MISSING"));
+                string? model = entry switch
+                {
+                    MerchantCardEntry card => card.CreationResult?.Card.Id.Entry,
+                    MerchantRelicEntry relic => relic.Model?.Id.Entry,
+                    MerchantPotionEntry potion => potion.Model?.Id.Entry,
+                    _ => null
+                };
+                return new NativeShopOfferView(slot, entry.GetType().Name,
+                    model, entry.IsStocked, baseCost,
+                    entry is MerchantCardEntry { IsOnSale: true },
+                    entry is MerchantCardRemovalEntry { Used: true });
+            }).ToArray();
+            recorder.ShopSnapshot(state.CurrentActIndex, state.TotalFloor,
+                state.Players[0].Gold, offers, cause);
+        }
+        catch (Exception error)
+        {
+            recorder.Failure("macro_shop_snapshot", error.GetType().Name);
+        }
+    }
+
+    private static void CaptureMacroRoom()
+    {
+        var recorder = _macroEnvelopes;
+        var state = _macroRunState;
+        if (recorder is null || state is null || state.Players.Count != 1)
+            return;
+        try
+        {
+            TryCaptureMacroMap();
+            var coord = state.CurrentMapCoord;
+            NativeMapCoordView[] destinations = [];
+            if (coord is { } current && state.Map is StandardActMap map)
+            {
+                var point = map.GetAllMapPoints()
+                    .Append(map.StartingMapPoint).Append(map.BossMapPoint)
+                    .Concat(map.SecondBossMapPoint is { } second
+                        ? new[] { second } : Array.Empty<MapPoint>())
+                    .FirstOrDefault(p => p.coord.col == current.col
+                        && p.coord.row == current.row);
+                if (point is not null)
+                    destinations = point.Children.Select(c =>
+                        new NativeMapCoordView(c.coord.col, c.coord.row)).ToArray();
+            }
+            recorder.RoomEntered(state.CurrentActIndex, state.TotalFloor,
+                coord?.col, coord?.row,
+                state.CurrentRoom?.RoomType.ToString() ?? "UNAVAILABLE",
+                state.CurrentRoom?.ModelId?.Entry,
+                state.Players[0].Creature.CurrentHp, state.Players[0].Gold,
+                destinations);
+
+            DetachMacroShop();
+            if (state.CurrentRoom is MerchantRoom merchant
+                && merchant.Inventories.Count == 1)
+            {
+                CaptureMacroShop("ROOM_ENTERED");
+                foreach (var entry in merchant.Inventories[0].AllEntries)
+                {
+                    Action<PurchaseStatus, MerchantEntry> handler =
+                        (status, purchased) =>
+                        {
+                            if (status == PurchaseStatus.Success)
+                                CaptureMacroShop("SOURCE_PURCHASE_COMPLETED");
+                        };
+                    entry.PurchaseCompleted += handler;
+                    _shopHandlers.Add((entry, handler));
+                }
+            }
+        }
+        catch (Exception error)
+        {
+            recorder.Failure("macro_room_entered", error.GetType().Name);
+        }
+    }
+
     private static void CapturePreludeRng(
         string site, MegaCrit.Sts2.Core.Runs.RunState state)
     {
@@ -605,9 +888,20 @@ internal static class NativeV111PassiveBridge
         try
         {
             var feed = new NativeAgentBoundaryFeed();
-            var server = new LocalBridgeServer(feed, token, port);
+            string root = System.Environment.GetEnvironmentVariable(
+                "STS2_FIDELITY_TRACE_DIR")
+                ?? Path.Combine(OS.GetUserDataDir(), "native_fidelity_traces");
+            var prefix = Path.Combine(root, "live-" +
+                DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmssfff") + "-" +
+                Guid.NewGuid().ToString("N"));
+            var events = new NativeLiveEventHub(prefix);
+            string? fidelityToken = System.Environment.GetEnvironmentVariable(
+                "STS2_INSPECTOR_FIDELITY_TOKEN");
+            var server = new LocalBridgeServer(feed, token, port,
+                liveEvents: events, fidelityToken: fidelityToken);
             server.Start();
             _agentFeed = feed;
+            _liveEvents = events;
             _agentBridge = server;
             Godot.GD.Print("[Sts2ReferenceMod] AGENT_BRIDGE_STATUS=SPECTATOR_READY;" +
                 " schema=" + NativeAgentBoundaryFeed.SchemaId +
@@ -617,6 +911,7 @@ internal static class NativeV111PassiveBridge
         catch (Exception error)
         {
             _agentFeed = null;
+            _liveEvents = null;
             _agentBridge = null;
             Godot.GD.PushError("[Sts2ReferenceMod] AGENT_BRIDGE_STATUS=START_FAILED;" +
                 " reason=" + error.GetType().Name);
@@ -633,12 +928,32 @@ internal static class NativeV111PassiveBridge
             {
                 _panel = new FidelityInspectorPanel();
                 _tree.Root.AddChild(_panel);
+                // Native mod DLLs can be loaded without Godot registering
+                // this managed CanvasLayer as a script. Do not depend on the
+                // virtual _Ready callback to build the overlay controls.
+                _panel.Initialize();
+                bool showOnStart = System.Environment.GetEnvironmentVariable(
+                    "STS2_INSPECTOR_PANEL_SHOW_ON_START") == "1";
+                _panel.SetShown(showOnStart);
+                Godot.GD.Print("[Sts2ReferenceMod] INSPECTOR_PANEL_STATUS=CREATED;" +
+                    " visible=" + _panel.Visible +
+                    "; controls_created=" + (_panel.GetChildCount() > 0) +
+                    "; in_tree=" + _panel.IsInsideTree() +
+                    "; opt_in_show_on_start=" + showOnStart);
             }
             bool f8Down = Godot.Input.IsKeyPressed(Godot.Key.F8);
-            if (f8Down && !_f8WasDown) _panel?.Toggle();
+            if (f8Down && !_f8WasDown)
+            {
+                _panel?.Toggle();
+                Godot.GD.Print("[Sts2ReferenceMod] INSPECTOR_PANEL_STATUS=F8_TOGGLED;" +
+                    " visible=" + (_panel?.Visible.ToString() ?? "UNAVAILABLE"));
+            }
             _f8WasDown = f8Down;
+            _panel?.SetFidelityResult(_liveEvents?.LatestFidelityResult,
+                _liveEvents?.Failure);
             _panel?.Tick();
             TryCaptureInitialNativeMap();
+            TryCaptureMacroMap();
 
             var manager = CombatManager.Instance;
             if (!manager.IsInProgress)
@@ -672,6 +987,10 @@ internal static class NativeV111PassiveBridge
             // Executor callbacks must stay attached even when the stricter
             // decision trace has stopped due to an unsupported player prompt.
             AttachActionExecutor();
+            // Task reference registrations may be posted by async native
+            // methods, but their observations and all journal writes happen
+            // here on the ordinary game frame thread.
+            NativeV111AsyncTaskHooks.PollFrame();
             JsonElement? frameState = null;
             if (_actionEnvelopes is not null && _adapter is not null)
             {
@@ -698,7 +1017,10 @@ internal static class NativeV111PassiveBridge
                 _actionEnvelopes.TurnBoundaryCandidate(
                     "PLAYER_TURN_START", playerState.TurnNumber,
                     frameState.Value, combat.CurrentSide.ToString(),
-                    playerState.Phase.ToString());
+                    playerState.Phase.ToString(),
+                    CaptureNativeQueueQuiescence(),
+                    CaptureNativeAutomaticEffectEvidence(combat));
+                NativeV111AsyncTaskHooks.PlayerCheckpoint(playerState.TurnNumber);
                 ObservedPlayerStartTurns.Add(playerState.TurnNumber);
             }
             if (_recording is null || _adapter is null || _choiceInterrupted) return;
@@ -721,7 +1043,14 @@ internal static class NativeV111PassiveBridge
                 _lastCapturedGeneration = _decisionGeneration;
                 _actionEnvelopes?.StableBoundary(
                     recorded.DecisionId, recorded.State);
-                try { _agentFeed?.Publish(recorded); }
+                try
+                {
+                    _agentFeed?.Publish(recorded);
+                    var visible = _agentFeed?.Current();
+                    if (visible is not null
+                        && _liveEvents?.PublishPublicBoundary(visible) == false)
+                        _agentFeed?.Withhold("LIVE_EVENT_JOURNAL_FAILED");
+                }
                 catch (Exception error)
                 {
                     _agentFeed?.Withhold("OBSERVATION_PROJECTION_UNAVAILABLE");
@@ -754,6 +1083,76 @@ internal static class NativeV111PassiveBridge
             }
         }
         finally { _handlingFrame = false; }
+    }
+
+    /// <summary>
+    /// Passive source-pinned observation on the Godot frame thread. Neither
+    /// task is awaited and no ActionQueueSet.GetReadyAction is called (that
+    /// method can remove canceled queued actions). A failure to inspect the
+    /// private deferred-request list results in missing evidence, not a
+    /// claim that the list was empty.
+    /// </summary>
+    /// <summary>
+    /// Read only the native CombatManager's explicit card/potion effect-body
+    /// depth and phase flags. It is possible for detached delayed hooks to
+    /// remain in flight when all three flags are true.
+    /// </summary>
+    private static NativeAutomaticEffectEvidence? CaptureNativeAutomaticEffectEvidence(
+        CombatState combat)
+    {
+        try
+        {
+            if (combat.Players.Count != 1) return null;
+            var manager = CombatManager.Instance;
+            return new NativeAutomaticEffectEvidence(
+                NoActiveCardOrPotionEffectBody:
+                    !manager.IsExecutingCardOrPotionEffect(combat.Players[0]),
+                NoPlayerTurnEndTransition:
+                    !manager.EndingPlayerTurnPhaseOne &&
+                    !manager.EndingPlayerTurnPhaseTwo,
+                EnemyTurnNotStarted: !manager.IsEnemyTurnStarted);
+        }
+        catch (Exception error)
+        {
+            Godot.GD.PrintErr(
+                "[Sts2ReferenceMod] AUTOMATIC_EFFECT_STATUS=UNAVAILABLE; reason=" +
+                error.GetType().Name);
+            return null;
+        }
+    }
+
+    private static NativeQueueQuiescenceEvidence? CaptureNativeQueueQuiescence()
+    {
+        try
+        {
+            if (_executor is null || NativeDeferredPlayerActionsField is null)
+                return null;
+            var queue = RunManager.Instance.ActionQueueSet;
+            var synchronizer = RunManager.Instance.ActionQueueSynchronizer;
+            if (queue is null || synchronizer is null)
+                return null;
+            var deferred = NativeDeferredPlayerActionsField.GetValue(
+                synchronizer) as System.Collections.ICollection;
+            if (deferred is null) return null;
+            return new NativeQueueQuiescenceEvidence(
+                QueueIsEmpty: queue.IsEmpty,
+                QueueCompletionSucceeded: queue.BecameEmpty().IsCompletedSuccessfully,
+                ExecutorNotRunning: !_executor.IsRunning,
+                ExecutorCompletionSucceeded: _executor.FinishedExecutingActions()
+                    .IsCompletedSuccessfully,
+                NoCurrentlyRunningAction: _executor.CurrentlyRunningAction is null,
+                ExecutorNotPaused: !_executor.IsPaused,
+                SynchronizerPlayPhase: synchronizer.CombatState ==
+                    ActionSynchronizerCombatState.PlayPhase,
+                NoDeferredPlayerRequests: deferred.Count == 0);
+        }
+        catch (Exception error)
+        {
+            Godot.GD.PrintErr(
+                "[Sts2ReferenceMod] QUEUE_QUIESCENCE_STATUS=UNAVAILABLE; reason=" +
+                error.GetType().Name);
+            return null;
+        }
     }
 
     private static string? StableDecisionBlocker(CombatState combat)
@@ -791,6 +1190,9 @@ internal static class NativeV111PassiveBridge
         _adapter = new NativeCombatAdapter(combat, () => _choiceInterrupted);
         string runId = Guid.NewGuid().ToString("N");
         _agentFeed?.OpenCombat(runId);
+        _macroEnvelopes?.CombatLinked(runId);
+        if (_liveEvents?.OpenSession(runId) == false)
+            _agentFeed?.Withhold("LIVE_EVENT_JOURNAL_FAILED");
         string root = System.Environment.GetEnvironmentVariable("STS2_FIDELITY_TRACE_DIR")
             ?? Path.Combine(OS.GetUserDataDir(), "native_fidelity_traces");
         Directory.CreateDirectory(root);
@@ -850,7 +1252,10 @@ internal static class NativeV111PassiveBridge
                 NativeV111InputHooks.HasHandChoiceFlowHook,
             nativeManualPlayHookInstalled: NativeV111InputHooks.HasManualPlayHook,
             nativeUiPlayBeginHookInstalled: NativeV111InputHooks.HasUiPlayBeginHook,
-            nativeUiGateHookInstalled: NativeV111InputHooks.HasUiGateHook);
+            nativeUiGateHookInstalled: NativeV111InputHooks.HasUiGateHook,
+            nativeAsyncTaskHookInstalled: NativeV111AsyncTaskHooks.IsInstalled,
+            eventSink: record => _liveEvents?.PublishFidelityRecord(record) ?? true);
+        NativeV111AsyncTaskHooks.BeginCombat(_actionEnvelopes);
         if (!string.IsNullOrWhiteSpace(actualSeed))
             _actionEnvelopes.NativeRunIdentity(actualSeed, actualAscension);
         // A source-audited initial shuffle executes before the rendered
@@ -876,6 +1281,9 @@ internal static class NativeV111PassiveBridge
             NativeV111RngHook.HasFloatHook,
             _agentBridge is not null);
         CombatManager.Instance.History.Changed += OnHistoryChanged;
+        CombatManager.Instance.AboutToSwitchToEnemyTurn += OnAboutToSwitchToEnemyTurn;
+        CombatManager.Instance.TurnEnded += OnNativeTurnEnded;
+        CombatManager.Instance.TurnStarted += OnNativeTurnStarted;
         AttachActionExecutor();
         var currentChoiceSync = RunManager.Instance.PlayerChoiceSynchronizer;
         if (!ReferenceEquals(_choiceSync, currentChoiceSync))
@@ -904,6 +1312,55 @@ internal static class NativeV111PassiveBridge
         {
             _executor.BeforeActionExecuted += BeforeAction;
             _executor.AfterActionExecuted += AfterAction;
+        }
+    }
+
+    // Pinned v0.111 CombatManager invokes these events from the original
+    // turn loop. Side switch is observed from TurnEnded (after CurrentSide
+    // changes); TurnStarted can occur during a paused start-turn hook choice.
+    // In that case the player phase is Start/AutoPrePlay, not Play.
+    // No gameplay method, RNG provider or task is called by the observer.
+    private static void OnAboutToSwitchToEnemyTurn(CombatState state) =>
+        ObserveNativePhaseHandoff("ABOUT_TO_SWITCH_TO_ENEMY_TURN", state);
+
+    private static void OnNativeTurnEnded(CombatState state) =>
+        ObserveNativePhaseHandoff("SIDE_SWITCHED", state);
+
+    private static void OnNativeTurnStarted(CombatState state) =>
+        ObserveNativePhaseHandoff("TURN_STARTED", state);
+
+    private static void ObserveNativePhaseHandoff(string sourceEvent, CombatState state)
+    {
+        if (_actionEnvelopes is null) return;
+        try
+        {
+            if (!ReferenceEquals(state, _combat) || state.Players.Count != 1
+                || state.Players[0].PlayerCombatState is not { } playerState)
+            {
+                _actionEnvelopes.ObservationFailure("native_phase_handoff",
+                    "SOURCE_COMBAT_IDENTITY_UNAVAILABLE");
+                return;
+            }
+            var synchronizer = RunManager.Instance.ActionQueueSynchronizer;
+            if (synchronizer is null)
+            {
+                _actionEnvelopes.ObservationFailure("native_phase_handoff",
+                    "SOURCE_SYNCHRONIZER_UNAVAILABLE");
+                return;
+            }
+            var manager = CombatManager.Instance;
+            _actionEnvelopes.NativePhaseHandoff(
+                sourceEvent, playerState.TurnNumber,
+                state.CurrentSide.ToString(), playerState.Phase.ToString(),
+                synchronizer.CombatState.ToString(),
+                manager.EndingPlayerTurnPhaseOne,
+                manager.EndingPlayerTurnPhaseTwo,
+                manager.IsEnemyTurnStarted);
+        }
+        catch (Exception error)
+        {
+            _actionEnvelopes.ObservationFailure("native_phase_handoff",
+                error.GetType().Name);
         }
     }
 
@@ -942,6 +1399,7 @@ internal static class NativeV111PassiveBridge
         // A previous stable menu is no longer safe as soon as ANY executor
         // action (including automatic enemy or hook action) starts.
         _agentFeed?.Withhold("ACTION_RESOLVING");
+        _liveEvents?.PublishPublicStatus("ACTION_RESOLVING");
         // This callback runs for every executor action, including monster and
         // automatic actions which have no matching human legal-menu item.
         // A distinct timeline protects their evidence from strict-trace gaps.
@@ -1015,6 +1473,7 @@ internal static class NativeV111PassiveBridge
     private static void OnNestedChoice(NativeGameAction action)
     {
         _agentFeed?.Withhold("UNSUPPORTED_NESTED_CHOICE");
+        _liveEvents?.PublishPublicStatus("UNSUPPORTED_NESTED_CHOICE");
         try
         {
             _actionEnvelopes?.ChoicePause(
@@ -1047,6 +1506,7 @@ internal static class NativeV111PassiveBridge
     private static void StopStrictCapture(string reason)
     {
         _agentFeed?.Withhold("STRICT_TRACE_INCOMPLETE");
+        _liveEvents?.PublishPublicStatus("STRICT_TRACE_INCOMPLETE");
         var recording = _recording;
         if (recording is null) return;
         _recording = null;
@@ -1122,7 +1582,11 @@ internal static class NativeV111PassiveBridge
             _ = FinishRunPreludeAsync(prelude);
         }
         _agentFeed?.EndCombat(reason);
+        _liveEvents?.PublishPublicStatus("COMBAT_COMPLETE");
         NativeV111RngHook.EndCombat();
+        // Close task observer before terminal is appended; pending tasks
+        // remain explicitly pending rather than being invented completed.
+        NativeV111AsyncTaskHooks.EndCombat();
         var recording = _recording;
         var actionEnvelopes = _actionEnvelopes;
         if (recording is null && actionEnvelopes is null && _combat is null)
@@ -1161,6 +1625,9 @@ internal static class NativeV111PassiveBridge
             _choiceSync = null;
         }
         CombatManager.Instance.History.Changed -= OnHistoryChanged;
+        CombatManager.Instance.AboutToSwitchToEnemyTurn -= OnAboutToSwitchToEnemyTurn;
+        CombatManager.Instance.TurnEnded -= OnNativeTurnEnded;
+        CombatManager.Instance.TurnStarted -= OnNativeTurnStarted;
         _combat = null;
         _adapter = null;
         Godot.GD.Print("[Sts2ReferenceMod] Passive combat capture completed: " + _currentFile);

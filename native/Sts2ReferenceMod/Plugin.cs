@@ -30,6 +30,11 @@ public static class Plugin
             // Separate explicit opt-in; observes requests before queue
             // authorization and never changes game input or dispatch.
             NativeV111InputHooks.TryInstall();
+            // Independent opt-in run-wide macro source observers.
+            NativeV111MacroHooks.TryInstall();
+            // Independent explicit opt-in for non-mutating Task-reference
+            // observation, with no observer continuations or task awaits.
+            NativeV111AsyncTaskHooks.TryInstall();
         }
         else
         {

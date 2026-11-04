@@ -38,11 +38,63 @@ internal static class Program
         // ordering and queue settlement require native execution evidence.
         new("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "IsInProgress"),
         new("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "DebugOnlyGetState"),
+        // Source-pinned turn-loop callback and tracked-effect observation.
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "event", "AboutToSwitchToEnemyTurn"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "event", "TurnEnded"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "event", "TurnStarted"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "IsExecutingCardOrPotionEffect"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "EndingPlayerTurnPhaseOne"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "EndingPlayerTurnPhaseTwo"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "property", "IsEnemyTurnStarted"),
         new("MegaCrit.Sts2.Core.Combat.CombatState", "property", "CurrentSide"),
         new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "event", "BeforeActionExecuted"),
         new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "event", "AfterActionExecuted"),
+        // Source-pinned queue quiescence contracts. Method existence is
+        // verified without invoking the original game or traversing queues.
+        new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "property", "IsRunning"),
+        new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "property", "IsPaused"),
+        new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "property", "CurrentlyRunningAction"),
+        new("MegaCrit.Sts2.Core.GameActions.ActionExecutor", "method", "FinishedExecutingActions"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSet", "property", "IsEmpty"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSet", "method", "BecameEmpty"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSynchronizer", "property", "CombatState"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSynchronizer", "field",
+            "_requestedActionsWaitingForPlayerTurn"),
+        // Optional read-only async lifecycle instrumentation. Metadata
+        // existence is checked even if STS2_FIDELITY_TASK_HOOK is disabled;
+        // the actual Harmony binding remains subject to runtime validation.
+        new("MegaCrit.Sts2.Core.GameActions.GameAction", "method", "Execute"),
+        new("MegaCrit.Sts2.Core.GameActions.GameAction", "field", "_executionTask"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+            "method", "AssignTaskAndWaitForPauseOrCompletion"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+            "method", "WaitForPauseOrCompletionWithoutAssigningTask"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+            "method", "WaitForCompletion"),
+        new("MegaCrit.Sts2.Core.GameActions.Multiplayer.HookPlayerChoiceContext",
+            "property", "Task"),
+        new("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "RunTurnLoopAfter"),
         new("MegaCrit.Sts2.Core.GameActions.ReadyToBeginEnemyTurnAction", "type", ""),
-        new("MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction", "type", "")
+        new("MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction", "type", ""),
+        // Source-run macro shop/reward/event observer contracts.
+        // All probes are PE metadata-only; no price hooks or RNG execute.
+        new("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "field", "_cost"),
+        new("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "property", "Cost"),
+        new("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "event", "PurchaseCompleted"),
+        new("MegaCrit.Sts2.Core.Entities.Merchant.MerchantInventory", "property", "AllEntries"),
+        new("MegaCrit.Sts2.Core.Rooms.MerchantRoom", "property", "Inventories"),
+        new("MegaCrit.Sts2.Core.Rewards.RewardsSet", "property", "Id"),
+        new("MegaCrit.Sts2.Core.Rewards.RewardsSet", "property", "Rewards"),
+        new("MegaCrit.Sts2.Core.Rewards.RewardsSet", "property", "DisallowSkipping"),
+        new("MegaCrit.Sts2.Core.Multiplayer.Game.RewardsSetSynchronizer",
+            "method", "BeginRewardsSet"),
+        new("MegaCrit.Sts2.Core.Multiplayer.Game.RewardsSetSynchronizer",
+            "method", "SelectLocalReward"),
+        new("MegaCrit.Sts2.Core.Multiplayer.Game.RewardsSetSynchronizer",
+            "method", "SkipLocalRewardsSet"),
+        new("MegaCrit.Sts2.Core.Multiplayer.Game.EventSynchronizer",
+            "method", "ChooseLocalOption"),
+        new("MegaCrit.Sts2.Core.Runs.RunManager", "method", "OnEnded")
     ];
 
     private static bool Exists(MetadataReader reader, Member requested)
