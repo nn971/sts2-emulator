@@ -98,7 +98,10 @@ def sample():
             "native_choice_contents_complete": False,
             "emulator_parity": "NOT_TESTED",
             "rewards": [{"index": 0, "native_type": "CardReward",
-                         "populated": True, "contents": "NOT_CAPTURED"}],
+                         "populated": True,
+                         "model_ids": ["CardA", "CardB", "CardC"],
+                         "gold_amount": None,
+                         "content_coverage": "SOURCE_POPULATED_REWARD_FIELDS"}],
         }),
         row("reward_selection_requested", {
             "offer_id": 1, "selected_index": 0,
@@ -170,6 +173,31 @@ class NativeMacroEnvelopeAuditTests(unittest.TestCase):
             rows[index]["data"][key] = value
             self.assertEqual("INCOMPLETE_CAPTURE", audit(rows)["status"],
                              (index, key))
+
+    def test_populated_reward_model_ids_are_source_observed(self):
+        rows = sample()
+        self.assertEqual("SOURCE_MACRO_TIMELINE_CONSISTENT",
+                         audit(rows)["status"])
+        for key, value in (
+            ("model_ids", ["CardA", ""]),
+            ("content_coverage", "VERIFIED_EXACT"),
+            ("gold_amount", -1),
+            ("model_ids", None),
+        ):
+            invalid = copy.deepcopy(rows)
+            invalid[8]["data"]["rewards"][0][key] = value
+            self.assertEqual("INCOMPLETE_CAPTURE", audit(invalid)["status"],
+                             key)
+
+    def test_unprojected_reward_cannot_claim_model_ids(self):
+        rows = sample()
+        row = rows[8]["data"]["rewards"][0]
+        row.update({"content_coverage": "NOT_CAPTURED",
+                    "model_ids": [], "gold_amount": None})
+        self.assertEqual("SOURCE_MACRO_TIMELINE_CONSISTENT",
+                         audit(rows)["status"])
+        row["model_ids"] = ["UnverifiedCard"]
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(rows)["status"])
 
     def test_forged_shop_price_and_parity_claim_fail(self):
         rows = sample()
