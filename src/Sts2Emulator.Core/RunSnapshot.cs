@@ -58,8 +58,21 @@ public static class RunSnapshot
             throw new InvalidDataException(
                 "Snapshot schema does not match its stochastic provider state.");
         ValidateSupportedState(envelope.State);
-        if (!StringComparer.Ordinal.Equals(envelope.StateHash, CanonicalJson.Sha256(envelope.State)))
-            throw new InvalidDataException("Snapshot canonical hash does not match its state.");
+        if (!StringComparer.Ordinal.Equals(
+                envelope.StateHash, CanonicalJson.Sha256(envelope.State)))
+        {
+            // Pre-power-refactor snapshots contain enemy statuses as a
+            // separate serialized dictionary. The reader now normalizes
+            // those entries into power instances, so their *new* state hash
+            // necessarily differs. Authenticate the exact original JSON
+            // state before accepting this one-way representation migration.
+            using var original = JsonDocument.Parse(json);
+            var rawState = original.RootElement.GetProperty("state");
+            if (!StringComparer.Ordinal.Equals(
+                    envelope.StateHash, CanonicalJson.Sha256(rawState)))
+                throw new InvalidDataException(
+                    "Snapshot canonical hash does not match its state.");
+        }
         return envelope.State.Fork();
     }
 
