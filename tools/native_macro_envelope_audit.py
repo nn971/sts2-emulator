@@ -194,8 +194,21 @@ def audit(records: list[dict]) -> dict:
                     or type(data.get("can_skip")) is not bool
                     or data.get("native_choice_contents_complete") is not False
                     or data.get("emulator_parity") != "NOT_TESTED"
-                    or any(row.get("index") != i
-                        or row.get("contents") != "NOT_CAPTURED"
+                    or any(
+                        not isinstance(row, dict)
+                        or row.get("index") != i
+                        or not isinstance(row.get("native_type"), str)
+                        or not isinstance(row.get("populated"), bool)
+                        or row.get("content_coverage") not in (
+                            "SOURCE_POPULATED_REWARD_FIELDS", "NOT_CAPTURED")
+                        or not isinstance(row.get("model_ids"), list)
+                        or any(not isinstance(model, str) or not model
+                               for model in row["model_ids"])
+                        or (row.get("gold_amount") is not None and
+                            not _integer(row.get("gold_amount")))
+                        or (row.get("content_coverage") == "NOT_CAPTURED"
+                            and (row["model_ids"] or row.get("gold_amount")
+                                 is not None))
                         for i, row in enumerate(rows))):
                     raise ValueError("Invalid reward offer")
                 rewards[oid] = len(rows)
