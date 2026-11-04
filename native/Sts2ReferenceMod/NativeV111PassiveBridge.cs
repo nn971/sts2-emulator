@@ -6,6 +6,7 @@ using Godot;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -18,6 +19,7 @@ using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Rooms;
+using MegaCrit.Sts2.Core.Rewards;
 using Sts2Emulator.Core;
 using Sts2Emulator.Trace;
 using Sts2ReferenceMod.Capture;
@@ -53,6 +55,15 @@ internal static class NativeV111PassiveBridge
     // Its first-combat link is retained even before a combat sidecar exists.
     private static NativeRunPreludeRecorder? _runPrelude;
     private static MegaCrit.Sts2.Core.Runs.RunState? _preludeRunState;
+    // Unlike the first-combat prelude, this source journal remains open
+    // across later rooms, rewards, shops, events and combats.
+    private static NativeMacroEnvelopeRecorder? _macroEnvelopes;
+    private static MegaCrit.Sts2.Core.Runs.RunState? _macroRunState;
+    private static readonly List<(MerchantEntry Entry,
+        Action<PurchaseStatus, MerchantEntry> Handler)> _shopHandlers = [];
+    private static readonly FieldInfo? NativeMerchantBaseCostField =
+        typeof(MerchantEntry).GetField("_cost",
+            BindingFlags.Instance | BindingFlags.NonPublic);
     // Generated ActModel queues are read after RunManager.GenerateRooms;
     // reflection is read-only and never asks a bag to generate or pull.
     private static readonly FieldInfo? NativeActRoomSetField =
@@ -162,6 +173,14 @@ internal static class NativeV111PassiveBridge
                     error.GetType().Name);
             }
         }
+        if (_macroEnvelopes is not null && _macroRunState is not null)
+        {
+            try { ObserveMacroMapRequest(action); }
+            catch (Exception error)
+            {
+                _macroEnvelopes.Failure("macro_map_request", error.GetType().Name);
+            }
+        }
         if (_actionEnvelopes is null || _combat is null) return;
         _actionEnvelopes.NativeInputRequest(action,
             action.GetType().FullName ?? action.GetType().Name,
@@ -174,21 +193,66 @@ internal static class NativeV111PassiveBridge
     {
         _actionEnvelopes?.NativeInputOutcome(action, nativeState, nativeActionId);
         _runPrelude?.MapActionOutcome(action, nativeState, nativeActionId);
+        _macroEnvelopes?.MapOutcome(action, nativeState, nativeActionId);
         TryFinishRunPrelude();
     }
 
     internal static bool HasRunPrelude => _runPrelude is not null && _combat is null;
+    internal static bool HasMacroCapture =>
+        _macroEnvelopes is not null || HasRunPrelude;
+
+    internal static void NativeMacroFailure(string stage, string reason) =>
+        _macroEnvelopes?.Failure(stage, reason);
+
+    internal static void NativeMacroRewardOffered(RewardsSet set)
+    {
+        _macroEnvelopes?.RewardOffer(
+            set.Rewards.Select(r => new NativeRewardOfferView(
+                r, r.GetType().Name, r.IsPopulated)).ToArray(),
+            set.Id, set.Player.NetId, !set.DisallowSkipping);
+    }
+
+    internal static void NativeMacroRewardSelected(Reward reward) =>
+        _macroEnvelopes?.RewardSelected(reward);
+
+    internal static void NativeMacroRewardsSkipped() =>
+        _macroEnvelopes?.RewardsSkipped();
+
+    internal static void NativeMacroRunEnded(bool victory)
+    {
+        if (_macroEnvelopes is not { } macro) return;
+        macro.Finish(victory ? "NATIVE_RUN_VICTORY" : "NATIVE_RUN_DEFEAT");
+        _macroEnvelopes = null;
+        _macroRunState = null;
+        DetachMacroShop();
+        _ = FinishMacroAsync(macro);
+    }
+
+    private static async Task FinishMacroAsync(NativeMacroEnvelopeRecorder recorder)
+    {
+        try { await recorder.DisposeAsync().ConfigureAwait(false); }
+        catch (Exception error)
+        {
+            GD.PushError("[Sts2ReferenceMod] MACRO_STATUS=WRITE_FAILED;" +
+                " reason=" + error.GetType().Name);
+        }
+    }
 
     internal static void NativeEventChoiceRequested(
         object token, string eventModelId, ulong ownerId, int selectedIndex,
         IReadOnlyList<NativeEventOptionView> options,
-        NativeEventRngView eventRng) =>
+        NativeEventRngView eventRng)
+    {
         _runPrelude?.EventChoiceRequested(
             token, eventModelId, ownerId, selectedIndex, options, eventRng);
+        _macroEnvelopes?.EventChoiceRequested(
+            token, eventModelId, selectedIndex, options);
+    }
 
     internal static void NativeEventChoiceReturned(object token)
     {
         _runPrelude?.EventChoiceReturned(token);
+        _macroEnvelopes?.EventChoiceReturned(token);
         TryFinishRunPrelude();
     }
 
@@ -329,6 +393,14 @@ internal static class NativeV111PassiveBridge
     {
         try
         {
+            DetachMacroShop();
+            if (_macroEnvelopes is { } previousMacro)
+            {
+                previousMacro.Finish("A new RunStarted replaced the prior run");
+                _macroEnvelopes = null;
+                _ = FinishMacroAsync(previousMacro);
+            }
+            _macroRunState = null;
             if (_runPrelude is not null)
             {
                 if (!_runPrelude.HasLinkedCombatRoomAndSettledMapRequests)
@@ -362,6 +434,13 @@ internal static class NativeV111PassiveBridge
                 path, BuildId, runId, seed, state.AscensionLevel,
                 state.Players[0].Character.Id.Entry, state.Act.Id.Entry,
                 state.Players.Count);
+            _macroRunState = state;
+            _macroEnvelopes = new NativeMacroEnvelopeRecorder(
+                Path.Combine(root, "macro-" +
+                    DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmssfff") +
+                    "-" + runId + ".jsonl"),
+                BuildId, runId, seed, state.AscensionLevel,
+                state.Players[0].Character.Id.Entry);
             CapturePreludeRng("run_started", state);
             CapturePreludeRoomQueues(state);
             // Launch() raises RunStarted after synchronizer construction in
@@ -419,6 +498,7 @@ internal static class NativeV111PassiveBridge
 
     private static void OnRunRoomEntered()
     {
+        CaptureMacroRoom();
         if (_runPrelude is null || _preludeRunState is not { } state
             || state.Players.Count != 1) return;
         try
@@ -682,6 +762,7 @@ internal static class NativeV111PassiveBridge
                 _liveEvents?.Failure);
             _panel?.Tick();
             TryCaptureInitialNativeMap();
+            TryCaptureMacroMap();
 
             var manager = CombatManager.Instance;
             if (!manager.IsInProgress)
@@ -918,6 +999,7 @@ internal static class NativeV111PassiveBridge
         _adapter = new NativeCombatAdapter(combat, () => _choiceInterrupted);
         string runId = Guid.NewGuid().ToString("N");
         _agentFeed?.OpenCombat(runId);
+        _macroEnvelopes?.CombatLinked(runId);
         if (_liveEvents?.OpenSession(runId) == false)
             _agentFeed?.Withhold("LIVE_EVENT_JOURNAL_FAILED");
         string root = System.Environment.GetEnvironmentVariable("STS2_FIDELITY_TRACE_DIR")
