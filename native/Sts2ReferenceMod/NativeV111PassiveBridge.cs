@@ -734,6 +734,8 @@ internal static class NativeV111PassiveBridge
             {
                 var point = map.GetAllMapPoints()
                     .Append(map.StartingMapPoint).Append(map.BossMapPoint)
+                    .Concat(map.SecondBossMapPoint is { } second
+                        ? new[] { second } : Array.Empty<MapPoint>())
                     .FirstOrDefault(p => p.coord.col == current.col
                         && p.coord.row == current.row);
                 if (point is not null)
