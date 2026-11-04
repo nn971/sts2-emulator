@@ -11461,6 +11461,40 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "p2_exact_continuation_receipt":
+                    {
+                        // P2.1 preflight only. Return opaque fingerprints, never
+                        // the hidden RNG contents or provider-private controls.
+                        // The ordinary RunState snapshot projection may omit
+                        // members of its [JsonIgnore] Simulation.Stochastic
+                        // envelope. Fingerprint that envelope explicitly.
+                        var state = RequireState(request);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            schemaId = "sts2-p2-exact-continuation-receipt-v1",
+                            hashAlgorithm = "sha256-canonical-json",
+                            exactHash = CanonicalJson.Sha256(state),
+                            runStochasticHash =
+                                CanonicalJson.Sha256(state.Stochastic),
+                            worldStochasticHash = state.World is null
+                                ? null : CanonicalJson.Sha256(
+                                    state.World.Stochastic),
+                            combatNativeRngHash =
+                                state.World?.Combat?.NativeRng is { } combatRng
+                                    ? CanonicalJson.Sha256(combatRng)
+                                    : null,
+                            referenceNaturePresent =
+                                state.Stochastic.ReferenceNature is not null,
+                            semanticOtherChancePresent =
+                                state.Stochastic.SemanticOtherChance is not null,
+                            semanticRewardAuditPresent =
+                                state.Stochastic.SemanticRewardAudit is not null
+                        });
+                        break;
+                    }
+
                     case "is_terminal":
                     {
                         var state = RequireState(request);
