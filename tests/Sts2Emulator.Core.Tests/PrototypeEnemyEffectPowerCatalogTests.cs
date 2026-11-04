@@ -58,4 +58,36 @@ public sealed class PrototypeEnemyEffectPowerCatalogTests
         Assert.Equal(3, vulnerable.PlayerIncomingAttackDamageNumerator);
         Assert.Equal(2, vulnerable.PlayerIncomingAttackDamageDenominator);
     }
+
+    [Fact]
+    public void EnemyEffectStacksReadsExactlyOneCanonicalStorageShape()
+    {
+        var legacy = new EnemyCombatState(
+            1, "proto.enemy.test", 30, 0, 0,
+            new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["proto.status.weak"] = 2
+            });
+        var canonical = legacy with
+        {
+            Statuses = new Dictionary<string, int>(StringComparer.Ordinal),
+            Powers =
+            [
+                new PrototypePowerInstanceState("proto.power.weak", 2, 7)
+            ]
+        };
+
+        Assert.Equal(2, legacy.EnemyEffectStacks("proto.status.weak"));
+        Assert.Equal(2, canonical.EnemyEffectStacks("proto.status.weak"));
+        Assert.Equal(0, canonical.EnemyEffectStacks("proto.status.poison"));
+        Assert.Equal(0, canonical.EnemyEffectStacks("unknown.status"));
+
+        var ambiguous = legacy with { Powers = canonical.Powers };
+        Assert.Throws<InvalidOperationException>(() =>
+            ambiguous.EnemyEffectStacks("proto.status.weak"));
+        // Staged migration preserves distinct power instances and fork identity.
+        var fork = canonical.Fork();
+        Assert.NotSame(canonical.Powers, fork.Powers);
+        Assert.Equal(2, fork.EnemyEffectStacks("proto.status.weak"));
+    }
 }

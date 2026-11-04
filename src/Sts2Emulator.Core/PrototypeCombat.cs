@@ -6154,7 +6154,7 @@ public sealed partial class PrototypeGameEngine
                         .Sum(enemy =>
                             Math.Max(
                                 0,
-                                enemy.Statuses.GetValueOrDefault(
+                                enemy.EnemyEffectStacks(
                                     operation.StatusId)));
                     var baseAmount =
                         operation.Amount + statusTotal;
@@ -9827,10 +9827,12 @@ public sealed partial class PrototypeGameEngine
             + enemy.PowerStates.Sum(power =>
                 PrototypeContent.Power(power.PowerId)
                     .EnemyAttackDamageBonusPerStack * power.Stacks);
-        foreach (var status in enemy.Statuses)
+        foreach (var statusId in PrototypeContent.EnemyStatusPowerIds.Keys)
         {
-            var definition = PrototypeContent.Status(status.Key);
-            if (status.Key == "proto.status.weak")
+            if (enemy.EnemyEffectStacks(statusId) <= 0)
+                continue;
+            var definition = PrototypeContent.Status(statusId);
+            if (statusId == "proto.status.weak")
             {
                 if (!effect.IsAttack)
                     continue;
@@ -10832,7 +10834,7 @@ public sealed partial class PrototypeGameEngine
         var enemy = combat.Enemies.FirstOrDefault(item =>
             item.InstanceId == targetEnemyId.Value);
         return enemy is not null
-            && enemy.Statuses.GetValueOrDefault(statusId) > 0;
+            && enemy.EnemyEffectStacks(statusId) > 0;
     }
 
     private static int ModifyPlayerAttackDamage(
@@ -10967,9 +10969,11 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException($"Enemy {enemyId} is missing.");
 
         var modified = damage;
-        foreach (var status in enemy.Statuses)
+        foreach (var statusId in PrototypeContent.EnemyStatusPowerIds.Keys)
         {
-            var definition = PrototypeContent.Status(status.Key);
+            if (enemy.EnemyEffectStacks(statusId) <= 0)
+                continue;
+            var definition = PrototypeContent.Status(statusId);
             modified = (modified * definition.IncomingAttackDamageNumerator)
                 / definition.IncomingAttackDamageDenominator;
         }

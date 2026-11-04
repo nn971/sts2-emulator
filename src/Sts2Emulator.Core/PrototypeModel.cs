@@ -1977,6 +1977,31 @@ public sealed record EnemyCombatState(
 
     public PrototypePowerInstanceState[] PowerStates =>
         Powers ?? Array.Empty<PrototypePowerInstanceState>();
+
+    // Gradual migration helper: a given effect is owned by either legacy
+    // Statuses or its canonical power instance, never simultaneously.
+    // Frame/input adapters can keep old snapshots until all mechanics
+    // operate directly on powers.
+    public int EnemyEffectStacks(string legacyStatusId)
+    {
+        var legacy = Statuses.GetValueOrDefault(legacyStatusId);
+        if (!PrototypeContent.EnemyStatusPowerIds.TryGetValue(
+                legacyStatusId, out var powerId))
+        {
+            return legacy;
+        }
+
+        var canonical = PowerStates
+            .Where(power => power.PowerId == powerId)
+            .Sum(power => power.Stacks);
+        if (legacy > 0 && canonical > 0)
+        {
+            throw new InvalidOperationException(
+                $"Enemy effect '{legacyStatusId}' exists in both status and power storage.");
+        }
+
+        return checked(legacy + canonical);
+    }
 }
 
 public sealed record CombatCardInstance(
