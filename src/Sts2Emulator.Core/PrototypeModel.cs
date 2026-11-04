@@ -1978,10 +1978,10 @@ public sealed record EnemyCombatState(
     public PrototypePowerInstanceState[] PowerStates =>
         Powers ?? Array.Empty<PrototypePowerInstanceState>();
 
-    // Gradual migration helper: a given effect is owned by either legacy
-    // Statuses or its canonical power instance, never simultaneously.
-    // Frame/input adapters can keep old snapshots until all mechanics
-    // operate directly on powers.
+    // Transitional reader for old status snapshots and canonical powers.
+    // Different game effects may legitimately apply the same debuff through
+    // either route (e.g. a relic power and a card status), so their stacks
+    // combine until application/serialization are fully unified.
     public int EnemyEffectStacks(string legacyStatusId)
     {
         var legacy = Statuses.GetValueOrDefault(legacyStatusId);
@@ -1994,12 +1994,6 @@ public sealed record EnemyCombatState(
         var canonical = PowerStates
             .Where(power => power.PowerId == powerId)
             .Sum(power => power.Stacks);
-        if (legacy > 0 && canonical > 0)
-        {
-            throw new InvalidOperationException(
-                $"Enemy effect '{legacyStatusId}' exists in both status and power storage.");
-        }
-
         return checked(legacy + canonical);
     }
 }

@@ -82,9 +82,10 @@ public sealed class PrototypeEnemyEffectPowerCatalogTests
         Assert.Equal(0, canonical.EnemyEffectStacks("proto.status.poison"));
         Assert.Equal(0, canonical.EnemyEffectStacks("unknown.status"));
 
-        var ambiguous = legacy with { Powers = canonical.Powers };
-        Assert.Throws<InvalidOperationException>(() =>
-            ambiguous.EnemyEffectStacks("proto.status.weak"));
+        // Legacy card status and a separate canonical relic power may both
+        // be present, and both applications must contribute their stacks.
+        var combined = legacy with { Powers = canonical.Powers };
+        Assert.Equal(4, combined.EnemyEffectStacks("proto.status.weak"));
         // Staged migration preserves distinct power instances and fork identity.
         var fork = canonical.Fork();
         Assert.NotSame(canonical.Powers, fork.Powers);
