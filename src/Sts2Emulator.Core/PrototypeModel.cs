@@ -1269,7 +1269,18 @@ public sealed record PrototypePowerDefinition(
     int EnemyHpLossAtSideTurnEndPerStack = 0,
     bool PreventsNextHpLoss = false,
     bool GeneratedCharacterCardsFreeThisTurn = false,
-    int EnemyStacksDecayOnUnblockedDamage = 0);
+    int EnemyStacksDecayOnUnblockedDamage = 0,
+    // Enemy-side Poison/Weak/Vulnerable mechanics share the ordinary power
+    // catalog. The old Statuses dictionary is a transitional snapshot shape.
+    PrototypeTurnStage? EnemyEffectTriggerStage = null,
+    PrototypeStatusTriggerKind EnemyEffectTriggerKind = PrototypeStatusTriggerKind.None,
+    int EnemyEffectDecayOnTrigger = 0,
+    PrototypeTurnStage? EnemyEffectDecayStage = null,
+    int EnemyEffectDecayAtStage = 0,
+    int EnemyOutgoingDamageNumerator = 1,
+    int EnemyOutgoingDamageDenominator = 1,
+    int EnemyIncomingAttackDamageNumerator = 1,
+    int EnemyIncomingAttackDamageDenominator = 1);
 
 public sealed record PrototypePowerInstanceState(
     string PowerId,

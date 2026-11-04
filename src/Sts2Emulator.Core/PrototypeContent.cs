@@ -3880,6 +3880,18 @@ public static class PrototypeContent
                 IsInstanced: true,
                 IsDebuff: true,
                 RemoveAtEnemyTurnEnd: true),
+            // The same Weak/Vulnerable concept ID and power definition serves
+            // player and enemy owners; enemy-side expiry occurs at enemy turn
+            // end, while player-side expiry remains at player turn end.
+            new PrototypePowerDefinition(
+                "proto.power.poison",
+                "Poison",
+                BlockBonusPerStack: 0,
+                Triggers: Array.Empty<PrototypePowerTriggerSpec>(),
+                IsDebuff: true,
+                EnemyEffectTriggerStage: PrototypeTurnStage.EnemyTurnStart,
+                EnemyEffectTriggerKind: PrototypeStatusTriggerKind.DamageSelfByStacks,
+                EnemyEffectDecayOnTrigger: 1),
             new PrototypePowerDefinition(
                 "proto.power.vulnerable",
                 "Vulnerable",
@@ -3888,7 +3900,11 @@ public static class PrototypeContent
                 IsDebuff: true,
                 DecrementAtPlayerTurnEnd: true,
                 PlayerIncomingAttackDamageNumerator: 3,
-                PlayerIncomingAttackDamageDenominator: 2),
+                PlayerIncomingAttackDamageDenominator: 2,
+                EnemyEffectDecayStage: PrototypeTurnStage.EnemyTurnEnd,
+                EnemyEffectDecayAtStage: 1,
+                EnemyIncomingAttackDamageNumerator: 3,
+                EnemyIncomingAttackDamageDenominator: 2),
             new PrototypePowerDefinition(
                 "proto.power.weak",
                 "Weak",
@@ -3897,7 +3913,11 @@ public static class PrototypeContent
                 IsDebuff: true,
                 DecrementAtPlayerTurnEnd: true,
                 PlayerAttackDamageNumerator: 3,
-                PlayerAttackDamageDenominator: 4),
+                PlayerAttackDamageDenominator: 4,
+                EnemyEffectDecayStage: PrototypeTurnStage.EnemyTurnEnd,
+                EnemyEffectDecayAtStage: 1,
+                EnemyOutgoingDamageNumerator: 3,
+                EnemyOutgoingDamageDenominator: 4),
             new PrototypePowerDefinition(
                 "proto.power.frail",
                 "Frail",
@@ -6429,30 +6449,38 @@ public static class PrototypeContent
             .Concat(PrototypeNativeFakeMerchant.Enemies)
             .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
-    public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
-        new[]
+    // Legacy enemy snapshot/status callers use these IDs until all three
+    // effects are stored as PrototypePowerInstanceState. This adapter derives
+    // its mechanics from the shared power definitions, so there is one source
+    // of truth during the representation migration.
+    public static IReadOnlyDictionary<string, string> EnemyStatusPowerIds { get; } =
+        new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            new PrototypeStatusDefinition(
-                "proto.status.poison",
-                IsDebuff: true,
-                TriggerStage: PrototypeTurnStage.EnemyTurnStart,
-                TriggerKind: PrototypeStatusTriggerKind.DamageSelfByStacks,
-                DecayOnTrigger: 1),
-            new PrototypeStatusDefinition(
-                "proto.status.weak",
-                IsDebuff: true,
-                DecayStage: PrototypeTurnStage.EnemyTurnEnd,
-                DecayAtStage: 1,
-                OutgoingDamageNumerator: 3,
-                OutgoingDamageDenominator: 4),
-            new PrototypeStatusDefinition(
-                "proto.status.vulnerable",
-                IsDebuff: true,
-                DecayStage: PrototypeTurnStage.EnemyTurnEnd,
-                DecayAtStage: 1,
-                IncomingAttackDamageNumerator: 3,
-                IncomingAttackDamageDenominator: 2)
-        }.ToDictionary(status => status.Id, StringComparer.Ordinal);
+            ["proto.status.poison"] = "proto.power.poison",
+            ["proto.status.weak"] = "proto.power.weak",
+            ["proto.status.vulnerable"] = "proto.power.vulnerable"
+        };
+
+    public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
+        EnemyStatusPowerIds.ToDictionary(
+            entry => entry.Key,
+            entry =>
+            {
+                var power = Power(entry.Value);
+                return new PrototypeStatusDefinition(
+                    entry.Key,
+                    IsDebuff: power.IsDebuff,
+                    TriggerStage: power.EnemyEffectTriggerStage,
+                    TriggerKind: power.EnemyEffectTriggerKind,
+                    DecayOnTrigger: power.EnemyEffectDecayOnTrigger,
+                    DecayStage: power.EnemyEffectDecayStage,
+                    DecayAtStage: power.EnemyEffectDecayAtStage,
+                    OutgoingDamageNumerator: power.EnemyOutgoingDamageNumerator,
+                    OutgoingDamageDenominator: power.EnemyOutgoingDamageDenominator,
+                    IncomingAttackDamageNumerator: power.EnemyIncomingAttackDamageNumerator,
+                    IncomingAttackDamageDenominator: power.EnemyIncomingAttackDamageDenominator);
+            },
+            StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<string, PrototypeEventDefinition> Events { get; } =
         new[]

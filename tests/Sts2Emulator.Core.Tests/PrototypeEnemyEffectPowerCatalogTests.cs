@@ -1,0 +1,61 @@
+using Sts2Emulator.Core;
+
+namespace Sts2Emulator.Core.Tests;
+
+public sealed class PrototypeEnemyEffectPowerCatalogTests
+{
+    [Fact]
+    public void LegacyEnemyStatusDefinitionsAreProjectionsOfCanonicalPowers()
+    {
+        Assert.Equal(
+            new[] { "proto.status.poison", "proto.status.vulnerable", "proto.status.weak" },
+            PrototypeContent.EnemyStatusPowerIds.Keys.Order(StringComparer.Ordinal));
+
+        foreach (var (statusId, powerId) in PrototypeContent.EnemyStatusPowerIds)
+        {
+            var power = PrototypeContent.Power(powerId);
+            var legacy = PrototypeContent.Status(statusId);
+            Assert.True(power.IsDebuff);
+            Assert.Equal(new PrototypeStatusDefinition(
+                statusId, IsDebuff: power.IsDebuff,
+                TriggerStage: power.EnemyEffectTriggerStage,
+                TriggerKind: power.EnemyEffectTriggerKind,
+                DecayOnTrigger: power.EnemyEffectDecayOnTrigger,
+                DecayStage: power.EnemyEffectDecayStage,
+                DecayAtStage: power.EnemyEffectDecayAtStage,
+                OutgoingDamageNumerator: power.EnemyOutgoingDamageNumerator,
+                OutgoingDamageDenominator: power.EnemyOutgoingDamageDenominator,
+                IncomingAttackDamageNumerator: power.EnemyIncomingAttackDamageNumerator,
+                IncomingAttackDamageDenominator: power.EnemyIncomingAttackDamageDenominator),
+                legacy);
+        }
+    }
+
+    [Fact]
+    public void PoisonDamageAndEnemyWeakVulnerableTimingMatchTheLegacyContract()
+    {
+        var poison = PrototypeContent.Power("proto.power.poison");
+        Assert.Equal(PrototypeTurnStage.EnemyTurnStart, poison.EnemyEffectTriggerStage);
+        Assert.Equal(PrototypeStatusTriggerKind.DamageSelfByStacks,
+            poison.EnemyEffectTriggerKind);
+        Assert.Equal(1, poison.EnemyEffectDecayOnTrigger);
+
+        var weak = PrototypeContent.Power("proto.power.weak");
+        Assert.Equal(PrototypeTurnStage.EnemyTurnEnd, weak.EnemyEffectDecayStage);
+        Assert.Equal(1, weak.EnemyEffectDecayAtStage);
+        Assert.Equal(3, weak.EnemyOutgoingDamageNumerator);
+        Assert.Equal(4, weak.EnemyOutgoingDamageDenominator);
+        Assert.True(weak.DecrementAtPlayerTurnEnd);
+        Assert.Equal(3, weak.PlayerAttackDamageNumerator);
+        Assert.Equal(4, weak.PlayerAttackDamageDenominator);
+
+        var vulnerable = PrototypeContent.Power("proto.power.vulnerable");
+        Assert.Equal(PrototypeTurnStage.EnemyTurnEnd, vulnerable.EnemyEffectDecayStage);
+        Assert.Equal(1, vulnerable.EnemyEffectDecayAtStage);
+        Assert.Equal(3, vulnerable.EnemyIncomingAttackDamageNumerator);
+        Assert.Equal(2, vulnerable.EnemyIncomingAttackDamageDenominator);
+        Assert.True(vulnerable.DecrementAtPlayerTurnEnd);
+        Assert.Equal(3, vulnerable.PlayerIncomingAttackDamageNumerator);
+        Assert.Equal(2, vulnerable.PlayerIncomingAttackDamageDenominator);
+    }
+}
