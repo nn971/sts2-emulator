@@ -124,7 +124,10 @@ public sealed class NativeMacroEnvelopeRecorder : IAsyncDisposable
     {
         if (_closed) return;
         if (kind is not ("map_move" or "map_vote")
-            || toColumn is null || toRow is null
+            || (toColumn.HasValue != toRow.HasValue)
+            || (fromColumn.HasValue != fromRow.HasValue)
+            || toColumn < 0 || toRow < 0 || fromColumn < 0 || fromRow < 0
+            || (kind == "map_move" && !toColumn.HasValue)
             || _requests.ContainsKey(action))
         {
             Failure("map_request", "INVALID_OR_DUPLICATE_NATIVE_REQUEST");
