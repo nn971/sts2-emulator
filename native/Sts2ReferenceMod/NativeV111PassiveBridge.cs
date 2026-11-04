@@ -616,6 +616,161 @@ internal static class NativeV111PassiveBridge
         }
     }
 
+    private static void ObserveMacroMapRequest(NativeGameAction action)
+    {
+        if (_macroEnvelopes is null || _macroRunState is null) return;
+        if (action is MoveToMapCoordAction move
+            && move.ToNetAction() is NetMoveToMapCoordAction destination)
+        {
+            var from = _macroRunState.CurrentMapCoord;
+            _macroEnvelopes.MapRequest(action, "map_move",
+                from?.col, from?.row,
+                destination.destination.col, destination.destination.row);
+        }
+        else if (action is VoteForMapCoordAction vote
+            && vote.ToNetAction() is NetVoteForMapCoordAction selection)
+        {
+            _macroEnvelopes.MapRequest(action, "map_vote",
+                selection.source.coord?.col, selection.source.coord?.row,
+                selection.destination?.coord.col,
+                selection.destination?.coord.row);
+        }
+    }
+
+    private static void TryCaptureMacroMap()
+    {
+        var recorder = _macroEnvelopes;
+        var state = _macroRunState;
+        if (recorder is null || state is null
+            || !recorder.NeedsMap(state.CurrentActIndex)
+            || state.Map is not StandardActMap map)
+            return;
+        try
+        {
+            if (NativeStandardMapRngField?.GetValue(map)
+                is not MegaCrit.Sts2.Core.Random.Rng mapRng)
+                throw new InvalidOperationException("SOURCE_MAP_RNG_UNAVAILABLE");
+            var points = map.GetAllMapPoints()
+                .Append(map.StartingMapPoint)
+                .Append(map.BossMapPoint)
+                .Concat(map.SecondBossMapPoint is { } second
+                    ? new[] { second } : Array.Empty<MapPoint>())
+                .OrderBy(p => p.coord.row).ThenBy(p => p.coord.col)
+                .Select(p => new NativeMapPointView(
+                    p.coord.col, p.coord.row, p.PointType.ToString(),
+                    p.CanBeModified,
+                    p.Children.OrderBy(c => c.coord.row)
+                        .ThenBy(c => c.coord.col)
+                        .Select(c => new NativeMapCoordView(
+                            c.coord.col, c.coord.row)).ToArray()))
+                .ToArray();
+            var rng = mapRng.ToSerializable();
+            recorder.MapSnapshot(state.CurrentActIndex, state.Act.Id.Entry,
+                points, new NativeMapRngView(rng.counter, rng.state0,
+                    rng.state1, rng.state2, rng.state3));
+        }
+        catch (Exception error)
+        {
+            recorder.Failure("macro_map_snapshot", error.GetType().Name);
+        }
+    }
+
+    private static void DetachMacroShop()
+    {
+        foreach (var (entry, handler) in _shopHandlers)
+            entry.PurchaseCompleted -= handler;
+        _shopHandlers.Clear();
+    }
+
+    private static void CaptureMacroShop(string cause)
+    {
+        var recorder = _macroEnvelopes;
+        var state = _macroRunState;
+        if (recorder is null || state is null
+            || state.CurrentRoom is not MerchantRoom merchant
+            || merchant.Inventories.Count != 1 || state.Players.Count != 1)
+            return;
+        try
+        {
+            if (NativeMerchantBaseCostField is null)
+                throw new MissingFieldException("MerchantEntry._cost");
+            var offers = merchant.Inventories[0].AllEntries.Select((entry, slot) =>
+            {
+                int baseCost = (int)(NativeMerchantBaseCostField.GetValue(entry)
+                    ?? throw new InvalidOperationException("SOURCE_BASE_COST_MISSING"));
+                string? model = entry switch
+                {
+                    MerchantCardEntry card => card.CreationResult?.Card.Id.Entry,
+                    MerchantRelicEntry relic => relic.Model?.Id.Entry,
+                    MerchantPotionEntry potion => potion.Model?.Id.Entry,
+                    _ => null
+                };
+                return new NativeShopOfferView(slot, entry.GetType().Name,
+                    model, entry.IsStocked, baseCost,
+                    entry is MerchantCardEntry { IsOnSale: true },
+                    entry is MerchantCardRemovalEntry { Used: true });
+            }).ToArray();
+            recorder.ShopSnapshot(state.CurrentActIndex, state.TotalFloor,
+                state.Players[0].Gold, offers, cause);
+        }
+        catch (Exception error)
+        {
+            recorder.Failure("macro_shop_snapshot", error.GetType().Name);
+        }
+    }
+
+    private static void CaptureMacroRoom()
+    {
+        var recorder = _macroEnvelopes;
+        var state = _macroRunState;
+        if (recorder is null || state is null || state.Players.Count != 1)
+            return;
+        try
+        {
+            TryCaptureMacroMap();
+            var coord = state.CurrentMapCoord;
+            NativeMapCoordView[] destinations = [];
+            if (coord is { } current && state.Map is StandardActMap map)
+            {
+                var point = map.GetAllMapPoints()
+                    .Append(map.StartingMapPoint).Append(map.BossMapPoint)
+                    .FirstOrDefault(p => p.coord.col == current.col
+                        && p.coord.row == current.row);
+                if (point is not null)
+                    destinations = point.Children.Select(c =>
+                        new NativeMapCoordView(c.coord.col, c.coord.row)).ToArray();
+            }
+            recorder.RoomEntered(state.CurrentActIndex, state.TotalFloor,
+                coord?.col, coord?.row,
+                state.CurrentRoom?.RoomType.ToString() ?? "UNAVAILABLE",
+                state.CurrentRoom?.ModelId?.Entry,
+                state.Players[0].Creature.CurrentHp, state.Players[0].Gold,
+                destinations);
+
+            DetachMacroShop();
+            if (state.CurrentRoom is MerchantRoom merchant
+                && merchant.Inventories.Count == 1)
+            {
+                CaptureMacroShop("ROOM_ENTERED");
+                foreach (var entry in merchant.Inventories[0].AllEntries)
+                {
+                    Action<PurchaseStatus, MerchantEntry> handler =
+                        (status, purchased) =>
+                        {
+                            if (status == PurchaseStatus.Success)
+                                CaptureMacroShop("SOURCE_PURCHASE_COMPLETED");
+                        };
+                    entry.PurchaseCompleted += handler;
+                    _shopHandlers.Add((entry, handler));
+                }
+            }
+        }
+        catch (Exception error)
+        {
+            recorder.Failure("macro_room_entered", error.GetType().Name);
+        }
+    }
+
     private static void CapturePreludeRng(
         string site, MegaCrit.Sts2.Core.Runs.RunState state)
     {
