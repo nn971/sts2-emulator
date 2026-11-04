@@ -83,6 +83,26 @@ internal sealed class SemanticOperationProfiler
                 StringComparer.Ordinal)
     };
 
+    public object SnapshotP2() => new
+    {
+        schemaId = "sts2-p2-jsonl-performance-v1",
+        enabled = Enabled,
+        processId = Environment.ProcessId,
+        stopwatchFrequency = Stopwatch.Frequency,
+        inclusiveNestedOperations = true,
+        operations = _counters.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .ToDictionary(
+                pair => pair.Key,
+                pair => new
+                {
+                    count = pair.Value.Count,
+                    totalSeconds = (double)pair.Value.Ticks / Stopwatch.Frequency,
+                    maxSeconds = (double)pair.Value.MaxTicks / Stopwatch.Frequency,
+                    allocatedBytes = pair.Value.AllocatedBytes
+                },
+                StringComparer.Ordinal)
+    };
+
     public object Snapshot() => new
     {
         schemaId = "sts2-semantic-jsonl-performance-v1",

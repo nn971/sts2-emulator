@@ -76,11 +76,17 @@ internal static class PrototypeAiJsonlServer
         long nextH15Handle = 1;
         var semanticProfiler = new SemanticOperationProfiler();
         var h8Profiler = new SemanticOperationProfiler();
+        // P2 measures the current H16/H18 JSONL transport, independently
+        // of the legacy semantic and H8 profilers.
+        var p2Profiler = new SemanticOperationProfiler();
+        long p2PeakHandles = 0;
         string? activeOperation = null;
         long activeStarted = 0;
         long activeAllocated = 0;
         long h8ActiveStarted = 0;
         long h8ActiveAllocated = 0;
+        long p2ActiveStarted = 0;
+        long p2ActiveAllocated = 0;
         var referenceNatureStates = new Dictionary<string, ReferenceNatureSessionV111>(
             StringComparer.Ordinal);
         long nextReferenceNatureHandle = 1;
@@ -3274,6 +3280,8 @@ internal static class PrototypeAiJsonlServer
                 }
             }
             states.Add(handle, state);
+            if (p2Profiler.Enabled)
+                p2PeakHandles = Math.Max(p2PeakHandles, states.Count);
             return handle;
         }
 
@@ -3287,6 +3295,13 @@ internal static class PrototypeAiJsonlServer
 
         void Write(object response)
         {
+            var p2Measure = p2Profiler.Enabled &&
+                activeOperation is not null &&
+                !activeOperation.StartsWith("p2_perf_", StringComparison.Ordinal);
+            var p2WireStarted = p2Measure
+                ? SemanticOperationProfiler.Timestamp() : 0L;
+            var p2WireAllocated = p2Measure
+                ? SemanticOperationProfiler.Allocated() : 0L;
             var h8Measure = h8Profiler.Enabled &&
                 activeOperation is not null &&
                 activeOperation.StartsWith("h8_", StringComparison.Ordinal) &&
@@ -3305,6 +3320,13 @@ internal static class PrototypeAiJsonlServer
                 response,
                 new JsonSerializerOptions(JsonSerializerDefaults.Web)));
             output.Flush();
+            if (p2Measure)
+            {
+                p2Profiler.Record("p2.jsonl.response", p2WireStarted,
+                    p2WireAllocated);
+                p2Profiler.Record("p2.jsonl.op." + activeOperation,
+                    p2ActiveStarted, p2ActiveAllocated);
+            }
             if (measure)
             {
                 semanticProfiler.Record("sub.semantic_wire_response", started, allocated);
@@ -3336,6 +3358,12 @@ internal static class PrototypeAiJsonlServer
                 requestId = OptionalString(request, "request_id");
                 var operation = RequiredString(request, "op");
                 activeOperation = operation;
+                // This includes request dispatch/JSON deserialization after
+                // reading the line but excludes the earlier pipe/read wait.
+                p2ActiveStarted = p2Profiler.Enabled
+                    ? SemanticOperationProfiler.Timestamp() : 0L;
+                p2ActiveAllocated = p2Profiler.Enabled
+                    ? SemanticOperationProfiler.Allocated() : 0L;
                 activeStarted = semanticProfiler.Enabled
                     ? SemanticOperationProfiler.Timestamp() : 0L;
                 activeAllocated = semanticProfiler.Enabled
@@ -6742,6 +6770,34 @@ internal static class PrototypeAiJsonlServer
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle) });
+                        break;
+                    }
+
+                    case "p2_perf_reset":
+                    {
+                        p2Profiler.Reset();
+                        p2PeakHandles = states.Count;
+                        Write(new { requestId, ok = true,
+                            schemaId = "sts2-p2-jsonl-performance-v1" });
+                        break;
+                    }
+
+                    case "p2_perf_read":
+                    {
+                        Write(new { requestId, ok = true,
+                            profile = p2Profiler.SnapshotP2(),
+                            liveStateHandles = states.Count,
+                            peakStateHandles = p2PeakHandles });
+                        break;
+                    }
+
+                    case "p2_perf_stop":
+                    {
+                        p2Profiler.Stop();
+                        Write(new { requestId, ok = true,
+                            profile = p2Profiler.SnapshotP2(),
+                            liveStateHandles = states.Count,
+                            peakStateHandles = p2PeakHandles });
                         break;
                     }
 
@@ -11273,8 +11329,30 @@ internal static class PrototypeAiJsonlServer
                                     : throw new InvalidOperationException(
                                         $"Unknown state handle '{parentHandle}'.");
 
+                                var measure = p2Profiler.Enabled;
+                                var started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
+                                var allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
                                 var stepped = environment.RolloutStepFrame(state, actionId);
+                                if (measure)
+                                    p2Profiler.Record("p2.rollout.step_and_public_frame",
+                                        started, allocated);
+                                started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
+                                allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
                                 var childHandle = Store(stepped.State, parentHandle);
+                                if (measure)
+                                    p2Profiler.Record("p2.rollout.store_handle", started, allocated);
+                                started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
+                                allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
+                                var payload = CanonicalJson.Serialize(stepped.Observation);
+                                if (measure)
+                                    p2Profiler.Record("p2.rollout.serialize_observation",
+                                        started, allocated);
+                                started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
+                                allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
+                                var actions = stepped.LegalActions.Select(ActionWire).ToArray();
+                                if (measure)
+                                    p2Profiler.Record("p2.rollout.serialize_legal_actions",
+                                        started, allocated);
                                 return new
                                 {
                                     parent = parentHandle,
@@ -11282,8 +11360,8 @@ internal static class PrototypeAiJsonlServer
                                     terminal = stepped.State.Phase == RunPhase.Terminal,
                                     policyId,
                                     schemaId = PrototypeAiEnvironment.SchemaId,
-                                    payloadJson = CanonicalJson.Serialize(stepped.Observation),
-                                    legalActions = stepped.LegalActions.Select(ActionWire).ToArray()
+                                    payloadJson = payload,
+                                    legalActions = actions
                                 };
                             })
                             .ToArray();
@@ -11450,13 +11528,24 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "state_handle");
                         var state = RequireState(request);
-                        var child = Store(environment.Fork(state), parentHandle);
+                        var measure = p2Profiler.Enabled;
+                        var started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
+                        var allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
+                        var fork = environment.Fork(state);
+                        if (measure)
+                            p2Profiler.Record("p2.fork.run_state", started, allocated);
+                        var child = Store(fork, parentHandle);
+                        started = measure ? SemanticOperationProfiler.Timestamp() : 0L;
+                        allocated = measure ? SemanticOperationProfiler.Allocated() : 0L;
+                        var exactHash = CanonicalJson.Sha256(states[child]);
+                        if (measure)
+                            p2Profiler.Record("p2.fork.exact_hash", started, allocated);
                         Write(new
                         {
                             requestId,
                             ok = true,
                             child,
-                            exactHash = CanonicalJson.Sha256(states[child])
+                            exactHash
                         });
                         break;
                     }
