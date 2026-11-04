@@ -248,7 +248,7 @@ public sealed class PrototypeAiEnvironmentTests
         var initial = environment.Reset("public-pending-deck-minimum");
         var state = engine.Step(
             initial, Assert.Single(engine.GetLegalActions(initial))).State;
-        var world = Assert.IsType<WorldState>(state.World);
+        var world = Assert.IsType<RunWorldState>(state.World);
         var cardIds = state.Player.Deck.Take(2)
             .Select(card => card.InstanceId).ToArray();
         var pending = new PrototypePendingDeckChoiceState(
