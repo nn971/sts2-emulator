@@ -466,6 +466,11 @@ def audit(records: list[dict], error: str | None = None) -> dict:
     last_frame_hash = None
     strict_failures: list[str] = []
     input_requests: dict[int, dict] = {}
+    # The source request prefix runs before executor admission. An input can
+    # be queued while an earlier action remains active, before another
+    # distinct stable player decision is observable.
+    active_actions_at_input_request: dict[int, list[int]] = {}
+    request_return_states: dict[int, str] = {}
     request_outcomes: set[int] = set()
     choices_seen: set[tuple[int, int]] = set()
     hand_menus_seen: set[int] = set()
@@ -665,12 +670,30 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 or data.get("legal_menu_reconstructed") is not False):
                 strict_failures.append(f"Invalid strict input gap at ordinal {ordinal}")
             else:
+                action_start = running[aid]
+                request_id = (action_start.get("data") or {}).get(
+                    "input_request_id")
+                prior = active_actions_at_input_request.get(request_id, [])
+                source_queued_while_busy = (
+                    bool(prior) and aid not in prior
+                    and request_return_states.get(request_id)
+                        == "WaitingForExecution"
+                    and all(prior_id in completed for prior_id in prior))
                 report["strict_input_gaps"].append({
                     "ordinal": ordinal,
                     "action_id": aid,
                     "last_reported_gate": data.get("last_reported_gate"),
                     "decision_generation": data["decision_generation"],
                     "last_captured_generation": data["last_captured_generation"],
+                    "source_request_id": request_id,
+                    "source_active_action_ids_at_request": prior,
+                    "source_request_return_action_state":
+                        request_return_states.get(request_id),
+                    "source_queued_input_evidence": (
+                        "REQUEST_QUEUED_WHILE_PRIOR_EXECUTOR_ACTION_ACTIVE"
+                        if source_queued_while_busy else "UNVERIFIED"),
+                    "strict_decision_boundary_recovered": False,
+                    "legal_menu_reconstructed": False,
                 })
         elif typ == "native_run_identity":
             data = record.get("data") or {}
@@ -701,6 +724,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 strict_failures.append(f"Invalid native input request at {ordinal}")
             else:
                 input_requests[request_id] = record
+                active_actions_at_input_request[request_id] = sorted(running)
                 report["native_input_requests"].append({
                     "ordinal": ordinal,
                     "input_request_id": request_id,
@@ -736,6 +760,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 strict_failures.append(f"Invalid native input outcome at {ordinal}")
             else:
                 request_outcomes.add(request_id)
+                request_return_states[request_id] = native_state
                 report["native_input_outcomes"].append({
                     "ordinal": ordinal, "input_request_id": request_id,
                     "native_action_id": action_id,
