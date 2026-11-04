@@ -191,7 +191,12 @@ public sealed class NativeMacroEnvelopeRecorder : IAsyncDisposable
         int setId, ulong playerId, bool canSkip)
     {
         if (_closed) return;
-        if (setId < 0 || rewards.Any(r => string.IsNullOrWhiteSpace(r.Type)))
+        if (setId < 0 || rewards.Any(r =>
+            string.IsNullOrWhiteSpace(r.Type) || r.ModelIds is null
+            || r.ModelIds.Any(string.IsNullOrWhiteSpace)
+            || r.GoldAmount < 0
+            || r.ContentCoverage is not (
+                "SOURCE_POPULATED_REWARD_FIELDS" or "NOT_CAPTURED")))
         {
             Failure("reward_offer", "INVALID_REWARD_SET");
             return;
