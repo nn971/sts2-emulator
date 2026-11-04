@@ -116,7 +116,10 @@ public sealed record PrototypeAiDeckChoice(
     string SourceRelicId,
     PrototypePersistentDeckChoiceKind Kind,
     int RemainingSelections,
-    long[] CandidateCardInstanceIds);
+    long[] CandidateCardInstanceIds,
+    // The currently visible finish/continue requirement is part of the
+    // player's choice, and can differ from the maximum remaining selections.
+    int? MinimumSelectionsRemaining = null);
 
 public sealed record PrototypeAiRewardCardGroup(
     int GroupIndex,
@@ -178,7 +181,8 @@ public sealed record PrototypeAiEventDeckChoice(
     int RemainingSelections,
     long[] CandidateCardInstanceIds,
     bool UpgradeTransformedCards,
-    string? SourceRelicId = null);
+    string? SourceRelicId = null,
+    int? MinimumSelectionsRemaining = null);
 
 public sealed record PrototypeAiEventPotionReplacement(
     string ChoiceId,
@@ -606,7 +610,8 @@ public sealed class PrototypeAiEnvironment
                             world.Reward.PendingDeckChoice.Kind,
                             world.Reward.PendingDeckChoice.RemainingSelections,
                             (long[])world.Reward.PendingDeckChoice
-                                .CandidateCardInstanceIds.Clone()),
+                                .CandidateCardInstanceIds.Clone(),
+                            world.Reward.PendingDeckChoice.MinimumSelectionsRemaining),
                     (bool[])world.Reward.CurrentCardOptionUpgradeFlags.Clone(),
                     world.Reward.GoldOption,
                     world.Reward.GoldResolved,
@@ -688,7 +693,8 @@ public sealed class PrototypeAiEnvironment
                             world.Shop.PendingDeckChoice.Kind,
                             world.Shop.PendingDeckChoice.RemainingSelections,
                             (long[])world.Shop.PendingDeckChoice
-                                .CandidateCardInstanceIds.Clone()),
+                                .CandidateCardInstanceIds.Clone(),
+                            world.Shop.PendingDeckChoice.MinimumSelectionsRemaining),
                     CreateShopCardOfferPreviews(
                         state.Player, world.Shop.CardOffers)),
             EventId: world?.Event?.EventId,
@@ -709,7 +715,10 @@ public sealed class PrototypeAiEnvironment
                             world.Event.PendingDeckChoice
                                 .UpgradeTransformedCards,
                             world.Event.PendingDeckChoice
-                                .SourceRelicId),
+                                .SourceRelicId,
+                            world.Event.PendingDeckChoice
+                                .MinimumSelectionsRemaining
+                            ?? world.Event.PendingDeckChoice.RemainingSelections),
                     world.Event.PendingPotionReplacement is null
                         ? null
                         : new PrototypeAiEventPotionReplacement(
