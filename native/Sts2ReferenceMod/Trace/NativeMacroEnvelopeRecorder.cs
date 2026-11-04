@@ -317,4 +317,4 @@ public sealed class NativeMacroEnvelopeRecorder : IAsyncDisposable
 public sealed record NativeShopOfferView(int Slot, string Kind, string? ModelId,
     bool IsStocked, int BaseCost, bool OnSale, bool RemovalUsed);
 public sealed record NativeRewardOfferView(object SourceReward, string Type,
-    bool Populated);
+    bool Populated, string[] ModelIds, int? GoldAmount, string ContentCoverage);
