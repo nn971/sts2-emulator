@@ -632,10 +632,17 @@ public sealed class PrototypeAiEnvironment
                                     world.Reward.CardUpgradeFlagsForGroup(index))))
                             .ToArray()
                         : null,
-                    world.Reward.IndependentSelection
+                    // In the sequential flow the only actionable extra
+                    // relic is the first pending group. Its public identity
+                    // must accompany the legal take_reward_relic action.
+                    (world.Reward.IndependentSelection
+                        || (world.Reward.RelicResolved
+                            && world.Reward.FirstPendingExtraRelicGroupIndex >= 0))
                         ? Enumerable.Range(0,
                                 world.Reward.ExtraRelicRewardIds?.Length ?? 0)
-                            .Where(index => !world.Reward.IsExtraRelicGroupResolved(index))
+                            .Where(index => !world.Reward.IsExtraRelicGroupResolved(index)
+                                && (world.Reward.IndependentSelection
+                                    || index == world.Reward.FirstPendingExtraRelicGroupIndex))
                             .Select(index => new PrototypeAiExtraRelicReward(
                                 index,
                                 world.Reward.ExtraRelicRewardIds![index],

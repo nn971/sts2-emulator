@@ -442,4 +442,77 @@ public sealed class PrototypeAiEnvironmentTests
         };
         Assert.Null(environment.ObservePublic(state).Reward!.CardBundles);
     }
+
+    [Fact]
+    public void SequentialExtraRelicRewardPublishesOnlyTheCurrentLegalOffer()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var initial = environment.Reset("public-sequential-extra-relic");
+        var started = engine.Step(
+            initial, Assert.Single(engine.GetLegalActions(initial))).State;
+        var world = Assert.IsType<RunWorldState>(started.World);
+        var reward = new RewardState(
+            SourceRoom: "sequential_extra_relic_fixture",
+            CardOptions: [],
+            PotionOption: null,
+            RelicOption: null,
+            CardResolved: true,
+            PotionResolved: true,
+            RelicResolved: true,
+            EndsAct: false,
+            ExtraRelicRewardIds:
+            [
+                "proto.relic.one", "proto.relic.two", "proto.relic.three"
+            ],
+            ExtraRelicsResolved: 1,
+            ExtraRelicGroupsResolved: [true, false, false],
+            ExtraRelicWaxFlags: [false, true, false]);
+        var sequential = started with
+        {
+            Phase = RunPhase.Reward,
+            World = world with { Reward = reward }
+        };
+        var action = Assert.Single(engine.GetLegalActions(sequential));
+        Assert.Equal("take_reward_relic", action.Kind);
+        Assert.Equal(0, action.ReadPayload<ChooseRelicPayload>().Index);
+
+        var offered = Assert.Single(
+            Assert.IsType<PrototypeAiReward>(
+                environment.ObservePublic(sequential).Reward)
+                .PendingExtraRelicRewards!);
+        Assert.Equal(1, offered.GroupIndex);
+        Assert.Equal("proto.relic.two", offered.RelicId);
+        Assert.True(offered.IsWax);
+
+        // Later sequential offers are still private until they are active.
+        var unresolved = sequential with
+        {
+            World = world with
+            {
+                Reward = reward with
+                {
+                    RelicResolved = false,
+                    RelicOption = "proto.relic.primary"
+                }
+            }
+        };
+        Assert.Null(
+            environment.ObservePublic(unresolved).Reward!
+                .PendingExtraRelicRewards);
+
+        // Independent selection retains every outstanding visible option.
+        var independent = sequential with
+        {
+            World = world with
+            {
+                Reward = reward with { IndependentSelection = true }
+            }
+        };
+        var allOffers = Assert.IsType<PrototypeAiReward>(
+            environment.ObservePublic(independent).Reward)
+            .PendingExtraRelicRewards!;
+        Assert.Equal(new[] { 1, 2 },
+            allOffers.Select(item => item.GroupIndex));
+    }
 }
