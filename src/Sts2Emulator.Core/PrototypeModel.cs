@@ -1924,25 +1924,17 @@ public sealed record EnemyCombatState
     // Committed at combat entry / the player-turn boundary, never on Observe.
     int? PlannedMoveIndex = null,
     string? PlannedNextAiStateId = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     int? StunFollowUpMoveIndex = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     string? StunFollowUpAiStateId = null,
     // BowlbugRock.Imbalanced tracks whether its prior attack was fully
     // blocked; survives intent commitment and deterministic snapshots.
     bool IsOffBalance = false,
     // Each Swipe carries the original persistent card, not merely its
     // type. Preserve its instance ID, upgrade and persistent state.
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     CardInstance[]? StolenCards = null,
     bool ReattachDeadMoveResolved = false,
     // The actual rolled maximum, carried across forks and native snapshots.
     // Older hand-built fixtures retain the default for compatibility.
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     int MaxHp = 0,
     int BossPhase = 0,
     bool BossPendingRevival = false,
@@ -1951,13 +1943,9 @@ public sealed record EnemyCombatState
     bool NemesisIntangibleNext = false,
     // Native ToughEgg.Hatch changes the existing creature in place.
     // HatchlingId below is a move/observation proxy, not a new model.
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool NativeToughEggHatched = false,
     // HP budgets of completed forms on this same enemy instance. Death
     // summons are separate instances and are counted independently.
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     int CompletedPhaseMaxHp = 0)
     {
         this.InstanceId = InstanceId;
@@ -2030,24 +2018,30 @@ public sealed record EnemyCombatState
     public int? PlannedMoveIndex { get; init; }
     public string? PlannedNextAiStateId { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]\n    public int? StunFollowUpMoveIndex { get; init; }
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? StunFollowUpMoveIndex { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]\n    public string? StunFollowUpAiStateId { get; init; }
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? StunFollowUpAiStateId { get; init; }
     public bool IsOffBalance { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]\n    public CardInstance[]? StolenCards { get; init; }
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public CardInstance[]? StolenCards { get; init; }
     public bool ReattachDeadMoveResolved { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]\n    public int MaxHp { get; init; }
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int MaxHp { get; init; }
     public int BossPhase { get; init; }
     public bool BossPendingRevival { get; init; }
     public int ExtraMultiClawCount { get; init; }
     public int WitherUpgradeCount { get; init; }
     public bool NemesisIntangibleNext { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]\n    public bool NativeToughEggHatched { get; init; }
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool NativeToughEggHatched { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]\n    public int CompletedPhaseMaxHp { get; init; }
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public int CompletedPhaseMaxHp { get; init; }
 
     // Legacy input/output alias. No enemy-status dictionary is stored.
     // Direct status assignment in older fixture builders is normalized into
