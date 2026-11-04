@@ -187,6 +187,29 @@ public sealed class NativeMacroEnvelopeRecorder : IAsyncDisposable
         });
     }
 
+    /// <summary>
+    /// This value is the result of a *game-owned* Cost property invocation.
+    /// The observer never calls the getter itself, and never assumes that
+    /// every getter invocation was used for a visible UI label.
+    /// </summary>
+    public void ShopSourceCostObserved(int slot, int nativeCost)
+    {
+        if (_closed) return;
+        if (slot < 0 || nativeCost < 0)
+        {
+            Failure("shop_cost_getter", "INVALID_SOURCE_SHOP_COST");
+            return;
+        }
+        Write("shop_source_cost", new {
+            slot, native_cost = nativeCost,
+            source = "MerchantEntry.get_Cost.postfix",
+            observation_basis = "EXACT_NATIVE_GETTER_RETURN_VALUE",
+            displayed_price_coverage = "UNVERIFIED_UI_USAGE",
+            source_price_hook_evaluated_by_inspector = false,
+            emulator_parity = "NOT_TESTED"
+        });
+    }
+
     public void RewardOffer(IReadOnlyList<NativeRewardOfferView> rewards,
         int setId, ulong playerId, bool canSkip)
     {
