@@ -73,6 +73,7 @@ TURN_CHECKPOINT_METADATA_MEMBERS = frozenset({
     ("MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction", "type", ""),
     # Run-wide macro source contract, checked even when optional hooks are off.
     ("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "field", "_cost"),
+    ("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "property", "Cost"),
     ("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "event", "PurchaseCompleted"),
     ("MegaCrit.Sts2.Core.Entities.Merchant.MerchantInventory", "property", "AllEntries"),
     ("MegaCrit.Sts2.Core.Rooms.MerchantRoom", "property", "Inventories"),
