@@ -91,4 +91,37 @@ public sealed class PrototypeEnemyEffectPowerCatalogTests
         Assert.NotSame(canonical.Powers, fork.Powers);
         Assert.Equal(2, fork.EnemyEffectStacks("proto.status.weak"));
     }
+
+    [Fact]
+    public void EnemyWeakDamageIsEqualUnderLegacyAndCanonicalPowerStorage()
+    {
+        var legacy = new EnemyCombatState(
+            11, "proto.enemy.crawler", 40, 0, 0,
+            new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["proto.status.weak"] = 3
+            });
+        var canonical = legacy with
+        {
+            Statuses = new Dictionary<string, int>(StringComparer.Ordinal),
+            Powers = [new PrototypePowerInstanceState("proto.power.weak", 3, 2)]
+        };
+        var mixed = legacy with { Powers = canonical.Powers };
+        var combat = new CombatState(
+            Turn: 1, Energy: 3, PlayerBlock: 0,
+            Hand: [], DrawPile: [], DiscardPile: [], ExhaustPile: [],
+            Enemies: [legacy], NextCardInstanceId: 1, Cards: [],
+            PlayerPowers: [], NextPowerApplicationOrder: 3);
+        var attack = new PrototypeEnemyEffectSpec(
+            PrototypeEnemyEffectKind.DamagePlayer, Amount: 20);
+        var nonAttack = attack with { IsAttack = false };
+
+        foreach (var enemy in new[] { legacy, canonical, mixed })
+        {
+            Assert.Equal(15, PrototypeCombat.EnemyHitDamage(
+                enemy, combat, attack, act: 1, ascension: 0));
+            Assert.Equal(20, PrototypeCombat.EnemyHitDamage(
+                enemy, combat, nonAttack, act: 1, ascension: 0));
+        }
+    }
 }
