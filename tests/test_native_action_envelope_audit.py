@@ -917,10 +917,39 @@ class EnvelopeAuditTests(unittest.TestCase):
              "state": copy.deepcopy(sample()[7]["state"])},
             copy.deepcopy(sample()[-1]),
         ]
+        rows[4]["state"] = copy.deepcopy(sample()[2]["state"])
+        rows[4]["data"].update({
+            "submission_state_coverage": "SOURCE_CANONICAL_STATE_AT_REQUEST",
+            "active_executor_action_ids_at_submission": [1],
+            "submitted_while_executor_active": True,
+            "strict_legal_menu": "NOT_CAPTURED",
+        })
+        rows[5]["data"]["submission_ordinal"] = 5
+        rows[7]["data"].update({
+            "submission_ordinal": 5, "strict_legal_menu": "NOT_CAPTURED",
+        })
         for i, row in enumerate(rows, 1):
             row["ordinal"] = i
         report = audit(rows)
         self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        self.assertEqual("SOURCE_CANONICAL_STATE_AT_REQUEST",
+                         report["native_input_requests"][0]["submission_state_coverage"])
+        for invalid_kind in ("wrong_active", "forged_menu", "wrong_snapshot",
+                             "wrong_outcome_link", "wrong_executor_link"):
+            invalid = copy.deepcopy(rows)
+            request = invalid[4]
+            if invalid_kind == "wrong_active":
+                request["data"]["active_executor_action_ids_at_submission"] = []
+            elif invalid_kind == "forged_menu":
+                request["data"]["strict_legal_menu"] = "VERIFIED"
+            elif invalid_kind == "wrong_snapshot":
+                request["data"]["submission_state_coverage"] = "UNOBSERVED"
+            elif invalid_kind == "wrong_outcome_link":
+                invalid[5]["data"]["submission_ordinal"] = 99
+            else:
+                invalid[7]["data"]["submission_ordinal"] = 99
+            self.assertEqual("INCOMPLETE_CAPTURE", audit(invalid)["status"],
+                             invalid_kind)
         gap = report["strict_input_gaps"][0]
         self.assertEqual([1], gap["source_active_action_ids_at_request"])
         self.assertEqual("WaitingForExecution",
