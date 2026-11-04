@@ -208,7 +208,22 @@ internal static class NativeV111PassiveBridge
     {
         _macroEnvelopes?.RewardOffer(
             set.Rewards.Select(r => new NativeRewardOfferView(
-                r, r.GetType().Name, r.IsPopulated)).ToArray(),
+                r, r.GetType().Name, r.IsPopulated,
+                r switch
+                {
+                    CardReward cards => cards.Cards.Select(c => c.Id.Entry).ToArray(),
+                    RelicReward relic when relic.Relic is { } item =>
+                        [item.Id.Entry],
+                    PotionReward potion when potion.Potion is { } item =>
+                        [item.Id.Entry],
+                    _ => []
+                },
+                r is GoldReward gold && gold.Amount >= 0
+                    ? gold.Amount : null,
+                r is CardReward or RelicReward or PotionReward
+                    or GoldReward or CardRemovalReward
+                    ? "SOURCE_POPULATED_REWARD_FIELDS"
+                    : "NOT_CAPTURED")).ToArray(),
             set.Id, set.Player.NetId, !set.DisallowSkipping);
     }
 
