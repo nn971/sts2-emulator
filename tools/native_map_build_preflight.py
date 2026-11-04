@@ -71,6 +71,23 @@ TURN_CHECKPOINT_METADATA_MEMBERS = frozenset({
     ("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "RunTurnLoopAfter"),
     ("MegaCrit.Sts2.Core.GameActions.ReadyToBeginEnemyTurnAction", "type", ""),
     ("MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction", "type", ""),
+    # Run-wide macro source contract, checked even when optional hooks are off.
+    ("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "field", "_cost"),
+    ("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "event", "PurchaseCompleted"),
+    ("MegaCrit.Sts2.Core.Entities.Merchant.MerchantInventory", "property", "AllEntries"),
+    ("MegaCrit.Sts2.Core.Rooms.MerchantRoom", "property", "Inventories"),
+    ("MegaCrit.Sts2.Core.Rewards.RewardsSet", "property", "Id"),
+    ("MegaCrit.Sts2.Core.Rewards.RewardsSet", "property", "Rewards"),
+    ("MegaCrit.Sts2.Core.Rewards.RewardsSet", "property", "DisallowSkipping"),
+    ("MegaCrit.Sts2.Core.Multiplayer.Game.RewardsSetSynchronizer",
+     "method", "BeginRewardsSet"),
+    ("MegaCrit.Sts2.Core.Multiplayer.Game.RewardsSetSynchronizer",
+     "method", "SelectLocalReward"),
+    ("MegaCrit.Sts2.Core.Multiplayer.Game.RewardsSetSynchronizer",
+     "method", "SkipLocalRewardsSet"),
+    ("MegaCrit.Sts2.Core.Multiplayer.Game.EventSynchronizer",
+     "method", "ChooseLocalOption"),
+    ("MegaCrit.Sts2.Core.Runs.RunManager", "method", "OnEnded"),
 })
 
 
