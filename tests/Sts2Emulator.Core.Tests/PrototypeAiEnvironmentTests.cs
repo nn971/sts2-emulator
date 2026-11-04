@@ -241,6 +241,63 @@ public sealed class PrototypeAiEnvironmentTests
     }
 
     [Fact]
+    public void PublicDeckChoiceExposesMinimumSelectionsForEachContinuation()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var initial = environment.Reset("public-pending-deck-minimum");
+        var state = engine.Step(
+            initial, Assert.Single(engine.GetLegalActions(initial))).State;
+        var world = Assert.IsType<WorldState>(state.World);
+        var cardIds = state.Player.Deck.Take(2)
+            .Select(card => card.InstanceId).ToArray();
+        var pending = new PrototypePendingDeckChoiceState(
+            "proto.relic.test", (PrototypePersistentDeckChoiceKind)0,
+            2, cardIds)
+        {
+            MinimumSelectionsRemaining = 0
+        };
+        var reward = new RewardState(
+            "test", [], null, null, true, true, true, false,
+            PendingDeckChoice: pending);
+        var rewardView = environment.ObservePublic(state with
+        {
+            World = world with { Reward = reward }
+        });
+        Assert.Equal(0,
+            Assert.IsType<PrototypeAiDeckChoice>(
+                rewardView.Reward!.PendingDeckChoice)
+            .MinimumSelectionsRemaining);
+
+        var shop = new ShopState([], null, null,
+            PendingDeckChoice: pending);
+        var shopView = environment.ObservePublic(state with
+        {
+            World = world with { Shop = shop }
+        });
+        Assert.Equal(0,
+            Assert.IsType<PrototypeAiDeckChoice>(
+                shopView.Shop!.PendingDeckChoice)
+            .MinimumSelectionsRemaining);
+
+        var eventPending = new PrototypePendingEventDeckChoiceState(
+            "choice", (PrototypePersistentDeckChoiceKind)0,
+            2, cardIds, MinimumSelectionsRemaining: 0);
+        var eventView = environment.ObservePublic(state with
+        {
+            World = world with
+            {
+                Event = new EventState("proto.native.underdocks.sunken_treasury",
+                    PendingDeckChoice: eventPending)
+            }
+        });
+        Assert.Equal(0,
+            Assert.IsType<PrototypeAiEventDeckChoice>(
+                eventView.Event!.PendingDeckChoice)
+            .MinimumSelectionsRemaining);
+    }
+
+    [Fact]
     public void PublicCombatProjectsVisibleModifiersAndPlayHistory()
     {
         var environment = new PrototypeAiEnvironment();
