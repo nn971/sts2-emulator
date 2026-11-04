@@ -3051,6 +3051,14 @@ public sealed partial class PrototypeGameEngine
         CombatState combat, PrototypeTurnStage stage, RngBundle rng) =>
         ResolveEnemyStatusStage(combat, stage, rng);
 
+    internal static int EnemyDebuffCountForSourceRegression(
+        CombatState combat, int enemyId) =>
+        ResolveCombatCount(PrototypeCombatCountKind.TargetDebuffs, combat, enemyId);
+
+    internal static int IncomingAttackDamageForSourceRegression(
+        CombatState combat, int enemyId, int damage) =>
+        ModifyIncomingAttackDamage(combat, enemyId, damage);
+
     private static CombatState ResolveEnemyStatusStage(
         CombatState combat,
         PrototypeTurnStage stage,
@@ -10734,12 +10742,20 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatCountKind.TargetDebuffs =>
                 combat.Enemies.Where(e => e.InstanceId == targetEnemyId
                     && e.Hp > 0).Sum(enemy =>
-                    enemy.Statuses.Count(status => status.Value > 0)
+                    // The same debuff can be present in legacy and canonical
+                    // storage during migration; count the concept once.
+                    PrototypeContent.EnemyStatusPowerIds.Keys.Count(id =>
+                        enemy.EnemyEffectStacks(id) > 0)
+                    + enemy.Statuses.Count(status =>
+                        status.Value > 0 && !PrototypeContent
+                            .EnemyStatusPowerIds.ContainsKey(status.Key))
                     + enemy.PowerStates.Count(power =>
                         power.Stacks > 0
                         && PrototypeContent.Power(power.PowerId).IsDebuff
                         && !PrototypeContent.Power(power.PowerId)
-                            .RemoveAtEnemyTurnEnd)),
+                            .RemoveAtEnemyTurnEnd
+                        && !PrototypeContent.EnemyStatusPowerIds.Values
+                            .Contains(power.PowerId, StringComparer.Ordinal))),
 
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };

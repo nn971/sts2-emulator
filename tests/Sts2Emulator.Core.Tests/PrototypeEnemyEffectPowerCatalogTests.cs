@@ -245,4 +245,111 @@ public sealed class PrototypeEnemyEffectPowerCatalogTests
         Assert.Equal(0, Assert.Single(combat.Enemies)
             .EnemyEffectStacks("proto.status.poison"));
     }
+
+    [Fact]
+    public void LegacyAndCanonicalPoisonSchedulesHaveEqualPublicOutcomes()
+    {
+        var rng = PrototypeRng.CreateBundle("p1-poison-differential");
+        var old = EffectCombat(EffectEnemy()) with
+        {
+            CanonicalEnemyEffectPowers = false
+        };
+        var current = EffectCombat(EffectEnemy());
+
+        foreach (var combat in new[] { old, current })
+        {
+            var applied = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+                combat, 11, "proto.status.poison", 4);
+            for (var tick = 0; tick < 3; tick++)
+            {
+                applied = PrototypeGameEngine.ResolveEnemyStatusStageForSourceRegression(
+                    applied, PrototypeTurnStage.EnemyTurnStart, rng);
+                var enemy = Assert.Single(applied.Enemies);
+                Assert.Equal(30 - (4 + 3 + 2) + (tick switch
+                {
+                    0 => 5, 1 => 2, _ => 0
+                }), enemy.Hp);
+                Assert.Equal(3 - tick,
+                    enemy.EnemyEffectStacks("proto.status.poison"));
+            }
+        }
+    }
+
+    [Fact]
+    public void MigratedWeakAndVulnerablePreserveDamageAndDebuffCounts()
+    {
+        var legacy = EffectCombat(EffectEnemy()) with
+        {
+            CanonicalEnemyEffectPowers = false
+        };
+        var canonical = EffectCombat(EffectEnemy());
+        var results = new List<CombatState>();
+        foreach (var initial in new[] { legacy, canonical })
+        {
+            var combat = initial;
+            foreach (var id in new[] {
+                "proto.status.weak", "proto.status.vulnerable" })
+                combat = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+                    combat, 11, id, 2);
+            Assert.Equal(2, PrototypeGameEngine.EnemyDebuffCountForSourceRegression(
+                combat, 11));
+            Assert.Equal(13,
+                PrototypeGameEngine.IncomingAttackDamageForSourceRegression(
+                    combat, 11, 9));
+            results.Add(combat);
+        }
+
+        var mixed = results[0] with
+        {
+            Enemies = [results[0].Enemies[0] with
+            {
+                Powers = results[1].Enemies[0].Powers
+            }]
+        };
+        Assert.Equal(2,
+            PrototypeGameEngine.EnemyDebuffCountForSourceRegression(mixed, 11));
+        Assert.Equal(13,
+            PrototypeGameEngine.IncomingAttackDamageForSourceRegression(
+                mixed, 11, 9));
+
+        var rng = PrototypeRng.CreateBundle("p1-expiry-differential");
+        foreach (var combat in results)
+        {
+            var end = PrototypeGameEngine.ResolveEnemyStatusStageForSourceRegression(
+                combat, PrototypeTurnStage.EnemyTurnEnd, rng);
+            Assert.Equal(1,
+                end.Enemies[0].EnemyEffectStacks("proto.status.weak"));
+            Assert.Equal(1,
+                end.Enemies[0].EnemyEffectStacks("proto.status.vulnerable"));
+            Assert.Equal(2,
+                PrototypeGameEngine.EnemyDebuffCountForSourceRegression(end, 11));
+        }
+    }
+
+    [Fact]
+    public void CanonicalOptInSurvivesSnapshotJsonAndFork()
+    {
+        var old = EffectCombat(EffectEnemy()) with
+        {
+            CanonicalEnemyEffectPowers = false
+        };
+        var oldJson = System.Text.Json.JsonSerializer.Serialize(old);
+        Assert.DoesNotContain("CanonicalEnemyEffectPowers", oldJson);
+
+        var current = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+            EffectCombat(EffectEnemy()), 11, "proto.status.poison", 3);
+        var json = System.Text.Json.JsonSerializer.Serialize(current);
+        Assert.Contains("CanonicalEnemyEffectPowers", json);
+        var recovered = System.Text.Json.JsonSerializer.Deserialize<CombatState>(json);
+        Assert.NotNull(recovered);
+        Assert.True(recovered.CanonicalEnemyEffectPowers);
+        Assert.Equal(3, Assert.Single(recovered.Enemies)
+            .EnemyEffectStacks("proto.status.poison"));
+
+        var fork = recovered.Fork();
+        Assert.True(fork.CanonicalEnemyEffectPowers);
+        Assert.Equal(3, Assert.Single(fork.Enemies)
+            .EnemyEffectStacks("proto.status.poison"));
+        Assert.NotSame(recovered.Enemies, fork.Enemies);
+    }
 }
