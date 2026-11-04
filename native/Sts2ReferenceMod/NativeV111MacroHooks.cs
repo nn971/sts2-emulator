@@ -3,6 +3,7 @@ using System.Reflection;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
+using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Runs;
 
@@ -44,9 +45,18 @@ internal static class NativeV111MacroHooks
             Patch(patches, typeof(RunManager),
                 nameof(RunManager.OnEnded), [typeof(bool)],
                 nameof(PostfixRunEnded));
+            // Observe the original getter *return*, never evaluate a
+            // price hook from Inspector-owned code or add RNG draws.
+            var costGetter = AccessTools.PropertyGetter(
+                typeof(MerchantEntry), nameof(MerchantEntry.Cost))
+                ?? throw new MissingMethodException("MerchantEntry.get_Cost");
+            patches.Patch(costGetter, postfix: new HarmonyMethod(
+                typeof(NativeV111MacroHooks).GetMethod(
+                    nameof(PostfixShopCost),
+                    BindingFlags.NonPublic | BindingFlags.Static)!));
             _patches = patches;
             GD.Print("[Sts2ReferenceMod] MACRO_HOOK_STATUS=PINNED_SOURCE_INSTALLED;" +
-                " hook_sites=4; native_gameplay_mutated=false");
+                " hook_sites=5; native_gameplay_mutated=false");
         }
         catch (Exception error)
         {
@@ -89,6 +99,14 @@ internal static class NativeV111MacroHooks
         try { NativeV111PassiveBridge.NativeMacroRewardsSkipped(); }
         catch (Exception error) { NativeV111PassiveBridge.NativeMacroFailure(
             "reward_skip", error.GetType().Name); }
+    }
+
+    private static void PostfixShopCost(MerchantEntry __instance, int __result)
+    {
+        try { NativeV111PassiveBridge.NativeMacroShopCostObserved(
+            __instance, __result); }
+        catch (Exception error) { NativeV111PassiveBridge.NativeMacroFailure(
+            "shop_cost_getter", error.GetType().Name); }
     }
 
     private static void PostfixRunEnded(bool isVictory)
