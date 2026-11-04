@@ -204,7 +204,8 @@ public sealed class NativeMacroEnvelopeRecorder : IAsyncDisposable
             can_skip = canSkip,
             rewards = rewards.Select((r, i) => new {
                 index = i, native_type = r.Type, populated = r.Populated,
-                contents = "NOT_CAPTURED"
+                model_ids = r.ModelIds, gold_amount = r.GoldAmount,
+                content_coverage = r.ContentCoverage
             }).ToArray(),
             source = "RewardsSetSynchronizer.BeginRewardsSet.postfix",
             native_choice_contents_complete = false,
