@@ -1129,3 +1129,59 @@ regression tests and adversarial Python source-journal tests.
 A new actual-game run is needed **only after** the pinned local
 native compilation and installation gate succeeds. The already
 captured six-turn replay remains valid as the no-hook baseline.
+
+
+## 2026-11-04 native task capture: source-queued input and terminal cleanup
+
+Original-game sidecar
+`passive-20261104-103011419-1489a3b3762a4990b540acdbfe96b15e.actions.jsonl`
+was audited offline after native task-hook installation. Its captured
+Silent A10 combat supplies four complete awaited player-turn witnesses,
+four zero-*transient*-pending Task checkpoints (one expected live turn
+loop at each), 70 distinct Task references, 69 completed references,
+three nested hand choices with matching action resumptions, and zero
+observed idle-to-input source activity. The terminal task reference is
+the expected live `TURN_LOOP`. None of these observations certifies
+global asynchronous settlement.
+
+Two source-order distinctions explain its previous
+`INCOMPLETE_CAPTURE` classification:
+
+1. At source ordinal **82** a second `PlayCardAction` was requested
+   while action 1 was still executing. The native request postfix at
+   **83** reported `WaitingForExecution`; action 1 finished at **86**;
+   action 2 started at **90**. The strict decision recorder reported
+   `strict_input_gap` at **92** because no *new unique strict decision
+   boundary* had been observed in between. The action is genuinely
+   source-queued while a previous executor action is active. The
+   strict legal menu is still **unverified**, and its trace remains
+   incomplete. The independent native action sidecar retains the
+   source input-to-execution identity link.
+2. At **1116** the last action completed, followed by a read-only
+   after-action RNG checkpoint (**1117**), two observed Task completions
+   (**1118–1119**), one rendered frame (**1120**), native CombatHistory
+   reset (**1121**), a combat-end RNG checkpoint (**1122**), the
+   `COMBAT_TEARDOWN` Task checkpoint (**1123**), and the terminal
+   event (**1124**). The two RNG checkpoint stream arrays are equal.
+   This is a bounded source-observed terminal cleanup, not an
+   arbitrary mid-combat history reset. The prior offline audit only
+   handled the older direct RNG-checkpoint-to-terminal ordering.
+
+The strict offline audit now recognizes **only** the versioned optional
+Task completion and teardown event sequence around terminal cleanup,
+requiring unchanged observed source RNG streams, an immediately
+preceding last action completion, and zero pending non-turn-loop tasks
+at teardown. Any changed source RNG state, an intervening registered
+Task, missing or malformed teardown evidence, or semantic event in the
+cleanup window fails closed. It additionally classifies source-queued
+strict input gaps from prior-active-action/request-return evidence,
+while retaining `strict_decision_boundary_recovered=false` and
+`legal_menu_reconstructed=false`.
+
+**Important:** `CALLBACK_TIMELINE_CONSISTENT` (when obtained by the
+updated audit) describes the observed independent native action
+sidecar; it does **not** upgrade a stopped strict decision capture,
+prove native-emulator parity, or certify uninstrumented asynchronous
+continuations. The existing saved sidecar suffices to re-run this
+updated offline audit. No new game run or native DLL rebuild is
+required for these two *audit-only* changes.
