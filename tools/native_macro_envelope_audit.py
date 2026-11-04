@@ -14,7 +14,7 @@ from pathlib import Path
 SCHEMA = "native-macro-envelope-v1"
 KINDS = {
     "header", "map_snapshot", "room_entered", "map_request",
-    "map_request_outcome", "shop_snapshot", "reward_offer",
+    "map_request_outcome", "shop_snapshot", "shop_source_cost", "reward_offer",
     "reward_selection_requested", "reward_skip_requested",
     "event_choice_request", "event_choice_return",
     "combat_link", "observation_failure", "terminal",
@@ -74,6 +74,7 @@ def audit(records: list[dict]) -> dict:
         event_returns: set[int] = set()
         rewards: dict[int, int] = {}
         observed_shop = False
+        current_shop_slots: set[int] = set()
         terminal_seen = False
         last_room = None
         for index, record in enumerate(records, 1):
@@ -138,6 +139,7 @@ def audit(records: list[dict]) -> dict:
                 result["rooms"] += 1
                 last_room = data.get("room_type")
                 observed_shop = False
+                current_shop_slots.clear()
             elif kind == "map_request":
                 rid = data.get("request_id")
                 target = _coord(data, "to_column", "to_row")
@@ -184,7 +186,20 @@ def audit(records: list[dict]) -> dict:
                 if len(slots) != len(set(slots)):
                     raise ValueError("Duplicate shop slot")
                 observed_shop = True
+                current_shop_slots = set(slots)
                 result["shop_snapshots"] += 1
+            elif kind == "shop_source_cost":
+                if (not observed_shop or
+                    data.get("slot") not in current_shop_slots
+                    or not _integer(data.get("native_cost"))
+                    or data.get("source") != "MerchantEntry.get_Cost.postfix"
+                    or data.get("observation_basis") !=
+                        "EXACT_NATIVE_GETTER_RETURN_VALUE"
+                    or data.get("displayed_price_coverage") !=
+                        "UNVERIFIED_UI_USAGE"
+                    or data.get("source_price_hook_evaluated_by_inspector") is not False
+                    or data.get("emulator_parity") != "NOT_TESTED"):
+                    raise ValueError("Invalid source Cost getter evidence")
             elif kind == "reward_offer":
                 oid = data.get("offer_id")
                 rows = data.get("rewards")
