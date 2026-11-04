@@ -159,7 +159,7 @@ internal static class NativeV111InputHooks
         EventSynchronizer __instance, int index, out object? __state)
     {
         __state = null;
-        if (!NativeV111PassiveBridge.HasRunPrelude) return;
+        if (!NativeV111PassiveBridge.HasMacroCapture) return;
         try
         {
             EventModel eventModel = __instance.GetLocalEvent();
