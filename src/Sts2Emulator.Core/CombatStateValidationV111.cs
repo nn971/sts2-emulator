@@ -395,6 +395,13 @@ public sealed partial record CombatState
         ValidateCombatPotions(player, combat);
 
         var allSubscriberOrders = allPowers
+            // Legacy snapshot fixture statuses have no event subscriber.
+            // They are normalized to powers with order zero at ingress,
+            // whereas every genuine applied power has a positive order.
+            .Where(power => !(power.ApplicationOrder == 0
+                && power.LegacyStatusStacks > 0
+                && PrototypeContent.EnemyStatusPowerIds.Values.Contains(
+                    power.PowerId, StringComparer.Ordinal)))
             .Select(power => power.ApplicationOrder)
             .Concat(combat.RelicStates.Select(relic => relic.ApplicationOrder))
             .ToArray();

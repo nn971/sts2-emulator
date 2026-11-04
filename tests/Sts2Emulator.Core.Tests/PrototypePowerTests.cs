@@ -70,8 +70,11 @@ public sealed class PrototypePowerTests
         Assert.Equal(1, state.World.Combat.Energy);
     }
 
-    [Fact]
-    public void NoxiousFumesTriggersAtRulesetPlayerTurnStartStep()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NoxiousFumesTriggersAtRulesetPlayerTurnStartStep(
+        bool canonicalEnemyEffects)
     {
         var empty = PrototypeJson.EmptyObject();
         var player = new PlayerState(
@@ -113,7 +116,10 @@ public sealed class PrototypePowerTests
                 new CombatCardInstance(1, 50, "proto.silent.noxious_fumes", 0, false, empty)
             ],
             PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
-            NextPowerApplicationOrder: 1);
+            NextPowerApplicationOrder: 1)
+        {
+            CanonicalEnemyEffectPowers = canonicalEnemyEffects
+        };
 
         var state = CreateState("fumes-test", player, combat, nextPersistentCardId: 51);
         var engine = new PrototypeGameEngine();
@@ -129,9 +135,24 @@ public sealed class PrototypePowerTests
 
         combat = state.World!.Combat!;
         Assert.Equal(2, combat.Turn);
-        Assert.All(
-            combat.Enemies,
-            enemy => Assert.Equal(1, enemy.Statuses["proto.status.poison"]));
+        Assert.Equal(canonicalEnemyEffects, combat.CanonicalEnemyEffectPowers);
+        Assert.All(combat.Enemies, enemy =>
+        {
+            Assert.Equal(1, enemy.EnemyEffectStacks("proto.status.poison"));
+            if (canonicalEnemyEffects)
+            {
+                Assert.Empty(enemy.Statuses);
+                Assert.Contains(enemy.PowerStates,
+                    power => power.PowerId == "proto.power.poison"
+                        && power.Stacks == 1);
+            }
+            else
+            {
+                Assert.Equal(1, enemy.Statuses["proto.status.poison"]);
+                Assert.Equal(1, Assert.Single(enemy.PowerStates)
+                    .LegacyStatusStacks);
+            }
+        });
         Assert.Equal(1, Assert.Single(combat.PlayerPowers).Stacks);
     }
 
@@ -557,6 +578,77 @@ public sealed class PrototypePowerTests
         Assert.Equal(
             18,
             state.World.Combat.Enemies.Single(enemy => enemy.InstanceId == 2).Hp);
+    }
+
+
+    [Theory]
+    [InlineData(false, "proto.silent.neutralize", "proto.status.weak",
+        "proto.power.weak", 1, 37)]
+    [InlineData(true, "proto.silent.neutralize", "proto.status.weak",
+        "proto.power.weak", 1, 37)]
+    [InlineData(false, "proto.silent.deadly_poison", "proto.status.poison",
+        "proto.power.poison", 5, 40)]
+    [InlineData(true, "proto.silent.deadly_poison", "proto.status.poison",
+        "proto.power.poison", 5, 40)]
+    [InlineData(false, "proto.silent.expose", "proto.status.vulnerable",
+        "proto.power.vulnerable", 2, 40)]
+    [InlineData(true, "proto.silent.expose", "proto.status.vulnerable",
+        "proto.power.vulnerable", 2, 40)]
+    public void ActualDebuffCardPlayEmitsOwnedCanonicalPowerInV2(
+        bool canonical, string cardId, string statusId,
+        string powerId, int expectedStacks, int expectedHp)
+    {
+        var empty = PrototypeJson.EmptyObject();
+        var player = new PlayerState(
+            70, 70, 0,
+            [new CardInstance(70, cardId, 0, empty)],
+            Array.Empty<RelicInstance>(),
+            new PotionInstance?[PrototypeContent.Rules.PotionSlots]);
+        var combat = new CombatState(
+            Turn: 1, Energy: 3, PlayerBlock: 0,
+            Hand: [1], DrawPile: [], DiscardPile: [], ExhaustPile: [],
+            Enemies:
+            [
+                new EnemyCombatState(11, "proto.enemy.crawler", 40, 0, 0,
+                    new Dictionary<string, int>(StringComparer.Ordinal))
+            ],
+            NextCardInstanceId: 2,
+            Cards: [new CombatCardInstance(1, 70, cardId, 0, false, empty)],
+            PlayerPowers: [],
+            NextPowerApplicationOrder: 1)
+        {
+            CanonicalEnemyEffectPowers = canonical
+        };
+        var state = CreateState("p1-actual-card-" + cardId,
+            player, combat, 71);
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(state)
+            .Single(item => item.Kind == "play_card");
+        state = engine.Step(state, action).State;
+        PrototypeStateInvariants.Validate(state);
+        var enemy = Assert.Single(state.World!.Combat!.Enemies);
+        Assert.Equal(expectedHp, enemy.Hp);
+        Assert.Equal(expectedStacks, enemy.EnemyEffectStacks(statusId));
+
+        var frame = new PrototypeAiEnvironment().Observe(state);
+        var observed = Assert.Single(frame.Observation.Combat!.Enemies);
+        Assert.Equal(canonical
+                ? PrototypeAiEnvironment.CanonicalEnemyPowerSchemaId
+                : PrototypeAiEnvironment.SchemaId,
+            frame.SchemaId);
+        if (canonical)
+        {
+            Assert.Empty(observed.Statuses);
+            Assert.Equal(expectedStacks,
+                Assert.Single(observed.Powers,
+                    power => power.PowerId == powerId).Stacks);
+        }
+        else
+        {
+            Assert.Equal(expectedStacks, observed.Statuses[statusId]);
+            Assert.DoesNotContain(observed.Powers,
+                power => power.PowerId == powerId);
+        }
     }
 
     private static RunState CreateState(

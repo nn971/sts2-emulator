@@ -412,7 +412,11 @@ public sealed partial class PrototypeGameEngine
             Act: world.Act,
             Ascension: state.Ascension,
             Pets: NativePaelRewardsV111.CreateCombatPets(state.Player),
-            CurrentMapNodeId: world.Map.CurrentNodeId);
+            CurrentMapNodeId: world.Map.CurrentNodeId)
+        {
+            CanonicalEnemyEffectPowers =
+                state.ExperimentalCanonicalEnemyEffectPowers
+        };
 
         var teaOfDiscourtesy = ApplyTeaOfDiscourtesyBeforeCombat(
             state.Player, combat, state.Rng);
@@ -3033,6 +3037,32 @@ public sealed partial class PrototypeGameEngine
         return combat;
     }
 
+    // Opt-in migration acceptance seams; they invoke the actual combat
+    // mutators and turn-stage lifecycle without bypassing debuff prevention.
+    internal static CombatState ApplyEnemyStatusForSourceRegression(
+        CombatState combat, int enemyId, string statusId, int amount) =>
+        ApplyEnemyStatus(combat, enemyId, statusId, amount);
+
+    internal static CombatState MultiplyEnemyStatusForSourceRegression(
+        CombatState combat, int enemyId, string statusId, int multiplier) =>
+        MultiplyEnemyStatus(combat, enemyId, statusId, multiplier);
+
+    internal static CombatState TriggerEnemyStatusForSourceRegression(
+        CombatState combat, int enemyId, string statusId, RngBundle rng) =>
+        TriggerEnemyStatus(combat, enemyId, statusId, rng);
+
+    internal static CombatState ResolveEnemyStatusStageForSourceRegression(
+        CombatState combat, PrototypeTurnStage stage, RngBundle rng) =>
+        ResolveEnemyStatusStage(combat, stage, rng);
+
+    internal static int EnemyDebuffCountForSourceRegression(
+        CombatState combat, int enemyId) =>
+        ResolveCombatCount(PrototypeCombatCountKind.TargetDebuffs, combat, enemyId);
+
+    internal static int IncomingAttackDamageForSourceRegression(
+        CombatState combat, int enemyId, int damage) =>
+        ModifyIncomingAttackDamage(combat, enemyId, damage);
+
     private static CombatState ResolveEnemyStatusStage(
         CombatState combat,
         PrototypeTurnStage stage,
@@ -3051,73 +3081,62 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            var statuses = new Dictionary<string, int>(enemy.Statuses, StringComparer.Ordinal);
-            foreach (var pair in enemy.Statuses.ToArray())
+            // Enemy-effect powers use the same scheduled trigger semantics
+            // as legacy statuses. Old and new instances may coexist while
+            // snapshots and producers migrate independently.
+            foreach (var applied in enemy.PowerStates
+                .Where(power => power.Stacks > 0
+                    && PrototypeContent.Power(power.PowerId)
+                        .EnemyEffectTriggerStage == stage)
+                .OrderBy(power => power.ApplicationOrder)
+                .ToArray())
             {
-                var definition = PrototypeContent.Status(pair.Key);
-                var stacks = pair.Value;
-
-                if (definition.TriggerStage == stage)
+                var definition = PrototypeContent.Power(applied.PowerId);
+                var stacks = applied.Stacks;
+                if (definition.EnemyEffectTriggerKind
+                    == PrototypeStatusTriggerKind.DamageSelfByStacks)
                 {
-                    if (definition.TriggerKind
-                        == PrototypeStatusTriggerKind
-                            .DamageSelfByStacks)
+                    var statusId = PrototypeContent.EnemyStatusPowerIds
+                        .Single(entry => entry.Value == applied.PowerId).Key;
+                    var count = ResolveEnemyStatusTriggerCount(
+                        combat, statusId, stacks);
+                    for (var trigger = 0; trigger < count; trigger++)
                     {
-                        var triggerCount =
-                            ResolveEnemyStatusTriggerCount(
-                                combat,
-                                pair.Key,
-                                stacks);
-                        for (var trigger = 0;
-                             trigger < triggerCount;
-                             trigger++)
+                        if (enemy.Hp <= 0 || stacks <= 0)
+                            break;
+
+                        var hpLoss = ModifyEnemyHpLoss(enemy, stacks);
+                        enemy = hpLoss.Enemy with
                         {
-                            if (enemy.Hp <= 0
-                                || stacks <= 0)
-                            {
-                                break;
-                            }
-
-                            var hpLoss =
-                                ModifyEnemyHpLoss(
-                                    enemy,
-                                    stacks);
-                            enemy = hpLoss.Enemy with
-                            {
-                                Hp = Math.Max(
-                                    0,
-                                    hpLoss.Enemy.Hp
-                                    - hpLoss.HpLoss)
-                            };
-
-                            if (enemy.Hp > 0)
-                            {
-                                stacks -=
-                                    definition
-                                        .DecayOnTrigger;
-                            }
-                        }
+                            Hp = Math.Max(0,
+                                hpLoss.Enemy.Hp - hpLoss.HpLoss)
+                        };
+                        if (enemy.Hp > 0)
+                            stacks -= definition.EnemyEffectDecayOnTrigger;
                     }
-                    else
-                    {
-                        stacks -=
-                            definition.DecayOnTrigger;
-                    }
-                }
-
-                if (definition.DecayStage == stage)
-                {
-                    stacks -= definition.DecayAtStage;
-                }
-
-                if (stacks > 0)
-                {
-                    statuses[pair.Key] = stacks;
                 }
                 else
                 {
-                    statuses.Remove(pair.Key);
+                    stacks -= definition.EnemyEffectDecayOnTrigger;
                 }
+
+                enemy = enemy with
+                {
+                    Powers = enemy.PowerStates
+                        .Where(power => power.ApplicationOrder
+                            != applied.ApplicationOrder || stacks > 0)
+                        .Select(power => power.ApplicationOrder
+                            == applied.ApplicationOrder
+                            ? power with
+                            {
+                                Stacks = stacks,
+                                LegacyStatusStacks = Math.Max(0,
+                                    power.LegacyStatusStacks
+                                    - (applied.Stacks - stacks))
+                            }
+                            : power)
+                        .ToArray()
+                };
             }
 
             // Expiring an enemy-side countdown can wake its owner and
@@ -3192,6 +3211,12 @@ public sealed partial class PrototypeGameEngine
                         {
                             Stacks = power.Stacks -
                                 definition.EnemyStacksDecayAtSideTurnEnd
+                                - (definition.EnemyEffectDecayStage == stage
+                                    ? definition.EnemyEffectDecayAtStage : 0),
+                            LegacyStatusStacks = Math.Max(0,
+                                power.LegacyStatusStacks -
+                                (definition.EnemyEffectDecayStage == stage
+                                    ? definition.EnemyEffectDecayAtStage : 0))
                         };
                     })
                     .Where(power => power.Stacks > 0
@@ -3226,7 +3251,6 @@ public sealed partial class PrototypeGameEngine
             {
                 Hp = timedOut ? 0 : enemy.Hp,
                 Escaped = timedOut || enemy.Escaped,
-                Statuses = statuses,
                 Powers = powers,
                 AiStateId = aiAfterExpiry ?? enemy.AiStateId,
                 Block = enemy.Block + blockAtSideTurnEnd,
@@ -3936,7 +3960,7 @@ public sealed partial class PrototypeGameEngine
                                 PrototypeNativeHiveElites.ReattachId)))
                 {
                     enemy = enemy.ReattachDeadMoveResolved
-                        ? enemy with
+                        ? enemy.WithoutEnemyEffectDebuffs() with
                         {
                             Hp = Math.Min(definition.HpRangeAt(act,
                                 ascension).Max,
@@ -3947,9 +3971,7 @@ public sealed partial class PrototypeGameEngine
                             Block = 0,
                             LastMoveId = "reattach",
                             ReattachDeadMoveResolved = false,
-                            AiStateId = "reattach_random",
-                            Statuses = new Dictionary<string, int>(
-                                StringComparer.Ordinal)
+                            AiStateId = "reattach_random"
                         }
                         : enemy with
                         {
@@ -3970,14 +3992,11 @@ public sealed partial class PrototypeGameEngine
                     var hpRange = definition.HpRangeAt(
                         act,
                         ascension);
-                    enemy = enemy with
+                    enemy = enemy.WithoutEnemyEffectDebuffs() with
                     {
                         Hp = hpRange.Max,
                         Block = 0,
-                        LastMoveId = "revive",
-                        Statuses =
-                            new Dictionary<string, int>(
-                                StringComparer.Ordinal)
+                        LastMoveId = "revive"
                     };
                     enemies[index] = enemy;
                 }
@@ -4511,8 +4530,6 @@ public sealed partial class PrototypeGameEngine
                                 CompletedPhaseMaxHp =
                                     enemy.CompletedPhaseMaxHp + enemy.MaxHp,
                                 Block = 0,
-                                Statuses = new Dictionary<string, int>(
-                                    StringComparer.Ordinal),
                                 Powers = enemy.PowerStates.Where(power =>
                                     power.PowerId == "proto.power.minion")
                                     .ToArray(),
@@ -6154,7 +6171,7 @@ public sealed partial class PrototypeGameEngine
                         .Sum(enemy =>
                             Math.Max(
                                 0,
-                                enemy.Statuses.GetValueOrDefault(
+                                enemy.EnemyEffectStacks(
                                     operation.StatusId)));
                     var baseAmount =
                         operation.Amount + statusTotal;
@@ -9827,10 +9844,12 @@ public sealed partial class PrototypeGameEngine
             + enemy.PowerStates.Sum(power =>
                 PrototypeContent.Power(power.PowerId)
                     .EnemyAttackDamageBonusPerStack * power.Stacks);
-        foreach (var status in enemy.Statuses)
+        foreach (var statusId in PrototypeContent.EnemyStatusPowerIds.Keys)
         {
-            var definition = PrototypeContent.Status(status.Key);
-            if (status.Key == "proto.status.weak")
+            if (enemy.EnemyEffectStacks(statusId) <= 0)
+                continue;
+            var definition = PrototypeContent.Power(PrototypeContent.EnemyStatusPowerIds[statusId]);
+            if (statusId == "proto.status.weak")
             {
                 if (!effect.IsAttack)
                     continue;
@@ -9843,18 +9862,18 @@ public sealed partial class PrototypeGameEngine
                 if (extraReductionPercent > 0)
                 {
                     var adjustedNumerator = Math.Max(0,
-                        checked(100 * definition.OutgoingDamageNumerator
+                        checked(100 * definition.EnemyOutgoingDamageNumerator
                             - extraReductionPercent
-                                * definition.OutgoingDamageDenominator));
+                                * definition.EnemyOutgoingDamageDenominator));
                     damage = checked(damage * adjustedNumerator)
                         / checked(100
-                            * definition.OutgoingDamageDenominator);
+                            * definition.EnemyOutgoingDamageDenominator);
                     continue;
                 }
             }
 
-            damage = (damage * definition.OutgoingDamageNumerator)
-                / definition.OutgoingDamageDenominator;
+            damage = (damage * definition.EnemyOutgoingDamageNumerator)
+                / definition.EnemyOutgoingDamageDenominator;
         }
         foreach (var power in enemy.PowerStates.Where(power =>
             effect.IsAttack && power.Stacks > 0))
@@ -10660,12 +10679,18 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatCountKind.TargetDebuffs =>
                 combat.Enemies.Where(e => e.InstanceId == targetEnemyId
                     && e.Hp > 0).Sum(enemy =>
-                    enemy.Statuses.Count(status => status.Value > 0)
+                    // Canonical enemy debuffs are powers; count each
+                    // semantic effect once even when imported snapshots
+                    // contain several power instances of the same kind.
+                    PrototypeContent.EnemyStatusPowerIds.Keys.Count(id =>
+                        enemy.EnemyEffectStacks(id) > 0)
                     + enemy.PowerStates.Count(power =>
                         power.Stacks > 0
                         && PrototypeContent.Power(power.PowerId).IsDebuff
                         && !PrototypeContent.Power(power.PowerId)
-                            .RemoveAtEnemyTurnEnd)),
+                            .RemoveAtEnemyTurnEnd
+                        && !PrototypeContent.EnemyStatusPowerIds.Values
+                            .Contains(power.PowerId, StringComparer.Ordinal))),
 
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
@@ -10832,7 +10857,7 @@ public sealed partial class PrototypeGameEngine
         var enemy = combat.Enemies.FirstOrDefault(item =>
             item.InstanceId == targetEnemyId.Value);
         return enemy is not null
-            && enemy.Statuses.GetValueOrDefault(statusId) > 0;
+            && enemy.EnemyEffectStacks(statusId) > 0;
     }
 
     private static int ModifyPlayerAttackDamage(
@@ -10967,11 +10992,13 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException($"Enemy {enemyId} is missing.");
 
         var modified = damage;
-        foreach (var status in enemy.Statuses)
+        foreach (var statusId in PrototypeContent.EnemyStatusPowerIds.Keys)
         {
-            var definition = PrototypeContent.Status(status.Key);
-            modified = (modified * definition.IncomingAttackDamageNumerator)
-                / definition.IncomingAttackDamageDenominator;
+            if (enemy.EnemyEffectStacks(statusId) <= 0)
+                continue;
+            var definition = PrototypeContent.Power(PrototypeContent.EnemyStatusPowerIds[statusId]);
+            modified = (modified * definition.EnemyIncomingAttackDamageNumerator)
+                / definition.EnemyIncomingAttackDamageDenominator;
         }
 
         // Native SlowPower increments SlowAmount in AfterCardPlayed.
@@ -15123,7 +15150,7 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 $"Enemy {enemyId} is missing.");
         var stacks =
-            enemy.Statuses.GetValueOrDefault(statusId);
+            enemy.EnemyEffectStacks(statusId);
         var triggerCount =
             ResolveEnemyStatusTriggerCount(
                 combat,
@@ -15138,8 +15165,7 @@ public sealed partial class PrototypeGameEngine
                 item =>
                     item.InstanceId == enemyId);
             if (enemy.Hp <= 0
-                || enemy.Statuses.GetValueOrDefault(
-                    statusId) <= 0)
+                || enemy.EnemyEffectStacks(statusId) <= 0)
             {
                 break;
             }
@@ -15160,20 +15186,19 @@ public sealed partial class PrototypeGameEngine
         string statusId,
         RngBundle rng)
     {
-        var definition = PrototypeContent.Status(statusId);
+        var definition = PrototypeContent.Power(PrototypeContent.EnemyStatusPowerIds[statusId]);
         var enemy = combat.Enemies.SingleOrDefault(item =>
             item.InstanceId == enemyId)
             ?? throw new InvalidOperationException(
                 $"Enemy {enemyId} is missing.");
 
-        var stacks = enemy.Statuses.GetValueOrDefault(
-            statusId);
+        var stacks = enemy.EnemyEffectStacks(statusId);
         if (enemy.Hp <= 0 || stacks <= 0)
         {
             return combat;
         }
 
-        if (definition.TriggerKind
+        if (definition.EnemyEffectTriggerKind
             != PrototypeStatusTriggerKind.DamageSelfByStacks)
         {
             throw new InvalidOperationException(
@@ -15187,7 +15212,7 @@ public sealed partial class PrototypeGameEngine
         combat = hpLoss.Combat;
 
         if (!hpLoss.Defeated
-            && definition.DecayOnTrigger != 0)
+            && definition.EnemyEffectDecayOnTrigger != 0)
         {
             var enemies = combat.Enemies
                 .Select(item => item.Fork())
@@ -15195,24 +15220,27 @@ public sealed partial class PrototypeGameEngine
             var index = Array.FindIndex(
                 enemies,
                 item => item.InstanceId == enemyId);
-            var statuses = new Dictionary<string, int>(
-                enemies[index].Statuses,
-                StringComparer.Ordinal);
-            var remaining =
-                stacks - definition.DecayOnTrigger;
-            if (remaining > 0)
-            {
-                statuses[statusId] = remaining;
-            }
-            else
-            {
-                statuses.Remove(statusId);
-            }
-
-            enemies[index] = enemies[index] with
-            {
-                Statuses = statuses
-            };
+            var powerId = PrototypeContent.EnemyStatusPowerIds[statusId];
+            var powers = enemies[index].PowerStates;
+            var target = powers.FirstOrDefault(power =>
+                power.PowerId == powerId && power.Stacks > 0);
+            if (target is null)
+                throw new InvalidOperationException(
+                    "Triggered enemy power has no remaining instance.");
+            var remaining = target.Stacks - definition.EnemyEffectDecayOnTrigger;
+            powers = powers.Where(power =>
+                    power.ApplicationOrder != target.ApplicationOrder
+                    || remaining > 0)
+                .Select(power => power.ApplicationOrder
+                    == target.ApplicationOrder
+                    ? power with
+                    {
+                        Stacks = remaining,
+                        LegacyStatusStacks = Math.Max(0,
+                            power.LegacyStatusStacks - definition.EnemyEffectDecayOnTrigger)
+                    } : power)
+                .ToArray();
+            enemies[index] = enemies[index] with { Powers = powers };
             combat = combat with { Enemies = enemies };
         }
 
@@ -15867,7 +15895,7 @@ public sealed partial class PrototypeGameEngine
         string statusId,
         int multiplier)
     {
-        _ = PrototypeContent.Status(statusId);
+        _ = PrototypeContent.Power(PrototypeContent.EnemyStatusPowerIds[statusId]);
         if (multiplier < 0)
         {
             throw new InvalidOperationException("Status multiplier cannot be negative.");
@@ -15886,19 +15914,19 @@ public sealed partial class PrototypeGameEngine
             return combat;
         }
 
-        var statuses = new Dictionary<string, int>(enemy.Statuses, StringComparer.Ordinal);
-        var current = statuses.GetValueOrDefault(statusId);
-        var next = current * multiplier;
-        if (next > 0)
-        {
-            statuses[statusId] = next;
-        }
-        else
-        {
-            statuses.Remove(statusId);
-        }
-
-        enemies[index] = enemy with { Statuses = statuses };
+        var powerId = PrototypeContent.EnemyStatusPowerIds[statusId];
+        var powers = enemy.PowerStates
+            .Where(power => power.PowerId != powerId || multiplier > 0)
+            .Select(power => power.PowerId == powerId
+                ? power with
+                {
+                    Stacks = checked(power.Stacks * multiplier),
+                    LegacyStatusStacks = checked(
+                        power.LegacyStatusStacks * multiplier)
+                }
+                : power)
+            .ToArray();
+        enemies[index] = enemy with { Powers = powers };
         return combat with { Enemies = enemies };
     }
 
@@ -15908,49 +15936,33 @@ public sealed partial class PrototypeGameEngine
         string statusId,
         int amount)
     {
-        var statusDefinition =
-            PrototypeContent.Status(statusId);
-        var enemies = combat.Enemies
-            .Select(enemy => enemy.Fork())
-            .ToArray();
-        var index = Array.FindIndex(
-            enemies,
-            enemy => enemy.InstanceId == enemyId);
-        if (index < 0)
+        if (!PrototypeContent.EnemyStatusPowerIds.TryGetValue(
+                statusId, out var powerId))
+            throw new InvalidOperationException($"Unknown enemy effect '{statusId}'.");
+        var before = combat.Enemies.Single(enemy =>
+            enemy.InstanceId == enemyId).EnemyEffectStacks(statusId);
+        var applied = ApplyEnemyPower(combat, enemyId, powerId, amount);
+        var enemies = applied.Enemies.Select(enemy =>
         {
-            throw new InvalidOperationException(
-                $"Enemy {enemyId} is missing.");
-        }
-
-        var enemy = enemies[index];
-        if (enemy.Hp <= 0)
-        {
-            return combat;
-        }
-
-        if (amount > 0 && statusDefinition.IsDebuff)
-        {
-            var blocked =
-                TryBlockIncomingEnemyDebuff(enemy);
-            enemy = blocked.Enemy;
-            if (blocked.Blocked)
+            if (enemy.InstanceId != enemyId)
+                return enemy;
+            if (combat.CanonicalEnemyEffectPowers)
+                return enemy with { CanonicalEnemyPowerView = true };
+            var delta = enemy.EnemyEffectStacks(statusId) - before;
+            if (delta <= 0)
+                return enemy;
+            return enemy with
             {
-                enemies[index] = enemy;
-                return combat with { Enemies = enemies };
-            }
-        }
-
-        var statuses = new Dictionary<string, int>(
-            enemy.Statuses,
-            StringComparer.Ordinal);
-        statuses[statusId] =
-            statuses.GetValueOrDefault(statusId)
-            + amount;
-        enemies[index] = enemy with
-        {
-            Statuses = statuses
-        };
-        return combat with { Enemies = enemies };
+                Powers = enemy.PowerStates.Select(power =>
+                    power.PowerId == powerId
+                    ? power with
+                    {
+                        LegacyStatusStacks = checked(
+                            power.LegacyStatusStacks + delta)
+                    } : power).ToArray()
+            };
+        }).ToArray();
+        return applied with { Enemies = enemies };
     }
 
     private sealed record PrototypeEnemyDebuffBlockResult(

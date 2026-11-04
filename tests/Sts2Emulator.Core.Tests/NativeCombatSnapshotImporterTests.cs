@@ -90,4 +90,34 @@ public sealed class NativeCombatSnapshotImporterTests
         Assert.Empty(result.VerifiedFields);
         Assert.Contains("unaudited", result.Diagnostics[0]);
     }
+
+    [Fact]
+    public void NativePowerPayloadPreservesPoisonWeakAndVulnerableIdentities()
+    {
+        // Native imports are read-only partial projections. Preserve their
+        // source power IDs and amounts instead of inventing emulator stacks
+        // or assuming deterministic continuation data.
+        const string oldFragment =
+            "\"block\":0,\"alive\":true,\"powers\":[]}";
+        const string newFragment =
+            "\"block\":0,\"alive\":true,\"powers\":[" +
+            "{\"model_id\":\"PoisonPower\",\"amount\":4}," +
+            "{\"model_id\":\"WeakPower\",\"amount\":2}," +
+            "{\"model_id\":\"VulnerablePower\",\"amount\":1}]}";
+        Assert.Contains(oldFragment, NativeState);
+        using var doc = JsonDocument.Parse(
+            NativeState.Replace(oldFragment, newFragment, StringComparison.Ordinal));
+        var result = NativeCombatSnapshotImporter.Import(
+            doc.RootElement, NativeCombatSnapshotImporter.RequiredVisibleFields);
+        Assert.Equal("PARTIAL", result.Status);
+        Assert.False(result.ReadyForDeterministicStep);
+        var creature = Assert.Single(result.Snapshot!.Creatures,
+            item => item.InstanceId == "creature:2");
+        var powers = creature.Powers.EnumerateArray().ToArray();
+        Assert.Equal(new[] { "PoisonPower", "WeakPower", "VulnerablePower" },
+            powers.Select(item => item.GetProperty("model_id").GetString()));
+        Assert.Equal(new[] { 4, 2, 1 },
+            powers.Select(item => item.GetProperty("amount").GetInt32()));
+        Assert.Contains("$.combat.rng_state", result.MissingContinuationFields);
+    }
 }

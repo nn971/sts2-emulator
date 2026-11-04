@@ -61,10 +61,7 @@ public sealed class NativeToughEggHatchV111Tests
             var enrichedEgg = egg with
             {
                 Block = 7,
-                Statuses = new Dictionary<string, int>
-                {
-                    ["post_hatch_marker"] = 2
-                },
+                StoredEnemyDamage = 2,
                 Powers = egg.PowerStates.Append(
                     new PrototypePowerInstanceState(
                         "proto.power.strength", 4, 3)).ToArray()
@@ -89,7 +86,7 @@ public sealed class NativeToughEggHatchV111Tests
             Assert.Equal(egg.SlotName, hatched.SlotName);
             Assert.Equal(egg.FormationPosition, hatched.FormationPosition);
             Assert.Equal(7, hatched.Block);
-            Assert.Equal(2, hatched.Statuses["post_hatch_marker"]);
+            Assert.Equal(2, hatched.StoredEnemyDamage);
             Assert.Equal(Hatchling, hatched.EnemyId);
             Assert.True(hatched.NativeToughEggHatched);
             Assert.Single(hatched.PowerStates);

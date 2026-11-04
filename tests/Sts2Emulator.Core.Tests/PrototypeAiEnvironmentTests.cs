@@ -515,4 +515,126 @@ public sealed class PrototypeAiEnvironmentTests
         Assert.Equal(new[] { 1, 2 },
             allOffers.Select(item => item.GroupIndex));
     }
+
+    [Fact]
+    public void CanonicalEnemyPowerV2PublicFrameMergesLegacyAndPowerEffects()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var state = environment.Reset("p1-public-power-unified");
+        state = engine.Step(
+            state, Assert.Single(engine.GetLegalActions(state))).State;
+        var chooseCombat = engine.GetLegalActions(state).First(action =>
+        {
+            var id = action.ReadPayload<ChooseMapNodePayload>().NodeId;
+            return state.World!.Map.AvailableNodes().Single(node =>
+                node.NodeId == id).RoomType == PrototypeRoomType.Combat;
+        });
+        state = engine.Step(state, chooseCombat).State;
+        var combat = Assert.IsType<CombatState>(state.World!.Combat);
+        var enemy = combat.Enemies[0] with
+        {
+            Powers = combat.Enemies[0].PowerStates.Concat(
+            [
+                new PrototypePowerInstanceState("proto.power.weak", 3, 900,
+                    LegacyStatusStacks: 2),
+                new PrototypePowerInstanceState("proto.power.poison", 7, 901,
+                    LegacyStatusStacks: 3),
+                new PrototypePowerInstanceState("proto.power.strength", 2, 902)
+            ]).ToArray()
+        };
+        var oldCombat = combat with
+        {
+            Enemies = combat.Enemies.Select((value, index) =>
+                index == 0 ? enemy : value).ToArray()
+        };
+        var oldState = state with
+        {
+            World = state.World with { Combat = oldCombat }
+        };
+        var oldFrame = environment.Observe(oldState);
+        var oldEnemy = oldFrame.Observation.Combat!.Enemies[0];
+        Assert.Equal(PrototypeAiEnvironment.SchemaId, oldFrame.SchemaId);
+        Assert.Equal(2, oldEnemy.Statuses["proto.status.weak"]);
+        Assert.Contains(oldEnemy.Powers,
+            power => power.PowerId == "proto.power.weak"
+                && power.Stacks == 1);
+
+        var newCombat = oldCombat with { CanonicalEnemyEffectPowers = true };
+        var newState = oldState with
+        {
+            World = oldState.World! with { Combat = newCombat }
+        };
+        var frame = environment.Observe(newState);
+        Assert.Equal(PrototypeAiEnvironment.CanonicalEnemyPowerSchemaId,
+            frame.SchemaId);
+        var observed = frame.Observation.Combat!.Enemies[0];
+        Assert.Empty(observed.Statuses);
+        Assert.Equal(3, Assert.Single(observed.Powers,
+            power => power.PowerId == "proto.power.weak").Stacks);
+        Assert.Equal(7, Assert.Single(observed.Powers,
+            power => power.PowerId == "proto.power.poison").Stacks);
+        Assert.Contains(observed.Powers,
+            power => power.PowerId == "proto.power.strength"
+                && power.Stacks == 2);
+        Assert.Equal(
+            CanonicalJson.Serialize(frame.Observation),
+            CanonicalJson.Serialize(environment.Observe(newState).Observation));
+        Assert.Equal(frame.ObservationHash,
+            environment.Observe(newState).ObservationHash);
+        Assert.Equal(oldFrame.LegalActions.Select(action => action.ActionId),
+            frame.LegalActions.Select(action => action.ActionId));
+        Assert.Equal(
+            CanonicalJson.Serialize(environment.ObservePublic(newState)),
+            CanonicalJson.Serialize(frame.Observation));
+
+        // Legacy status inputs are now normalized at the boundary.
+        // An unrecognized effect fails before a public frame is built.
+        Assert.Throws<InvalidOperationException>(() => enemy with
+        {
+            Statuses = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["unknown.status"] = 1
+            }
+        });
+    }
+
+    [Fact]
+    public void RunLevelCanonicalEnemyPowerFlagFlowsToGeneratedCombatFrame()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var root = environment.Reset("p1-flag-propagation") with
+        {
+            ExperimentalCanonicalEnemyEffectPowers = true
+        };
+        Assert.True(root.Fork().ExperimentalCanonicalEnemyEffectPowers);
+        Assert.Contains("experimental_canonical_enemy_effect_powers",
+            CanonicalJson.Serialize(root));
+        var state = engine.Step(
+            root, Assert.Single(engine.GetLegalActions(root))).State;
+        Assert.Equal(PrototypeAiEnvironment.SchemaId,
+            environment.Observe(state).SchemaId);
+
+        var choice = engine.GetLegalActions(state).First(action =>
+        {
+            var id = action.ReadPayload<ChooseMapNodePayload>().NodeId;
+            return state.World!.Map.AvailableNodes().Single(node =>
+                node.NodeId == id).RoomType == PrototypeRoomType.Combat;
+        });
+        state = engine.Step(state, choice).State;
+        Assert.True(state.ExperimentalCanonicalEnemyEffectPowers);
+        Assert.True(state.World!.Combat!.CanonicalEnemyEffectPowers);
+        Assert.Equal(
+            PrototypeAiEnvironment.CanonicalEnemyPowerSchemaId,
+            environment.Observe(state).SchemaId);
+
+        var legacy = environment.Reset("p1-flag-propagation");
+        Assert.DoesNotContain("experimental_canonical_enemy_effect_powers",
+            CanonicalJson.Serialize(legacy));
+        legacy = engine.Step(
+            legacy, Assert.Single(engine.GetLegalActions(legacy))).State;
+        Assert.Equal(PrototypeAiEnvironment.SchemaId,
+            environment.Observe(legacy).SchemaId);
+    }
 }

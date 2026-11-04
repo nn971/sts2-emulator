@@ -314,6 +314,9 @@ public sealed record PrototypeAiRolloutFrame(
 public sealed class PrototypeAiEnvironment
 {
     public const string SchemaId = "prototype-ai-v1";
+    // Experimental, power-unified enemy-effect view. The old v1 frame
+    // remains byte-compatible when the combat flag is absent.
+    public const string CanonicalEnemyPowerSchemaId = "prototype-ai-v2";
 
     private readonly PrototypeGameEngine _engine = new();
 
@@ -362,7 +365,8 @@ public sealed class PrototypeAiEnvironment
         }
 
         return new PrototypeAiFrame(
-            SchemaId,
+            state.World?.Combat?.CanonicalEnemyEffectPowers == true
+                ? CanonicalEnemyPowerSchemaId : SchemaId,
             observation,
             legalActions,
             CanonicalJson.Sha256(observation),
@@ -1006,6 +1010,41 @@ public sealed class PrototypeAiEnvironment
             : (null, null, null);
     }
 
+
+    private static (
+        IReadOnlyDictionary<string, int> Statuses,
+        PrototypeAiPower[] Powers)
+        VisibleEnemyEffects(EnemyCombatState enemy, bool canonical)
+    {
+        var canonicalIds = PrototypeContent.EnemyStatusPowerIds.Values
+            .ToHashSet(StringComparer.Ordinal);
+        var rawPowers = enemy.PowerStates
+            .Where(power => power.Stacks > 0)
+            .Select(power => new PrototypeAiPower(power.PowerId, power.Stacks))
+            .ToArray();
+        if (!canonical)
+        {
+            var visible = enemy.PowerStates
+                .Where(power => power.Stacks > 0)
+                .Select(power => new PrototypeAiPower(
+                    power.PowerId, power.Stacks - power.LegacyStatusStacks))
+                .Where(power => power.Stacks > 0)
+                .ToArray();
+            return (enemy.Statuses, visible);
+        }
+
+        var nonEffects = rawPowers.Where(power => !canonicalIds.Contains(
+            power.PowerId)).ToList();
+        nonEffects.AddRange(rawPowers
+            .Where(power => canonicalIds.Contains(power.PowerId))
+            .GroupBy(power => power.PowerId, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => new PrototypeAiPower(
+                group.Key, group.Sum(power => power.Stacks))));
+        return (new Dictionary<string, int>(StringComparer.Ordinal),
+            nonEffects.ToArray());
+    }
+
     private static PrototypeAiCombat CreateCombatObservation(
         CombatState combat,
         int act,
@@ -1071,15 +1110,16 @@ public sealed class PrototypeAiEnvironment
                        Damage: (int?)null,
                        Hits: (int?)null)
                     : VisibleAttackIntent(combat, enemy, move, act, ascension);
+                var effects = VisibleEnemyEffects(
+                    enemy, combat.CanonicalEnemyEffectPowers);
                 return new PrototypeAiEnemy(
                     enemy.InstanceId,
                     enemy.EnemyId,
                     enemy.Hp,
                     enemy.Block,
                     move?.Id,
-                    new Dictionary<string, int>(enemy.Statuses, StringComparer.Ordinal),
-                    enemy.PowerStates.Select(power =>
-                        new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray(),
+                    effects.Statuses,
+                    effects.Powers,
                     threat.Damage,
                     threat.Hits,
                     threat.BaseDamage,
