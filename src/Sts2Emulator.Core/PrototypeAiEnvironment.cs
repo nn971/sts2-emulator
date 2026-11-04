@@ -314,6 +314,9 @@ public sealed record PrototypeAiRolloutFrame(
 public sealed class PrototypeAiEnvironment
 {
     public const string SchemaId = "prototype-ai-v1";
+    // Experimental, power-unified enemy-effect view. The old v1 frame
+    // remains byte-compatible when the combat flag is absent.
+    public const string CanonicalEnemyPowerSchemaId = "prototype-ai-v2";
 
     private readonly PrototypeGameEngine _engine = new();
 
@@ -362,7 +365,8 @@ public sealed class PrototypeAiEnvironment
         }
 
         return new PrototypeAiFrame(
-            SchemaId,
+            state.World?.Combat?.CanonicalEnemyEffectPowers == true
+                ? CanonicalEnemyPowerSchemaId : SchemaId,
             observation,
             legalActions,
             CanonicalJson.Sha256(observation),
@@ -1006,6 +1010,57 @@ public sealed class PrototypeAiEnvironment
             : (null, null, null);
     }
 
+
+    private static (
+        IReadOnlyDictionary<string, int> Statuses,
+        PrototypeAiPower[] Powers)
+        VisibleEnemyEffects(EnemyCombatState enemy, bool canonical)
+    {
+        var statuses = new Dictionary<string, int>(
+            enemy.Statuses, StringComparer.Ordinal);
+        var rawPowers = enemy.PowerStates.Select(power =>
+            new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray();
+        if (!canonical)
+            return (statuses, rawPowers);
+
+        // Canonical v2 exposes a single player-visible concept per effect,
+        // even when older cards still write to Statuses while relics already
+        // produce a power. Do not leak legacy status identities to the model.
+        var canonicalIds = PrototypeContent.EnemyStatusPowerIds.Values
+            .ToHashSet(StringComparer.Ordinal);
+        var merged = new Dictionary<string, int>(StringComparer.Ordinal);
+        var otherPowers = new List<PrototypeAiPower>();
+        foreach (var power in rawPowers)
+        {
+            if (canonicalIds.Contains(power.PowerId))
+            {
+                merged[power.PowerId] = checked(
+                    merged.GetValueOrDefault(power.PowerId) + power.Stacks);
+            }
+            else
+            {
+                otherPowers.Add(power);
+            }
+        }
+
+        foreach (var (statusId, stacks) in statuses)
+        {
+            if (!PrototypeContent.EnemyStatusPowerIds.TryGetValue(
+                    statusId, out var powerId))
+                throw new InvalidOperationException(
+                    $"Unknown enemy status in canonical public observation: '{statusId}'.");
+            merged[powerId] = checked(
+                merged.GetValueOrDefault(powerId) + stacks);
+        }
+
+        otherPowers.AddRange(merged
+            .Where(item => item.Value > 0)
+            .OrderBy(item => item.Key, StringComparer.Ordinal)
+            .Select(item => new PrototypeAiPower(item.Key, item.Value)));
+        return (new Dictionary<string, int>(StringComparer.Ordinal),
+            otherPowers.ToArray());
+    }
+
     private static PrototypeAiCombat CreateCombatObservation(
         CombatState combat,
         int act,
@@ -1071,15 +1126,16 @@ public sealed class PrototypeAiEnvironment
                        Damage: (int?)null,
                        Hits: (int?)null)
                     : VisibleAttackIntent(combat, enemy, move, act, ascension);
+                var effects = VisibleEnemyEffects(
+                    enemy, combat.CanonicalEnemyEffectPowers);
                 return new PrototypeAiEnemy(
                     enemy.InstanceId,
                     enemy.EnemyId,
                     enemy.Hp,
                     enemy.Block,
                     move?.Id,
-                    new Dictionary<string, int>(enemy.Statuses, StringComparer.Ordinal),
-                    enemy.PowerStates.Select(power =>
-                        new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray(),
+                    effects.Statuses,
+                    effects.Powers,
                     threat.Damage,
                     threat.Hits,
                     threat.BaseDamage,
