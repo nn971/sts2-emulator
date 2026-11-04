@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Sts2Emulator.Core;
 
 namespace Sts2Emulator.Core.Tests;
@@ -400,5 +402,67 @@ public sealed class PrototypeEnemyEffectPowerCatalogTests
         Assert.Equal(0, dead.Hp);
         Assert.Equal(9, alive.Hp);
         Assert.Equal(0, alive.EnemyEffectStacks("proto.status.poison"));
+    }
+
+    [Fact]
+    public void ExactSnapshotMigratesLegacyStatusesOnlyAfterOriginalHashVerification()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var state = environment.Reset("p1-old-snapshot-source");
+        state = engine.Step(state,
+            Assert.Single(engine.GetLegalActions(state))).State;
+        var combatChoice = engine.GetLegalActions(state).First(action =>
+        {
+            var nodeId = action.ReadPayload<ChooseMapNodePayload>().NodeId;
+            return state.World!.Map.AvailableNodes().Single(node =>
+                node.NodeId == nodeId).RoomType == PrototypeRoomType.Combat;
+        });
+        state = engine.Step(state, combatChoice).State;
+        var combat = Assert.IsType<CombatState>(state.World!.Combat);
+        var instance = combat.Enemies[0];
+        var injected = instance with
+        {
+            Powers = [.. instance.PowerStates,
+                new PrototypePowerInstanceState(
+                    "proto.power.weak", 2, combat.NextPowerApplicationOrder,
+                    LegacyStatusStacks: 2)]
+        };
+        combat = combat with
+        {
+            Enemies = [injected, .. combat.Enemies.Skip(1)],
+            NextPowerApplicationOrder = combat.NextPowerApplicationOrder + 1
+        };
+        state = state with { World = state.World with { Combat = combat } };
+        var current = RunSnapshot.Save(state);
+        var currentLoaded = RunSnapshot.Load(current);
+        Assert.Equal(2, currentLoaded.World!.Combat!.Enemies[0]
+            .EnemyEffectStacks("proto.status.weak"));
+        Assert.Equal(current, RunSnapshot.Save(currentLoaded));
+
+        // Reconstitute a valid pre-refactor snapshot: statuses are stored
+        // independently and the canonical weak power is absent.
+        var tree = JsonNode.Parse(current)!;
+        var enemy = tree["state"]!["world"]!["combat"]!["enemies"]![0]!.AsObject();
+        var original = enemy["powers"]!.AsArray();
+        enemy["powers"] = new JsonArray(original
+            .Where(power => (string?)power!["power_id"] != "proto.power.weak")
+            .Select(power => power!.DeepClone()).ToArray());
+        enemy["statuses"] = new JsonObject { ["proto.status.weak"] = 2 };
+        tree["state_hash"] = CanonicalJson.Sha256(
+            JsonSerializer.SerializeToElement(tree["state"]));
+        var legacyJson = tree.ToJsonString();
+        var migrated = RunSnapshot.Load(legacyJson);
+        Assert.Equal(2, migrated.World!.Combat!.Enemies[0]
+            .EnemyEffectStacks("proto.status.weak"));
+        Assert.Single(migrated.World.Combat.Enemies[0].PowerStates,
+            power => power.PowerId == "proto.power.weak");
+        Assert.Equal(RunSnapshot.Save(migrated),
+            RunSnapshot.Save(RunSnapshot.Load(RunSnapshot.Save(migrated))));
+
+        var tampered = JsonNode.Parse(legacyJson)!;
+        tampered["state"]!["world"]!["combat"]!["enemies"]![0]!["hp"] = 1;
+        Assert.Throws<InvalidDataException>(() =>
+            RunSnapshot.Load(tampered.ToJsonString()));
     }
 }
