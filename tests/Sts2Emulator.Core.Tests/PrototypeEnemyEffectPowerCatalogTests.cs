@@ -7,29 +7,18 @@ namespace Sts2Emulator.Core.Tests;
 public sealed class PrototypeEnemyEffectPowerCatalogTests
 {
     [Fact]
-    public void LegacyEnemyStatusDefinitionsAreProjectionsOfCanonicalPowers()
+    public void LegacyEnemyEffectNamesResolveDirectlyToCanonicalPowers()
     {
         Assert.Equal(
             new[] { "proto.status.poison", "proto.status.vulnerable", "proto.status.weak" },
             PrototypeContent.EnemyStatusPowerIds.Keys.Order(StringComparer.Ordinal));
 
-        foreach (var (statusId, powerId) in PrototypeContent.EnemyStatusPowerIds)
+        foreach (var (legacyId, powerId) in PrototypeContent.EnemyStatusPowerIds)
         {
-            var power = PrototypeContent.Power(powerId);
-            var legacy = PrototypeContent.Status(statusId);
-            Assert.True(power.IsDebuff);
-            Assert.Equal(new PrototypeStatusDefinition(
-                statusId, IsDebuff: power.IsDebuff,
-                TriggerStage: power.EnemyEffectTriggerStage,
-                TriggerKind: power.EnemyEffectTriggerKind,
-                DecayOnTrigger: power.EnemyEffectDecayOnTrigger,
-                DecayStage: power.EnemyEffectDecayStage,
-                DecayAtStage: power.EnemyEffectDecayAtStage,
-                OutgoingDamageNumerator: power.EnemyOutgoingDamageNumerator,
-                OutgoingDamageDenominator: power.EnemyOutgoingDamageDenominator,
-                IncomingAttackDamageNumerator: power.EnemyIncomingAttackDamageNumerator,
-                IncomingAttackDamageDenominator: power.EnemyIncomingAttackDamageDenominator),
-                legacy);
+            Assert.StartsWith("proto.status.", legacyId);
+            Assert.Equal("proto.power." + legacyId["proto.status.".Length..],
+                powerId);
+            Assert.True(PrototypeContent.Power(powerId).IsDebuff);
         }
     }
 

@@ -6461,27 +6461,6 @@ public static class PrototypeContent
             ["proto.status.vulnerable"] = "proto.power.vulnerable"
         };
 
-    public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
-        EnemyStatusPowerIds.ToDictionary(
-            entry => entry.Key,
-            entry =>
-            {
-                var power = Power(entry.Value);
-                return new PrototypeStatusDefinition(
-                    entry.Key,
-                    IsDebuff: power.IsDebuff,
-                    TriggerStage: power.EnemyEffectTriggerStage,
-                    TriggerKind: power.EnemyEffectTriggerKind,
-                    DecayOnTrigger: power.EnemyEffectDecayOnTrigger,
-                    DecayStage: power.EnemyEffectDecayStage,
-                    DecayAtStage: power.EnemyEffectDecayAtStage,
-                    OutgoingDamageNumerator: power.EnemyOutgoingDamageNumerator,
-                    OutgoingDamageDenominator: power.EnemyOutgoingDamageDenominator,
-                    IncomingAttackDamageNumerator: power.EnemyIncomingAttackDamageNumerator,
-                    IncomingAttackDamageDenominator: power.EnemyIncomingAttackDamageDenominator);
-            },
-            StringComparer.Ordinal);
-
     public static IReadOnlyDictionary<string, PrototypeEventDefinition> Events { get; } =
         new[]
         {
@@ -7654,11 +7633,6 @@ public static class PrototypeContent
                 id))
         ?? throw new KeyNotFoundException(
             $"Unknown prototype encounter '{id}'.");
-
-    public static PrototypeStatusDefinition Status(string id) =>
-        Statuses.TryGetValue(id, out var value)
-            ? value
-            : throw new KeyNotFoundException($"Unknown prototype status '{id}'.");
 
     public static PrototypeEventDefinition Event(string id) =>
         Events.TryGetValue(id, out var value)

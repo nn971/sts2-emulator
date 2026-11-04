@@ -1765,19 +1765,6 @@ public sealed record PrototypeEncounterDefinition(
     }
 }
 
-public sealed record PrototypeStatusDefinition(
-    string Id,
-    bool IsDebuff = false,
-    PrototypeTurnStage? TriggerStage = null,
-    PrototypeStatusTriggerKind TriggerKind = PrototypeStatusTriggerKind.None,
-    int DecayOnTrigger = 0,
-    PrototypeTurnStage? DecayStage = null,
-    int DecayAtStage = 0,
-    int OutgoingDamageNumerator = 1,
-    int OutgoingDamageDenominator = 1,
-    int IncomingAttackDamageNumerator = 1,
-    int IncomingAttackDamageDenominator = 1);
-
 public sealed record PrototypeEventDeckChoiceSpec(
     PrototypePersistentDeckChoiceKind Kind,
     int Selections,
