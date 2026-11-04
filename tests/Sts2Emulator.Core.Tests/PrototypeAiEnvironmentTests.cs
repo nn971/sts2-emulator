@@ -588,24 +588,15 @@ public sealed class PrototypeAiEnvironmentTests
             CanonicalJson.Serialize(environment.ObservePublic(newState)),
             CanonicalJson.Serialize(frame.Observation));
 
-        var invalid = newState with
+        // Legacy status inputs are now normalized at the boundary.
+        // An unrecognized effect fails before a public frame is built.
+        Assert.Throws<InvalidOperationException>(() => enemy with
         {
-            World = newState.World! with
+            Statuses = new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                Combat = newCombat with
-                {
-                    Enemies = [enemy with
-                    {
-                        Statuses = new Dictionary<string, int>(StringComparer.Ordinal)
-                        {
-                            ["unknown.status"] = 1
-                        }
-                    }, .. newCombat.Enemies.Skip(1)]
-                }
+                ["unknown.status"] = 1
             }
-        };
-        Assert.Throws<InvalidOperationException>(() =>
-            environment.ObservePublic(invalid));
+        });
     }
 
     [Fact]
