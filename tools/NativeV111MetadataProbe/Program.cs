@@ -79,6 +79,7 @@ internal static class Program
         // Source-run macro shop/reward/event observer contracts.
         // All probes are PE metadata-only; no price hooks or RNG execute.
         new("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "field", "_cost"),
+        new("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "property", "Cost"),
         new("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "event", "PurchaseCompleted"),
         new("MegaCrit.Sts2.Core.Entities.Merchant.MerchantInventory", "property", "AllEntries"),
         new("MegaCrit.Sts2.Core.Rooms.MerchantRoom", "property", "Inventories"),
