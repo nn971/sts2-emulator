@@ -1224,7 +1224,7 @@ def audit(records: list[dict], error: str | None = None) -> dict:
             details = record.get("data") or {}
             next_record = records[ordinal] if ordinal < len(records) else None
             with_end_checkpoint = _unchanged_combat_end_checkpoint(records, ordinal)
-            terminal = (records[ordinal + 1] if with_end_checkpoint
+            terminal = (records[-1] if with_end_checkpoint
                         else next_record)
             final_reason = ((terminal or {}).get("data") or {}).get("reason")
             terminal_cleanup = (not running and terminal is not None
