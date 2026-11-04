@@ -254,15 +254,36 @@ def observed_indicators(actions: list[dict], records: list[dict]) -> dict:
 
 
 def _unchanged_combat_end_checkpoint(records: list[dict], reset_ordinal: int) -> bool:
-    """Recognize the pinned v111 terminal callback sequence, fail-closed.
+    """Recognize the bounded native terminal sequence with optional Task hooks.
 
-    An after_action checkpoint, optionally followed by read-only frame polls,
-    precedes the history reset; a combat_end checkpoint follows it before
-    the terminal record. This only verifies equality of *observed* streams.
+    Sequence: action_completed, after_action RNG checkpoint, any completed
+    task-reference observations, rendered frame polls, history_reset,
+    combat_end RNG checkpoint, optional COMBAT_TEARDOWN task checkpoint,
+    terminal. Every intervening task observation is non-mutating and its
+    lifecycle is independently checked by audit_native_task_lifecycle().
+    Both source RNG checkpoints must have identical observed stream states.
     """
-    if reset_ordinal + 1 >= len(records):
+    header = (records[0].get("data") or {}) if records else {}
+    task_hook = header.get("native_async_task_hook_installed") is True
+    suffix = records[reset_ordinal:]  # reset_ordinal is 1-based
+    if len(suffix) == 2:
+        end_checkpoint, terminal = suffix
+    elif len(suffix) == 3 and task_hook:
+        end_checkpoint, task_checkpoint, terminal = suffix
+        task_data = task_checkpoint.get("data") or {}
+        if (task_checkpoint.get("type") != "native_async_task_checkpoint"
+            or task_data.get("site") != "COMBAT_TEARDOWN"
+            or task_data.get("turn") is not None
+            or task_data.get("tracked_pending_non_turn_loop_count") != 0
+            or task_data.get("registration_overflow") != 0
+            or task_data.get("observation_basis")
+                != "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME"
+            or task_data.get("native_settlement_certified") is not False
+            or task_data.get("exhaustive_native_task_inventory") is not False
+            or task_data.get("native_task_mutations") != 0):
+            return False
+    else:
         return False
-    end_checkpoint, terminal = records[reset_ordinal:reset_ordinal + 2]
     if (end_checkpoint.get("type") != "native_rng_stream_checkpoint"
         or terminal.get("type") != "terminal"):
         return False
@@ -274,11 +295,25 @@ def _unchanged_combat_end_checkpoint(records: list[dict], reset_ordinal: int) ->
         or not end["streams"]):
         return False
 
-    # reset_ordinal is 1-based, so the last record before the reset
-    # is records[reset_ordinal - 2]. Accept intervening frame polls only.
     prior_index = reset_ordinal - 2
-    while prior_index >= 0 and records[prior_index].get("type") == "frame_state":
-        prior_index -= 1
+    while prior_index >= 0:
+        row = records[prior_index]
+        if row.get("type") == "frame_state":
+            prior_index -= 1
+            continue
+        if row.get("type") == "native_async_task_lifecycle" and task_hook:
+            data = row.get("data") or {}
+            if (data.get("phase") != "completed"
+                or data.get("task_status") not in
+                    ("FAULTED", "CANCELED", "RAN_TO_COMPLETION")
+                or data.get("observation_basis")
+                    != "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME"
+                or data.get("native_settlement_certified") is not False
+                or data.get("native_task_mutations") != 0):
+                return False
+            prior_index -= 1
+            continue
+        break
     if prior_index < 1:
         return False
     preceding = records[prior_index]
@@ -295,7 +330,6 @@ def _unchanged_combat_end_checkpoint(records: list[dict], reset_ordinal: int) ->
         or before.get("streams") != end.get("streams")):
         return False
     return True
-
 
 def audit(records: list[dict], error: str | None = None) -> dict:
     report = {
