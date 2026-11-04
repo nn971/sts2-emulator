@@ -2043,12 +2043,19 @@ public sealed record EnemyCombatState
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public int CompletedPhaseMaxHp { get; init; }
 
+    // Canonical mode suppresses the v1 compatibility projection.
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool CanonicalEnemyPowerView { get; init; }
+
     // Legacy input/output alias. No enemy-status dictionary is stored.
     // Direct status assignment in older fixture builders is normalized into
     // ordinary power instances. Native combat reads Powers exclusively.
     public Dictionary<string, int> Statuses
     {
-        get => PowerStates
+        get => CanonicalEnemyPowerView
+            ? new Dictionary<string, int>(StringComparer.Ordinal)
+            : PowerStates
             .Where(power => power.Stacks > 0
                 && PrototypeContent.EnemyStatusPowerIds.Values.Contains(
                     power.PowerId, StringComparer.Ordinal))

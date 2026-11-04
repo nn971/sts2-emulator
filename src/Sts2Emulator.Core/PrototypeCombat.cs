@@ -15928,7 +15928,14 @@ public sealed partial class PrototypeGameEngine
         if (!PrototypeContent.EnemyStatusPowerIds.TryGetValue(
                 statusId, out var powerId))
             throw new InvalidOperationException($"Unknown enemy effect '{statusId}'.");
-        return ApplyEnemyPower(combat, enemyId, powerId, amount);
+        var applied = ApplyEnemyPower(combat, enemyId, powerId, amount);
+        if (!combat.CanonicalEnemyEffectPowers)
+            return applied;
+        var enemies = applied.Enemies.Select(enemy =>
+            enemy.InstanceId == enemyId
+                ? enemy with { CanonicalEnemyPowerView = true }
+                : enemy).ToArray();
+        return applied with { Enemies = enemies };
     }
 
     private sealed record PrototypeEnemyDebuffBlockResult(
