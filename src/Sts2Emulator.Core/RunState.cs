@@ -110,6 +110,14 @@ public sealed partial record RunState(
     public bool ExperimentalCompactCardSelection { get; init; }
 
     /// <summary>
+    /// Research-only source for canonical enemy-effect power instances in
+    /// future combat entries. Legacy and native-fidelity runs default false.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ExperimentalCanonicalEnemyEffectPowers { get; init; }
+
+    /// <summary>
     /// Atomic mechanics/provider envelope for the complete run. Existing
     /// snapshot fields remain flattened projections.
     /// </summary>

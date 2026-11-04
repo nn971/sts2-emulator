@@ -3361,6 +3361,8 @@ internal static class PrototypeAiJsonlServer
                             ok = true,
                             wireSchemaId = WireSchemaId,
                             aiSchemaId = PrototypeAiEnvironment.SchemaId,
+                            experimentalAiPowerSchemaId =
+                                PrototypeAiEnvironment.CanonicalEnemyPowerSchemaId,
                             rulesetId = PrototypeContent.RulesetId,
                             fairPolicyId = FairPolicyId,
                             hypotheticalDrawOrderId = PrototypeHypotheticalDrawOrder.SchemaId,
@@ -10650,6 +10652,20 @@ internal static class PrototypeAiJsonlServer
                             if (compact.ValueKind == JsonValueKind.True)
                                 state = state with { ExperimentalCompactCardSelection = true };
                         }
+                        if (request.TryGetProperty(
+                                "canonical_enemy_effect_powers", out var canonical))
+                        {
+                            if (canonical.ValueKind is not
+                                (JsonValueKind.True or JsonValueKind.False))
+                                throw new ArgumentException(
+                                    "canonical_enemy_effect_powers must be boolean.");
+                            if (canonical.ValueKind == JsonValueKind.True)
+                                state = state with
+                                {
+                                    ExperimentalCanonicalEnemyEffectPowers = true
+                                };
+                        }
+
                         var handle = Store(state);
                         Write(new
                         {

@@ -610,4 +610,43 @@ public sealed class PrototypeAiEnvironmentTests
         Assert.Throws<InvalidOperationException>(() =>
             environment.ObservePublic(invalid));
     }
+
+    [Fact]
+    public void RunLevelCanonicalEnemyPowerFlagFlowsToGeneratedCombatFrame()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var root = environment.Reset("p1-flag-propagation") with
+        {
+            ExperimentalCanonicalEnemyEffectPowers = true
+        };
+        Assert.True(root.Fork().ExperimentalCanonicalEnemyEffectPowers);
+        Assert.Contains("ExperimentalCanonicalEnemyEffectPowers",
+            CanonicalJson.Serialize(root));
+        var state = engine.Step(
+            root, Assert.Single(engine.GetLegalActions(root))).State;
+        Assert.Equal(PrototypeAiEnvironment.SchemaId,
+            environment.Observe(state).SchemaId);
+
+        var choice = engine.GetLegalActions(state).First(action =>
+        {
+            var id = action.ReadPayload<ChooseMapNodePayload>().NodeId;
+            return state.World!.Map.AvailableNodes().Single(node =>
+                node.NodeId == id).RoomType == PrototypeRoomType.Combat;
+        });
+        state = engine.Step(state, choice).State;
+        Assert.True(state.ExperimentalCanonicalEnemyEffectPowers);
+        Assert.True(state.World!.Combat!.CanonicalEnemyEffectPowers);
+        Assert.Equal(
+            PrototypeAiEnvironment.CanonicalEnemyPowerSchemaId,
+            environment.Observe(state).SchemaId);
+
+        var legacy = environment.Reset("p1-flag-propagation");
+        Assert.DoesNotContain("ExperimentalCanonicalEnemyEffectPowers",
+            CanonicalJson.Serialize(legacy));
+        legacy = engine.Step(
+            legacy, Assert.Single(engine.GetLegalActions(legacy))).State;
+        Assert.Equal(PrototypeAiEnvironment.SchemaId,
+            environment.Observe(legacy).SchemaId);
+    }
 }

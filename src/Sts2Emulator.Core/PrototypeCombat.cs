@@ -412,7 +412,11 @@ public sealed partial class PrototypeGameEngine
             Act: world.Act,
             Ascension: state.Ascension,
             Pets: NativePaelRewardsV111.CreateCombatPets(state.Player),
-            CurrentMapNodeId: world.Map.CurrentNodeId);
+            CurrentMapNodeId: world.Map.CurrentNodeId)
+        {
+            CanonicalEnemyEffectPowers =
+                state.ExperimentalCanonicalEnemyEffectPowers
+        };
 
         var teaOfDiscourtesy = ApplyTeaOfDiscourtesyBeforeCombat(
             state.Player, combat, state.Rng);
