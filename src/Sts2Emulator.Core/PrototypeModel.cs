@@ -1890,7 +1890,11 @@ public sealed record MapState(
     public MapNodeState[] Options => AvailableNodes();
 }
 
-public sealed record EnemyCombatState(
+public sealed record EnemyCombatState
+{
+    // A compatibility constructor accepts historical status dictionaries at
+    // fixture/snapshot boundaries. The resulting combatant owns only powers.
+    public EnemyCombatState(
     int InstanceId,
     string EnemyId,
     int Hp,
@@ -1955,10 +1959,146 @@ public sealed record EnemyCombatState(
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     int CompletedPhaseMaxHp = 0)
-{
+    {
+        this.InstanceId = InstanceId;
+        this.EnemyId = EnemyId;
+        this.Hp = Hp;
+        this.Block = Block;
+        this.MoveIndex = MoveIndex;
+        this.LastMoveId = LastMoveId;
+        this.ConsecutiveMoveUses = ConsecutiveMoveUses;
+        this.AiStateId = AiStateId;
+        this.MoveUseCounts = MoveUseCounts;
+        this.FormationPosition = FormationPosition;
+        this.SlotName = SlotName;
+        this.LeaderEnemyInstanceId = LeaderEnemyInstanceId;
+        this.SkipNextEnemyAction = SkipNextEnemyAction;
+        this.EnemyActionSkipsRemaining = EnemyActionSkipsRemaining;
+        this.DeathEffectsResolved = DeathEffectsResolved;
+        this.NonSummonMovesUntilEligible = NonSummonMovesUntilEligible;
+        this.SharedSummonsUsed = SharedSummonsUsed;
+        this.SharedSummonUsedThisTurn = SharedSummonUsedThisTurn;
+        this.StolenGold = StolenGold;
+        this.Escaped = Escaped;
+        this.HpLossBudgetUsed = HpLossBudgetUsed;
+        this.GainedReactiveBlockThisTurn = GainedReactiveBlockThisTurn;
+        this.LastStandTriggered = LastStandTriggered;
+        this.StoredEnemyDamage = StoredEnemyDamage;
+        this.PlannedMoveIndex = PlannedMoveIndex;
+        this.PlannedNextAiStateId = PlannedNextAiStateId;
+        this.StunFollowUpMoveIndex = StunFollowUpMoveIndex;
+        this.StunFollowUpAiStateId = StunFollowUpAiStateId;
+        this.IsOffBalance = IsOffBalance;
+        this.StolenCards = StolenCards;
+        this.ReattachDeadMoveResolved = ReattachDeadMoveResolved;
+        this.MaxHp = MaxHp;
+        this.BossPhase = BossPhase;
+        this.BossPendingRevival = BossPendingRevival;
+        this.ExtraMultiClawCount = ExtraMultiClawCount;
+        this.WitherUpgradeCount = WitherUpgradeCount;
+        this.NemesisIntangibleNext = NemesisIntangibleNext;
+        this.NativeToughEggHatched = NativeToughEggHatched;
+        this.CompletedPhaseMaxHp = CompletedPhaseMaxHp;
+        this.Powers = MergeEnemyStatuses(Statuses, Powers);
+    }
+
+    public int InstanceId { get; init; }
+    public string EnemyId { get; init; }
+    public int Hp { get; init; }
+    public int Block { get; init; }
+    public int MoveIndex { get; init; }
+    public PrototypePowerInstanceState[]? Powers { get; init; }
+    public string? LastMoveId { get; init; }
+    public int ConsecutiveMoveUses { get; init; }
+    public string? AiStateId { get; init; }
+    public Dictionary<string, int>? MoveUseCounts { get; init; }
+    public int FormationPosition { get; init; }
+    public string? SlotName { get; init; }
+    public int? LeaderEnemyInstanceId { get; init; }
+    public bool SkipNextEnemyAction { get; init; }
+    public int EnemyActionSkipsRemaining { get; init; }
+    public bool DeathEffectsResolved { get; init; }
+    public int NonSummonMovesUntilEligible { get; init; }
+    public int SharedSummonsUsed { get; init; }
+    public bool SharedSummonUsedThisTurn { get; init; }
+    public int StolenGold { get; init; }
+    public bool Escaped { get; init; }
+    public int HpLossBudgetUsed { get; init; }
+    public bool GainedReactiveBlockThisTurn { get; init; }
+    public bool LastStandTriggered { get; init; }
+    public int StoredEnemyDamage { get; init; }
+    public int? PlannedMoveIndex { get; init; }
+    public string? PlannedNextAiStateId { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]\n    public int? StunFollowUpMoveIndex { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]\n    public string? StunFollowUpAiStateId { get; init; }
+    public bool IsOffBalance { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]\n    public CardInstance[]? StolenCards { get; init; }
+    public bool ReattachDeadMoveResolved { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]\n    public int MaxHp { get; init; }
+    public int BossPhase { get; init; }
+    public bool BossPendingRevival { get; init; }
+    public int ExtraMultiClawCount { get; init; }
+    public int WitherUpgradeCount { get; init; }
+    public bool NemesisIntangibleNext { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]\n    public bool NativeToughEggHatched { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]\n    public int CompletedPhaseMaxHp { get; init; }
+
+    // Legacy input/output alias. No enemy-status dictionary is stored.
+    // Direct status assignment in older fixture builders is normalized into
+    // ordinary power instances. Native combat reads Powers exclusively.
+    public Dictionary<string, int> Statuses
+    {
+        get => PowerStates
+            .Where(power => power.Stacks > 0
+                && PrototypeContent.EnemyStatusPowerIds.Values.Contains(
+                    power.PowerId, StringComparer.Ordinal))
+            .GroupBy(power => power.PowerId, StringComparer.Ordinal)
+            .ToDictionary(
+                group => PrototypeContent.EnemyStatusPowerIds
+                    .Single(entry => entry.Value == group.Key).Key,
+                group => group.Sum(power => power.Stacks),
+                StringComparer.Ordinal);
+        init => Powers = MergeEnemyStatuses(value,
+            PowerStates.Where(power => !PrototypeContent.EnemyStatusPowerIds.Values
+                .Contains(power.PowerId, StringComparer.Ordinal)).ToArray());
+    }
+
+    private static PrototypePowerInstanceState[] MergeEnemyStatuses(
+        Dictionary<string, int>? legacy, PrototypePowerInstanceState[]? powers)
+    {
+        var owned = (powers ?? []).Select(power => power.Fork()).ToList();
+        if (legacy is null)
+            return owned.ToArray();
+        var ordinal = 0;
+        foreach (var (statusId, stacks) in legacy
+            .OrderBy(item => item.Key, StringComparer.Ordinal))
+        {
+            if (!PrototypeContent.EnemyStatusPowerIds.TryGetValue(
+                statusId, out var powerId))
+                throw new InvalidOperationException(
+                    $"Unknown enemy legacy effect '{statusId}'.");
+            if (stacks <= 0)
+                continue;
+            // A new canonical snapshot may include a derived status projection
+            // for v1 readers. If it equals the power's total, it is an alias.
+            var existing = owned.Where(power => power.PowerId == powerId)
+                .Sum(power => power.Stacks);
+            if (existing == stacks)
+                continue;
+            owned.Add(new PrototypePowerInstanceState(
+                powerId, stacks, long.MinValue + ordinal++));
+        }
+        return owned.ToArray();
+    }
+
     public EnemyCombatState Fork() => this with
     {
-        Statuses = new Dictionary<string, int>(Statuses, StringComparer.Ordinal),
         Powers = Powers is null
             ? null
             : Powers.Select(power => power.Fork()).ToArray(),
@@ -1978,24 +2118,12 @@ public sealed record EnemyCombatState(
     public PrototypePowerInstanceState[] PowerStates =>
         Powers ?? Array.Empty<PrototypePowerInstanceState>();
 
-    // Transitional reader for old status snapshots and canonical powers.
-    // Different game effects may legitimately apply the same debuff through
-    // either route (e.g. a relic power and a card status), so their stacks
-    // combine until application/serialization are fully unified.
-    public int EnemyEffectStacks(string legacyStatusId)
-    {
-        var legacy = Statuses.GetValueOrDefault(legacyStatusId);
-        if (!PrototypeContent.EnemyStatusPowerIds.TryGetValue(
-                legacyStatusId, out var powerId))
-        {
-            return legacy;
-        }
-
-        var canonical = PowerStates
-            .Where(power => power.PowerId == powerId)
-            .Sum(power => power.Stacks);
-        return checked(legacy + canonical);
-    }
+    public int EnemyEffectStacks(string legacyStatusId) =>
+        PrototypeContent.EnemyStatusPowerIds.TryGetValue(
+            legacyStatusId, out var powerId)
+            ? PowerStates.Where(power => power.PowerId == powerId)
+                .Sum(power => power.Stacks)
+            : 0;
 }
 
 public sealed record CombatCardInstance(

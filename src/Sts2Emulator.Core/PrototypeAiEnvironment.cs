@@ -1016,49 +1016,27 @@ public sealed class PrototypeAiEnvironment
         PrototypeAiPower[] Powers)
         VisibleEnemyEffects(EnemyCombatState enemy, bool canonical)
     {
-        var statuses = new Dictionary<string, int>(
-            enemy.Statuses, StringComparer.Ordinal);
-        var rawPowers = enemy.PowerStates.Select(power =>
-            new PrototypeAiPower(power.PowerId, power.Stacks)).ToArray();
-        if (!canonical)
-            return (statuses, rawPowers);
-
-        // Canonical v2 exposes a single player-visible concept per effect,
-        // even when older cards still write to Statuses while relics already
-        // produce a power. Do not leak legacy status identities to the model.
         var canonicalIds = PrototypeContent.EnemyStatusPowerIds.Values
             .ToHashSet(StringComparer.Ordinal);
-        var merged = new Dictionary<string, int>(StringComparer.Ordinal);
-        var otherPowers = new List<PrototypeAiPower>();
-        foreach (var power in rawPowers)
-        {
-            if (canonicalIds.Contains(power.PowerId))
-            {
-                merged[power.PowerId] = checked(
-                    merged.GetValueOrDefault(power.PowerId) + power.Stacks);
-            }
-            else
-            {
-                otherPowers.Add(power);
-            }
-        }
+        var rawPowers = enemy.PowerStates
+            .Where(power => power.Stacks > 0)
+            .Select(power => new PrototypeAiPower(power.PowerId, power.Stacks))
+            .ToArray();
+        if (!canonical)
+            return (enemy.Statuses,
+                rawPowers.Where(power => !canonicalIds.Contains(power.PowerId))
+                    .ToArray());
 
-        foreach (var (statusId, stacks) in statuses)
-        {
-            if (!PrototypeContent.EnemyStatusPowerIds.TryGetValue(
-                    statusId, out var powerId))
-                throw new InvalidOperationException(
-                    $"Unknown enemy status in canonical public observation: '{statusId}'.");
-            merged[powerId] = checked(
-                merged.GetValueOrDefault(powerId) + stacks);
-        }
-
-        otherPowers.AddRange(merged
-            .Where(item => item.Value > 0)
-            .OrderBy(item => item.Key, StringComparer.Ordinal)
-            .Select(item => new PrototypeAiPower(item.Key, item.Value)));
+        var nonEffects = rawPowers.Where(power => !canonicalIds.Contains(
+            power.PowerId)).ToList();
+        nonEffects.AddRange(rawPowers
+            .Where(power => canonicalIds.Contains(power.PowerId))
+            .GroupBy(power => power.PowerId, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => new PrototypeAiPower(
+                group.Key, group.Sum(power => power.Stacks))));
         return (new Dictionary<string, int>(StringComparer.Ordinal),
-            otherPowers.ToArray());
+            nonEffects.ToArray());
     }
 
     private static PrototypeAiCombat CreateCombatObservation(
