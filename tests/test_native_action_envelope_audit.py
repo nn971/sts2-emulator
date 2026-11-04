@@ -782,6 +782,163 @@ class EnvelopeAuditTests(unittest.TestCase):
                                      "missing_fields": []}})
         self.assertEqual("INCOMPLETE_CAPTURE", check(changed)["status"])
 
+    def test_terminal_clear_with_tracked_task_completion_and_teardown(self):
+        rows = sample()
+        rows[0]["data"]["native_async_task_hook_installed"] = True
+        rows[-1]["data"]["reason"] = "Combat ended"
+        streams = [{"stream_id": "run.shuffle", "owner_id": "run",
+                    "cursor": {"Counter": 22, "State0": 1, "State1": 2,
+                               "State2": 3, "State3": 4}}]
+
+        def rng(phase):
+            return {"type": "native_rng_stream_checkpoint", "data": {
+                "phase": phase, "source": "native_rng_object_to_serializable",
+                "rng_draws_performed": 0,
+                "scope": "15_persistent_streams_in_observed_combat",
+                "streams": copy.deepcopy(streams),
+                "complete_native_rng_inventory": False,
+                "exact_rng_parity": "NOT_TESTED"}}
+
+        def task(task_id, family, source, phase, status):
+            return {"type": "native_async_task_lifecycle", "data": {
+                "task_id": task_id, "family": family,
+                "source": source, "phase": phase, "task_status": status,
+                "source_version": "v0.111.0",
+                "observation_basis": "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME",
+                "native_task_mutations": 0,
+                "native_settlement_certified": False}}
+
+        teardown = {"type": "native_async_task_checkpoint", "data": {
+            "site": "COMBAT_TEARDOWN", "turn": None,
+            "tracked_pending_task_count": 1,
+            "tracked_pending_non_turn_loop_count": 0,
+            "tracked_pending_turn_loop_count": 1,
+            "tracked_pending_by_family": {"TURN_LOOP": 1},
+            "registered_task_count": 2,
+            "observed_completed_task_count": 1,
+            "registration_overflow": 0, "pending_task_ids": [1],
+            "source_version": "v0.111.0",
+            "observation_basis": "PASSIVE_TASK_REFERENCE_POLLED_AT_FRAME",
+            "coverage": "NAMED_ASYNC_ENTRYPOINTS_ONLY",
+            "native_settlement_certified": False,
+            "exhaustive_native_task_inventory": False,
+            "native_task_mutations": 0}}
+        rows[2:2] = [
+            task(1, "TURN_LOOP", "CombatManager.RunTurnLoopAfter",
+                 "registered", "PENDING"),
+            task(2, "GAME_ACTION_BODY", "GameAction._executionTask",
+                 "registered", "PENDING"),
+        ]
+        rows[-1:-1] = [
+            rng("after_action"),
+            task(2, "GAME_ACTION_BODY", "GameAction._executionTask",
+                 "completed", "RAN_TO_COMPLETION"),
+            {"type": "frame_state", "state": {"combat": {"energy": 2}},
+             "data": {"frame_index": 7, "state_hash": "terminal-frame"}},
+            {"type": "history_reset",
+             "data": {"previous_count": 5, "new_count": 0}},
+            rng("combat_end"), teardown,
+        ]
+
+        def check(src):
+            for i, row in enumerate(src, 1):
+                row["ordinal"] = i
+            return audit(src)
+
+        result = check(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", result["status"])
+        self.assertEqual(1, result["terminal_history_clears"])
+        self.assertEqual([], result["native_async_task_lifecycle"]["errors"])
+        self.assertEqual(1, result["native_async_task_lifecycle"]["pending_at_teardown"])
+
+        # A registered but still pending task is not a completion witness.
+        altered = copy.deepcopy(rows)
+        entry = next(r for r in altered if r["type"] ==
+                     "native_async_task_lifecycle" and
+                     r["data"]["phase"] == "completed")
+        entry["data"]["phase"] = "registered"
+        self.assertEqual("INCOMPLETE_CAPTURE", check(altered)["status"])
+
+        # A transient body still pending at teardown prevents treating the
+        # history reset as a fully observed terminal cleanup sequence.
+        altered = copy.deepcopy(rows)
+        cp = next(r for r in altered if r["type"] ==
+                  "native_async_task_checkpoint")
+        cp["data"]["tracked_pending_non_turn_loop_count"] = 1
+        self.assertEqual("INCOMPLETE_CAPTURE", check(altered)["status"])
+
+        altered = copy.deepcopy(rows)
+        cp = next(r for r in altered if r["type"] ==
+                  "native_async_task_checkpoint")
+        cp["data"]["site"] = "PLAYER_TURN_START"
+        self.assertEqual("INCOMPLETE_CAPTURE", check(altered)["status"])
+
+        # Any changed tracked native RNG state remains a failure.
+        altered = copy.deepcopy(rows)
+        end = [r for r in altered if r["type"] ==
+               "native_rng_stream_checkpoint"][-1]
+        end["data"]["streams"][0]["cursor"]["Counter"] += 1
+        self.assertEqual("INCOMPLETE_CAPTURE", check(altered)["status"])
+
+    def test_queued_input_explains_busy_executor_without_recovering_strict_boundary(self):
+        rows = [copy.deepcopy(sample()[0]), copy.deepcopy(sample()[1]),
+                copy.deepcopy(sample()[2]), copy.deepcopy(sample()[3])]
+        canonical = {"kind": "play_card",
+                     "payload": {"card_instance_id": 3}}
+        rows += [
+            {"type": "native_input_request", "native_type": "PlayCardAction",
+             "canonical_action": copy.deepcopy(canonical), "data": {
+                 "input_request_id": 1,
+                 "source": "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                 "native_acceptance": "UNVERIFIED",
+                 "human_origin": "UNVERIFIED", "input_injected": False}},
+            {"type": "native_input_outcome", "native_type": "PlayCardAction",
+             "data": {
+                 "input_request_id": 1,
+                 "source": "ActionQueueSynchronizer.RequestEnqueue.postfix",
+                 "native_action_id": 7,
+                 "native_action_state": "WaitingForExecution",
+                 "queue_result": "ASSIGNED_QUEUE_ID_AND_NOT_CANCELED_AT_RETURN",
+                 "human_origin": "UNVERIFIED", "legal_menu_verified": False}},
+            copy.deepcopy(sample()[7]),
+            {"type": "action_started", "action_id": 2,
+             "native_type": "PlayCardAction",
+             "parent_action_id": None,
+             "canonical_action": copy.deepcopy(canonical),
+             "state": copy.deepcopy(sample()[2]["state"]),
+             "data": {"input_request_id": 1}},
+            {"type": "strict_input_gap", "action_id": 2, "data": {
+                 "reason": "executor_action_without_unique_strict_decision",
+                 "last_reported_gate": "WAITING_FOR_DECISION:ACTION_EXECUTOR_BUSY",
+                 "decision_generation": 1, "last_captured_generation": 0,
+                 "human_input_origin_verified": False,
+                 "legal_menu_reconstructed": False}},
+            {"type": "action_completed", "action_id": 2,
+             "state": copy.deepcopy(sample()[7]["state"])},
+            copy.deepcopy(sample()[-1]),
+        ]
+        for i, row in enumerate(rows, 1):
+            row["ordinal"] = i
+        report = audit(rows)
+        self.assertEqual("CALLBACK_TIMELINE_CONSISTENT", report["status"])
+        gap = report["strict_input_gaps"][0]
+        self.assertEqual([1], gap["source_active_action_ids_at_request"])
+        self.assertEqual("WaitingForExecution",
+                         gap["source_request_return_action_state"])
+        self.assertEqual("REQUEST_QUEUED_WHILE_PRIOR_EXECUTOR_ACTION_ACTIVE",
+                         gap["source_queued_input_evidence"])
+        self.assertFalse(gap["strict_decision_boundary_recovered"])
+
+        # Without the prior active action, the audit cannot assert queuing
+        # behind another executor action.
+        reordered = copy.deepcopy(rows)
+        active_start = reordered.pop(2)
+        reordered.insert(6, active_start)
+        # This deliberate malformed source order also fails the global audit.
+        for i, row in enumerate(reordered, 1):
+            row["ordinal"] = i
+        self.assertEqual("INCOMPLETE_CAPTURE", audit(reordered)["status"])
+
     def test_legacy_choice_resume_is_qualified_not_rewritten(self):
         records = sample()
         records.insert(5, {"type": "anomaly", "data": {
