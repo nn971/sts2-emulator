@@ -75,7 +75,25 @@ internal static class Program
             "property", "Task"),
         new("MegaCrit.Sts2.Core.Combat.CombatManager", "method", "RunTurnLoopAfter"),
         new("MegaCrit.Sts2.Core.GameActions.ReadyToBeginEnemyTurnAction", "type", ""),
-        new("MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction", "type", "")
+        new("MegaCrit.Sts2.Core.GameActions.EndPlayerTurnAction", "type", ""),
+        // Source-run macro shop/reward/event observer contracts.
+        // All probes are PE metadata-only; no price hooks or RNG execute.
+        new("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "field", "_cost"),
+        new("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "event", "PurchaseCompleted"),
+        new("MegaCrit.Sts2.Core.Entities.Merchant.MerchantInventory", "property", "AllEntries"),
+        new("MegaCrit.Sts2.Core.Rooms.MerchantRoom", "property", "Inventories"),
+        new("MegaCrit.Sts2.Core.Rewards.RewardsSet", "property", "Id"),
+        new("MegaCrit.Sts2.Core.Rewards.RewardsSet", "property", "Rewards"),
+        new("MegaCrit.Sts2.Core.Rewards.RewardsSet", "property", "DisallowSkipping"),
+        new("MegaCrit.Sts2.Core.Multiplayer.Game.RewardsSetSynchronizer",
+            "method", "BeginRewardsSet"),
+        new("MegaCrit.Sts2.Core.Multiplayer.Game.RewardsSetSynchronizer",
+            "method", "SelectLocalReward"),
+        new("MegaCrit.Sts2.Core.Multiplayer.Game.RewardsSetSynchronizer",
+            "method", "SkipLocalRewardsSet"),
+        new("MegaCrit.Sts2.Core.Multiplayer.Game.EventSynchronizer",
+            "method", "ChooseLocalOption"),
+        new("MegaCrit.Sts2.Core.Runs.RunManager", "method", "OnEnded")
     ];
 
     private static bool Exists(MetadataReader reader, Member requested)
