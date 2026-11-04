@@ -10679,13 +10679,11 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatCountKind.TargetDebuffs =>
                 combat.Enemies.Where(e => e.InstanceId == targetEnemyId
                     && e.Hp > 0).Sum(enemy =>
-                    // The same debuff can be present in legacy and canonical
-                    // storage during migration; count the concept once.
+                    // Canonical enemy debuffs are powers; count each
+                    // semantic effect once even when imported snapshots
+                    // contain several power instances of the same kind.
                     PrototypeContent.EnemyStatusPowerIds.Keys.Count(id =>
                         enemy.EnemyEffectStacks(id) > 0)
-                    + enemy.Statuses.Count(status =>
-                        status.Value > 0 && !PrototypeContent
-                            .EnemyStatusPowerIds.ContainsKey(status.Key))
                     + enemy.PowerStates.Count(power =>
                         power.Stacks > 0
                         && PrototypeContent.Power(power.PowerId).IsDebuff
