@@ -621,7 +621,7 @@ public sealed class PrototypeAiEnvironmentTests
             ExperimentalCanonicalEnemyEffectPowers = true
         };
         Assert.True(root.Fork().ExperimentalCanonicalEnemyEffectPowers);
-        Assert.Contains("ExperimentalCanonicalEnemyEffectPowers",
+        Assert.Contains("experimental_canonical_enemy_effect_powers",
             CanonicalJson.Serialize(root));
         var state = engine.Step(
             root, Assert.Single(engine.GetLegalActions(root))).State;
@@ -642,7 +642,7 @@ public sealed class PrototypeAiEnvironmentTests
             environment.Observe(state).SchemaId);
 
         var legacy = environment.Reset("p1-flag-propagation");
-        Assert.DoesNotContain("ExperimentalCanonicalEnemyEffectPowers",
+        Assert.DoesNotContain("experimental_canonical_enemy_effect_powers",
             CanonicalJson.Serialize(legacy));
         legacy = engine.Step(
             legacy, Assert.Single(engine.GetLegalActions(legacy))).State;
