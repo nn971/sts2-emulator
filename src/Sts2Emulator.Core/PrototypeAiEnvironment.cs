@@ -16,7 +16,21 @@ public sealed record PrototypeAiCard(
     JsonElement State,
     // The native UI reveals an affliction on each visible card.
     // Never expose draw-pile order through this field.
-    PrototypeCardAffliction? Affliction = null);
+    PrototypeCardAffliction? Affliction = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCardEnchantment? Enchantment = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? CombatEnergyCostDelta = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeTemporaryCardCost? TemporaryEnergyCost = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCardKeywordOverride[]? KeywordOverrides = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    bool? EnchantmentTriggeredThisCombat = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeCardCostKind? CostKind = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? EffectiveEnergyCost = null);
 
 public sealed record PrototypeAiRelic(
     string RelicId,
@@ -56,6 +70,19 @@ public sealed record PrototypeAiEnemy(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     bool? IsMinion = null);
 
+/// <summary>
+/// Counts derived from observable card-play history, with no hidden draw order
+/// or unrevealed enemy actions. These are visible-history summaries, not
+/// private event subscribers.
+/// </summary>
+public sealed record PrototypeAiCombatHistory(
+    int CardsPlayedThisTurn,
+    int AttacksPlayedThisTurn,
+    int SkillsPlayedThisTurn,
+    int AttacksPlayedLastTurn,
+    int CardsPlayedThisCombat,
+    int ManualCardsPlayedThisTurn);
+
 public sealed record PrototypeAiCombat(
     int Turn,
     int Energy,
@@ -74,7 +101,9 @@ public sealed record PrototypeAiCombat(
     PrototypeAiCard[]? SelectionCandidates = null,
     // Cards already chosen in an opt-in sequential selection dialog.
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeAiCard[]? SelectionSelectedCards = null);
+    PrototypeAiCard[]? SelectionSelectedCards = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeAiCombatHistory? History = null);
 
 public sealed record PrototypeAiMapNode(
     string NodeId,
@@ -87,7 +116,10 @@ public sealed record PrototypeAiDeckChoice(
     string SourceRelicId,
     PrototypePersistentDeckChoiceKind Kind,
     int RemainingSelections,
-    long[] CandidateCardInstanceIds);
+    long[] CandidateCardInstanceIds,
+    // The currently visible finish/continue requirement is part of the
+    // player's choice, and can differ from the maximum remaining selections.
+    int? MinimumSelectionsRemaining = null);
 
 public sealed record PrototypeAiRewardCardGroup(
     int GroupIndex,
@@ -138,7 +170,10 @@ public sealed record PrototypeAiReward(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeAiRewardCardReroll[]? AvailableCardRerolls = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeAiExtraPotionReward[]? PendingExtraPotionRewards = null);
+    PrototypeAiExtraPotionReward[]? PendingExtraPotionRewards = null,
+    // The visible choices in an active choose-a-bundle reward screen.
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string[][]? CardBundles = null);
 
 public sealed record PrototypeAiEventDeckChoice(
     string ChoiceId,
@@ -146,7 +181,8 @@ public sealed record PrototypeAiEventDeckChoice(
     int RemainingSelections,
     long[] CandidateCardInstanceIds,
     bool UpgradeTransformedCards,
-    string? SourceRelicId = null);
+    string? SourceRelicId = null,
+    int? MinimumSelectionsRemaining = null);
 
 public sealed record PrototypeAiEventPotionReplacement(
     string ChoiceId,
@@ -242,7 +278,11 @@ public sealed record PrototypeAiObservation(
     int? DefeatTotalNonMinionEnemyHp = null,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    int? DefeatRemainingNonMinionEnemyHp = null);
+    int? DefeatRemainingNonMinionEnemyHp = null,
+    // Slots are fixed-capacity player-visible inventory, even when empty.
+    int? PotionSlotCapacity = null,
+    int? PotionSlotsOccupied = null,
+    int? PotionSlotsEmpty = null);
 
 public sealed record PrototypeAiFrame(
     string SchemaId,
@@ -273,7 +313,7 @@ public sealed record PrototypeAiRolloutFrame(
 /// </summary>
 public sealed class PrototypeAiEnvironment
 {
-    public const string SchemaId = "prototype-ai-v0";
+    public const string SchemaId = "prototype-ai-v1";
 
     private readonly PrototypeGameEngine _engine = new();
 
@@ -507,7 +547,10 @@ public sealed class PrototypeAiEnvironment
                     card.CardId,
                     card.UpgradeLevel,
                     IsTemporary: false,
-                    card.PersistentState.Clone())).ToArray(),
+                    card.PersistentState.Clone(),
+                    Enchantment: card.Enchantment is null
+                        ? null : card.Enchantment with { },
+                    CostKind: PrototypeContent.Card(card.CardId).Cost.Kind)).ToArray(),
             Relics: state.Player.Relics.Select(relic =>
                 new PrototypeAiRelic(
                     relic.RelicId,
@@ -567,7 +610,8 @@ public sealed class PrototypeAiEnvironment
                             world.Reward.PendingDeckChoice.Kind,
                             world.Reward.PendingDeckChoice.RemainingSelections,
                             (long[])world.Reward.PendingDeckChoice
-                                .CandidateCardInstanceIds.Clone()),
+                                .CandidateCardInstanceIds.Clone(),
+                            world.Reward.PendingDeckChoice.MinimumSelectionsRemaining),
                     (bool[])world.Reward.CurrentCardOptionUpgradeFlags.Clone(),
                     world.Reward.GoldOption,
                     world.Reward.GoldResolved,
@@ -588,10 +632,17 @@ public sealed class PrototypeAiEnvironment
                                     world.Reward.CardUpgradeFlagsForGroup(index))))
                             .ToArray()
                         : null,
-                    world.Reward.IndependentSelection
+                    // In the sequential flow the only actionable extra
+                    // relic is the first pending group. Its public identity
+                    // must accompany the legal take_reward_relic action.
+                    (world.Reward.IndependentSelection
+                        || (world.Reward.RelicResolved
+                            && world.Reward.FirstPendingExtraRelicGroupIndex >= 0))
                         ? Enumerable.Range(0,
                                 world.Reward.ExtraRelicRewardIds?.Length ?? 0)
-                            .Where(index => !world.Reward.IsExtraRelicGroupResolved(index))
+                            .Where(index => !world.Reward.IsExtraRelicGroupResolved(index)
+                                && (world.Reward.IndependentSelection
+                                    || index == world.Reward.FirstPendingExtraRelicGroupIndex))
                             .Select(index => new PrototypeAiExtraRelicReward(
                                 index,
                                 world.Reward.ExtraRelicRewardIds![index],
@@ -624,6 +675,9 @@ public sealed class PrototypeAiEnvironment
                             .Select(index => new PrototypeAiExtraPotionReward(
                                 index, extraPotions[index]))
                             .ToArray()
+                        : null,
+                    world.Reward is { CardResolved: false, CardBundles: { } bundles }
+                        ? bundles.Select(cards => (string[])cards.Clone()).ToArray()
                         : null),
             Shop: world?.Shop is null
                 ? null
@@ -646,7 +700,8 @@ public sealed class PrototypeAiEnvironment
                             world.Shop.PendingDeckChoice.Kind,
                             world.Shop.PendingDeckChoice.RemainingSelections,
                             (long[])world.Shop.PendingDeckChoice
-                                .CandidateCardInstanceIds.Clone()),
+                                .CandidateCardInstanceIds.Clone(),
+                            world.Shop.PendingDeckChoice.MinimumSelectionsRemaining),
                     CreateShopCardOfferPreviews(
                         state.Player, world.Shop.CardOffers)),
             EventId: world?.Event?.EventId,
@@ -667,7 +722,10 @@ public sealed class PrototypeAiEnvironment
                             world.Event.PendingDeckChoice
                                 .UpgradeTransformedCards,
                             world.Event.PendingDeckChoice
-                                .SourceRelicId),
+                                .SourceRelicId,
+                            world.Event.PendingDeckChoice
+                                .MinimumSelectionsRemaining
+                            ?? world.Event.PendingDeckChoice.RemainingSelections),
                     world.Event.PendingPotionReplacement is null
                         ? null
                         : new PrototypeAiEventPotionReplacement(
@@ -700,7 +758,10 @@ public sealed class PrototypeAiEnvironment
             DefeatTotalNonMinionEnemyHp: world is { Combat: null, TerminalOutcome: "defeat" }
                 ? world.DefeatTotalNonMinionEnemyHp : null,
             DefeatRemainingNonMinionEnemyHp: world is { Combat: null, TerminalOutcome: "defeat" }
-                ? world.DefeatRemainingNonMinionEnemyHp : null);
+                ? world.DefeatRemainingNonMinionEnemyHp : null,
+            PotionSlotCapacity: state.Player.PotionSlots.Length,
+            PotionSlotsOccupied: state.Player.PotionSlots.Count(potion => potion is not null),
+            PotionSlotsEmpty: state.Player.PotionSlots.Count(potion => potion is null));
     }
 
     /// <summary>
@@ -961,6 +1022,7 @@ public sealed class PrototypeAiEnvironment
                 : throw new InvalidOperationException(
                     $"Combat observation references missing card {instanceId}.");
 
+            var cost = PrototypeGameEngine.PublicCardEnergyCost(combat, card);
             return new PrototypeAiCard(
                 card.InstanceId,
                 card.CardId,
@@ -968,8 +1030,28 @@ public sealed class PrototypeAiEnvironment
                 card.IsTemporary,
                 card.State.Clone(),
                 card.Affliction is null
-                    ? null
-                    : card.Affliction with { });
+                    ? null : card.Affliction with
+                    {
+                        // A source reference is public only if it can join
+                        // an enemy already visible in this combat. Otherwise
+                        // it is private provenance, not a learned feature.
+                        SourceEnemyInstanceId =
+                            combat.Enemies.Any(enemy =>
+                                enemy.InstanceId == card.Affliction.SourceEnemyInstanceId)
+                            ? card.Affliction.SourceEnemyInstanceId : null
+                    },
+                Enchantment: card.Enchantment is null
+                    ? null : card.Enchantment with { },
+                CombatEnergyCostDelta: card.CombatEnergyCostDelta,
+                TemporaryEnergyCost: card.TemporaryEnergyCost is null
+                    ? null : card.TemporaryEnergyCost with { },
+                KeywordOverrides: card.KeywordOverrides is null
+                    ? null : card.KeywordOverrides.Select(keyword =>
+                        keyword with { }).ToArray(),
+                EnchantmentTriggeredThisCombat:
+                    card.EnchantmentTriggeredThisCombat,
+                CostKind: cost.Kind,
+                EffectiveEnergyCost: cost.EffectiveEnergyCost);
         }
 
         return new PrototypeAiCombat(
@@ -1016,6 +1098,13 @@ public sealed class PrototypeAiEnvironment
                     .Select(Card).ToArray(),
             SelectionSelectedCards: exposeCompactSelection
                 && combat.PendingChoice?.SequentialSelectedCardInstanceIds
-                is { } selected ? selected.Select(Card).ToArray() : null);
+                is { } selected ? selected.Select(Card).ToArray() : null,
+            History: new PrototypeAiCombatHistory(
+                combat.CounterState.CardsPlayedThisTurn,
+                combat.CounterState.AttacksPlayedThisTurn,
+                combat.CounterState.SkillsPlayedThisTurn,
+                combat.CounterState.AttacksPlayedLastTurn,
+                combat.CounterState.CardsPlayedThisCombat,
+                combat.CounterState.ManualCardsPlayedThisTurn));
     }
 }

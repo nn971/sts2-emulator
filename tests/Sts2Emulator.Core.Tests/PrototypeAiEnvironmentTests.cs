@@ -199,4 +199,320 @@ public sealed class PrototypeAiEnvironmentTests
         Assert.Equal(originalHash, CanonicalJson.Sha256(state));
         Assert.NotEqual(originalHash, CanonicalJson.Sha256(branch));
     }
+
+    [Fact]
+    public void PublicObservationKeepsEnchantedDeckVariantsAndEmptyPotionSlots()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var state = environment.Reset("public-modifier-capacity-v1");
+        var enchantment = new PrototypeCardEnchantment(
+            PrototypeCardEnchantmentKind.Nimble, Amount: 2);
+        state = state with
+        {
+            Player = state.Player with
+            {
+                Deck =
+                [
+                    new CardInstance(900, "proto.silent.strike", 0,
+                        PrototypeJson.EmptyObject()),
+                    new CardInstance(901, "proto.silent.strike", 0,
+                        PrototypeJson.EmptyObject(), enchantment)
+                ],
+                PotionSlots =
+                [
+                    null,
+                    new PotionInstance("proto.potion.test", PrototypeJson.EmptyObject()),
+                    null
+                ]
+            }
+        };
+
+        var frame = environment.Observe(state);
+        Assert.Equal("prototype-ai-v1", frame.SchemaId);
+        Assert.Equal(3, frame.Observation.PotionSlotCapacity);
+        Assert.Equal(1, frame.Observation.PotionSlotsOccupied);
+        Assert.Equal(2, frame.Observation.PotionSlotsEmpty);
+        Assert.Equal(1, Assert.Single(frame.Observation.Potions).Slot);
+        Assert.Null(frame.Observation.Deck[0].Enchantment);
+        Assert.Equal(enchantment, frame.Observation.Deck[1].Enchantment);
+        Assert.NotEqual(
+            CanonicalJson.Serialize(frame.Observation.Deck[0] with { InstanceId = 901 }),
+            CanonicalJson.Serialize(frame.Observation.Deck[1]));
+    }
+
+    [Fact]
+    public void PublicDeckChoiceExposesMinimumSelectionsForEachContinuation()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var initial = environment.Reset("public-pending-deck-minimum");
+        var state = engine.Step(
+            initial, Assert.Single(engine.GetLegalActions(initial))).State;
+        var world = Assert.IsType<RunWorldState>(state.World);
+        var cardIds = state.Player.Deck.Take(2)
+            .Select(card => card.InstanceId).ToArray();
+        var pending = new PrototypePendingDeckChoiceState(
+            "proto.relic.test", (PrototypePersistentDeckChoiceKind)0,
+            2, cardIds)
+        {
+            MinimumSelectionsRemaining = 0
+        };
+        var reward = new RewardState(
+            "test", [], null, null, true, true, true, false,
+            PendingDeckChoice: pending);
+        var rewardView = environment.ObservePublic(state with
+        {
+            World = world with { Reward = reward }
+        });
+        Assert.Equal(0,
+            Assert.IsType<PrototypeAiDeckChoice>(
+                rewardView.Reward!.PendingDeckChoice)
+            .MinimumSelectionsRemaining);
+
+        var shop = new ShopState([], null, null,
+            PendingDeckChoice: pending);
+        var shopView = environment.ObservePublic(state with
+        {
+            World = world with { Shop = shop }
+        });
+        Assert.Equal(0,
+            Assert.IsType<PrototypeAiDeckChoice>(
+                shopView.Shop!.PendingDeckChoice)
+            .MinimumSelectionsRemaining);
+
+        var eventPending = new PrototypePendingEventDeckChoiceState(
+            "choice", (PrototypePersistentDeckChoiceKind)0,
+            2, cardIds, MinimumSelectionsRemaining: 0);
+        var eventView = environment.ObservePublic(state with
+        {
+            World = world with
+            {
+                Event = new EventState("proto.native.underdocks.sunken_treasury",
+                    PendingDeckChoice: eventPending)
+            }
+        });
+        Assert.Equal(0,
+            Assert.IsType<PrototypeAiEventDeckChoice>(
+                eventView.Event!.PendingDeckChoice)
+            .MinimumSelectionsRemaining);
+    }
+
+    [Fact]
+    public void PublicCombatProjectsVisibleModifiersAndPlayHistory()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var state = environment.Reset("public-combat-history-v1");
+        state = engine.Step(state, Assert.Single(engine.GetLegalActions(state))).State;
+        var action = engine.GetLegalActions(state).First(candidate =>
+        {
+            var nodeId = candidate.ReadPayload<ChooseMapNodePayload>().NodeId;
+            return state.World!.Map.AvailableNodes()
+                .Single(node => node.NodeId == nodeId)
+                .RoomType == PrototypeRoomType.Combat;
+        });
+        state = engine.Step(state, action).State;
+
+        var combat = state.World!.Combat!;
+        var handCardId = combat.Hand[0];
+        var sourceEnemyId = combat.Enemies[0].InstanceId;
+        var affliction = new PrototypeCardAffliction(
+            PrototypeCardAfflictionKind.Bound, SourceEnemyInstanceId: sourceEnemyId);
+        var enchantment = new PrototypeCardEnchantment(
+            PrototypeCardEnchantmentKind.Sharp, Amount: 3);
+        var temporaryCost = new PrototypeTemporaryCardCost(
+            Cost: 0, Expiry: PrototypeTemporaryCardCostExpiry.EndOfTurn);
+        var changedCombat = combat with
+        {
+            // Isolate card-local cost from the starter relic's free-play effect.
+            Relics = [],
+            Cards = combat.Cards.Select(card => card.InstanceId == handCardId
+                ? card with
+                {
+                    CardId = "proto.silent.strike",
+                    Affliction = affliction,
+                    Enchantment = enchantment,
+                    CombatEnergyCostDelta = 1,
+                    TemporaryEnergyCost = temporaryCost,
+                    KeywordOverrides =
+                    [
+                        new PrototypeCardKeywordOverride(
+                            PrototypeCardKeyword.Retain, true,
+                            PrototypeCardKeywordOverrideExpiry.EndOfTurn)
+                    ],
+                    EnchantmentTriggeredThisCombat = true
+                }
+                : card).ToArray(),
+            Counters = new PrototypeCombatCounters(
+                CardsPlayedThisTurn: 4,
+                AttacksPlayedThisTurn: 2,
+                SkillsPlayedThisTurn: 1,
+                AttacksPlayedLastTurn: 3,
+                CardsPlayedThisCombat: 9,
+                ManualCardsPlayedThisTurn: 4)
+        };
+        state = state with { World = state.World with { Combat = changedCombat } };
+
+        var observation = environment.ObservePublic(state);
+        var result = Assert.IsType<PrototypeAiCombat>(observation.Combat);
+        var card = result.Hand.Single(item => item.InstanceId == handCardId);
+        Assert.Equal(enchantment, card.Enchantment);
+        Assert.Equal(sourceEnemyId, card.Affliction!.SourceEnemyInstanceId);
+        Assert.Equal(1, card.CombatEnergyCostDelta);
+        Assert.Equal(temporaryCost, card.TemporaryEnergyCost);
+        Assert.Equal(PrototypeCardCostKind.Fixed, card.CostKind);
+        // A temporary cost is an override: the +1 local delta only
+        // applies to the ordinary cost path in the engine.
+        Assert.Equal(0, card.EffectiveEnergyCost);
+        Assert.True(card.EnchantmentTriggeredThisCombat);
+        Assert.Equal(PrototypeCardKeyword.Retain,
+            Assert.Single(card.KeywordOverrides!).Keyword);
+        var history = Assert.IsType<PrototypeAiCombatHistory>(result.History);
+        Assert.Equal(4, history.CardsPlayedThisTurn);
+        Assert.Equal(2, history.AttacksPlayedThisTurn);
+        Assert.Equal(1, history.SkillsPlayedThisTurn);
+        Assert.Equal(3, history.AttacksPlayedLastTurn);
+        Assert.Equal(9, history.CardsPlayedThisCombat);
+        Assert.Equal(4, history.ManualCardsPlayedThisTurn);
+
+        // An absent source enemy must not leak opaque combat provenance.
+        var hiddenSource = affliction with { SourceEnemyInstanceId = int.MaxValue };
+        var hiddenCombat = changedCombat with
+        {
+            Cards = changedCombat.Cards.Select(value => value.InstanceId == handCardId
+                ? value with { Affliction = hiddenSource } : value).ToArray()
+        };
+        var hiddenState = state with
+        {
+            World = state.World! with { Combat = hiddenCombat }
+        };
+        var redacted = environment.ObservePublic(hiddenState).Combat!.Hand
+            .Single(item => item.InstanceId == handCardId);
+        Assert.Equal(PrototypeCardAfflictionKind.Bound, redacted.Affliction!.Kind);
+        Assert.Null(redacted.Affliction.SourceEnemyInstanceId);
+
+        var observationJson = CanonicalJson.Serialize(observation);
+        Assert.DoesNotContain(state.RunSeed, observationJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("played_card_ids", observationJson,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void BundleRewardShowsOnlyCurrentOfferedBundles()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var state = environment.Reset("public-card-bundle-v1");
+        state = engine.Step(
+            state, Assert.Single(engine.GetLegalActions(state))).State;
+
+        var bundles = new[]
+        {
+            new[] { "proto.silent.strike", "proto.silent.defend" },
+            new[] { "proto.silent.neutralize" }
+        };
+        var reward = new RewardState(
+            SourceRoom: "bundle_fixture",
+            CardOptions: [],
+            PotionOption: null,
+            RelicOption: null,
+            CardResolved: false,
+            PotionResolved: true,
+            RelicResolved: true,
+            EndsAct: false,
+            CardBundles: bundles);
+        state = state with
+        {
+            Phase = RunPhase.Reward,
+            World = state.World! with { Reward = reward }
+        };
+
+        var visible = Assert.IsType<PrototypeAiReward>(
+            environment.ObservePublic(state).Reward);
+        Assert.Equal(bundles[0], visible.CardBundles![0]);
+        Assert.Equal(bundles[1], visible.CardBundles[1]);
+
+        // No retained bundle contents after the choice is resolved.
+        state = state with
+        {
+            World = state.World! with
+            {
+                Reward = reward with { CardResolved = true }
+            }
+        };
+        Assert.Null(environment.ObservePublic(state).Reward!.CardBundles);
+    }
+
+    [Fact]
+    public void SequentialExtraRelicRewardPublishesOnlyTheCurrentLegalOffer()
+    {
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var initial = environment.Reset("public-sequential-extra-relic");
+        var started = engine.Step(
+            initial, Assert.Single(engine.GetLegalActions(initial))).State;
+        var world = Assert.IsType<RunWorldState>(started.World);
+        var reward = new RewardState(
+            SourceRoom: "sequential_extra_relic_fixture",
+            CardOptions: [],
+            PotionOption: null,
+            RelicOption: null,
+            CardResolved: true,
+            PotionResolved: true,
+            RelicResolved: true,
+            EndsAct: false,
+            ExtraRelicRewardIds:
+            [
+                "proto.relic.one", "proto.relic.two", "proto.relic.three"
+            ],
+            ExtraRelicsResolved: 1,
+            ExtraRelicGroupsResolved: [true, false, false],
+            ExtraRelicWaxFlags: [false, true, false]);
+        var sequential = started with
+        {
+            Phase = RunPhase.Reward,
+            World = world with { Reward = reward }
+        };
+        var action = Assert.Single(engine.GetLegalActions(sequential));
+        Assert.Equal("take_reward_relic", action.Kind);
+        Assert.Equal(0, action.ReadPayload<ChooseRelicPayload>().Index);
+
+        var offered = Assert.Single(
+            Assert.IsType<PrototypeAiReward>(
+                environment.ObservePublic(sequential).Reward)
+                .PendingExtraRelicRewards!);
+        Assert.Equal(1, offered.GroupIndex);
+        Assert.Equal("proto.relic.two", offered.RelicId);
+        Assert.True(offered.IsWax);
+
+        // Later sequential offers are still private until they are active.
+        var unresolved = sequential with
+        {
+            World = world with
+            {
+                Reward = reward with
+                {
+                    RelicResolved = false,
+                    RelicOption = "proto.relic.primary"
+                }
+            }
+        };
+        Assert.Null(
+            environment.ObservePublic(unresolved).Reward!
+                .PendingExtraRelicRewards);
+
+        // Independent selection retains every outstanding visible option.
+        var independent = sequential with
+        {
+            World = world with
+            {
+                Reward = reward with { IndependentSelection = true }
+            }
+        };
+        var allOffers = Assert.IsType<PrototypeAiReward>(
+            environment.ObservePublic(independent).Reward)
+            .PendingExtraRelicRewards!;
+        Assert.Equal(new[] { 1, 2 },
+            allOffers.Select(item => item.GroupIndex));
+    }
 }
