@@ -1185,3 +1185,97 @@ prove native-emulator parity, or certify uninstrumented asynchronous
 continuations. The existing saved sidecar suffices to re-run this
 updated offline audit. No new game run or native DLL rebuild is
 required for these two *audit-only* changes.
+
+## 2026-11-04 queued-input provenance and run-wide macro source envelope
+
+The action-sidecar `native_input_request` now carries optional
+submission-time provenance: `submission_state_coverage`,
+`active_executor_action_ids_at_submission`,
+`submitted_while_executor_active` and `strict_legal_menu`.
+A native request prefix captures the canonical state at that exact call
+site, even if an earlier executor action is running. The request's
+ordinal is retained by **source native object identity** and is repeated
+as `submission_ordinal` in the queue-return and executor-start records.
+The Python source auditor validates these claims against the actual
+ordered executor timeline, rejects forged queue/menu claims, and
+continues accepting older trace files without these optional fields.
+
+**Coverage:** queued request + subsequent native executor identity is
+source-observed. A strict unique decision boundary, source full legal
+menu and human provenance remain separately unverified. Thus a
+`strict_input_gap` still identifies a genuine missing legal-menu
+observation; the source request snapshot must never be used to
+fabricate a new strict idle decision.
+
+A second, independent run-wide sidecar uses
+`native-macro-envelope-v1`, stored as
+`macro-<timestamp>-<run-id>.jsonl` in
+`STS2_FIDELITY_TRACE_DIR`. It begins with `RunManager.RunStarted`
+and survives first combat and subsequent room transitions. Its record
+types include:
+
+- `map_snapshot`: source-generated map coordinates, node types,
+  complete outgoing edges, native map RNG state copied via
+  `ToSerializable` without advancing RNG; one initial snapshot
+  per act. Source-map edges are explicitly distinct from a
+  verified **UI legal-destination menu**.
+- `room_entered`: source room type/coordinate, outgoing map edges,
+  floor, player HP/gold, and optional model identity.
+- `map_request` / `map_request_outcome`: the real native queue
+  request and return, linked by source object identity; queue-return
+  outcome never implies eventual executor completion.
+- `shop_snapshot`: original `MerchantRoom.Inventories` stock,
+  stable slot, model ID, on-sale flag, removal-used flag, and
+  **raw** `MerchantEntry._cost`, on shop entry and after successful
+  purchases. Actual displayed cost after price modifiers and
+  purchase eligibility remain `NOT_CAPTURED_FROM_NATIVE_UI` /
+  `NOT_VERIFIED`. The observer deliberately avoids calling
+  `MerchantEntry.Cost` or regenerating a shop.
+- `reward_offer`, `reward_selection_requested`,
+  `reward_skip_requested`: source reward-set identity, reward
+  type, populated flag and source object identity on selection;
+  detailed contents and async effect settlement remain unverified.
+- `event_choice_request` / `event_choice_return`: original
+  `EventSynchronizer.ChooseLocalOption` choices and source
+  selected index, including after the initial combat.
+- `combat_link`, `observation_failure`, and `terminal`:
+  source identity and explicit coverage, never an emulator agreement.
+
+To enable macro reward/run-end hooks in a **new locally preflighted
+native build**, retain the existing source input hook and add:
+
+```fish
+set -x STS2_FIDELITY_CAPTURE 1
+set -x STS2_FIDELITY_INPUT_HOOK 1
+set -x STS2_FIDELITY_MACRO_HOOK 1
+```
+
+Run the pinned-game offline preflight as in the earlier section of
+this guide. The already-installed mod predates this source change,
+so **recompile, stage and install only after a successful local
+preflight**, with the original game closed.
+
+Strict offline auditing is available with:
+
+```fish
+python tools/native_macro_envelope_audit.py \
+    /path/to/original/macro-run.jsonl \
+    --out /tmp/native-macro-envelope-audit.json
+```
+
+The auditor checks contiguous run/record identity, map edge closure,
+room-to-map edge agreement, queue-return links, slot uniqueness,
+absence of invented price/parity values, reward object links,
+event selections and terminal coverage. `SOURCE_CAPTURE_IN_PROGRESS`
+denotes a trace lacking an end-of-run terminal; it does not indicate
+that an encounter settled. `SOURCE_MACRO_TIMELINE_CONSISTENT`
+denotes internally coherent source records only.
+
+**Next acceptance work:** verify local pinned-DLL compilation,
+capture one original-game map/reward/shop sequence, compare its
+offers and selected transactions with an independently advanced
+persistent emulator, and extend selected-reward contents,
+native displayed shop pricing, event state changes and RNG
+generation parity. The existing 24-action original combat sidecar
+still requires independent emulator replay; source-only auditing
+is a separate completed gate.
