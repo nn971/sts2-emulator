@@ -70,8 +70,11 @@ public sealed class PrototypePowerTests
         Assert.Equal(1, state.World.Combat.Energy);
     }
 
-    [Fact]
-    public void NoxiousFumesTriggersAtRulesetPlayerTurnStartStep()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NoxiousFumesTriggersAtRulesetPlayerTurnStartStep(
+        bool canonicalEnemyEffects)
     {
         var empty = PrototypeJson.EmptyObject();
         var player = new PlayerState(
@@ -113,7 +116,10 @@ public sealed class PrototypePowerTests
                 new CombatCardInstance(1, 50, "proto.silent.noxious_fumes", 0, false, empty)
             ],
             PlayerPowers: Array.Empty<PrototypePowerInstanceState>(),
-            NextPowerApplicationOrder: 1);
+            NextPowerApplicationOrder: 1)
+        {
+            CanonicalEnemyEffectPowers = canonicalEnemyEffects
+        };
 
         var state = CreateState("fumes-test", player, combat, nextPersistentCardId: 51);
         var engine = new PrototypeGameEngine();
@@ -129,9 +135,23 @@ public sealed class PrototypePowerTests
 
         combat = state.World!.Combat!;
         Assert.Equal(2, combat.Turn);
-        Assert.All(
-            combat.Enemies,
-            enemy => Assert.Equal(1, enemy.Statuses["proto.status.poison"]));
+        Assert.Equal(canonicalEnemyEffects, combat.CanonicalEnemyEffectPowers);
+        Assert.All(combat.Enemies, enemy =>
+        {
+            Assert.Equal(1, enemy.EnemyEffectStacks("proto.status.poison"));
+            if (canonicalEnemyEffects)
+            {
+                Assert.Empty(enemy.Statuses);
+                Assert.Contains(enemy.PowerStates,
+                    power => power.PowerId == "proto.power.poison"
+                        && power.Stacks == 1);
+            }
+            else
+            {
+                Assert.Equal(1, enemy.Statuses["proto.status.poison"]);
+                Assert.Empty(enemy.PowerStates);
+            }
+        });
         Assert.Equal(1, Assert.Single(combat.PlayerPowers).Stacks);
     }
 
