@@ -124,4 +124,125 @@ public sealed class PrototypeEnemyEffectPowerCatalogTests
                 enemy, combat, nonAttack, act: 1, ascension: 0));
         }
     }
+
+    private static CombatState EffectCombat(EnemyCombatState enemy) =>
+        new CombatState(
+            Turn: 1, Energy: 3, PlayerBlock: 0,
+            Hand: [], DrawPile: [], DiscardPile: [], ExhaustPile: [],
+            Enemies: [enemy], NextCardInstanceId: 1, Cards: [],
+            PlayerPowers: [], NextPowerApplicationOrder: 100)
+        {
+            CanonicalEnemyEffectPowers = true
+        };
+
+    private static EnemyCombatState EffectEnemy(int hp = 30) =>
+        new(11, "proto.enemy.crawler", hp, 0, 0,
+            new Dictionary<string, int>(StringComparer.Ordinal));
+
+    [Fact]
+    public void OptInApplicationUsesPowerInstancesAndPreservesLegacyDefault()
+    {
+        var optIn = EffectCombat(EffectEnemy());
+        var weak = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+            optIn, 11, "proto.status.weak", 2);
+        var target = Assert.Single(weak.Enemies);
+        Assert.Empty(target.Statuses);
+        Assert.Equal(2, target.EnemyEffectStacks("proto.status.weak"));
+        var power = Assert.Single(target.PowerStates);
+        Assert.Equal("proto.power.weak", power.PowerId);
+        Assert.Equal(100, power.ApplicationOrder);
+        Assert.Equal(101, weak.NextPowerApplicationOrder);
+
+        weak = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+            weak, 11, "proto.status.weak", 3);
+        Assert.Equal(5, Assert.Single(weak.Enemies)
+            .EnemyEffectStacks("proto.status.weak"));
+        Assert.Equal(101, weak.NextPowerApplicationOrder);
+
+        var legacy = optIn with { CanonicalEnemyEffectPowers = false };
+        legacy = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+            legacy, 11, "proto.status.weak", 2);
+        Assert.Equal(2, Assert.Single(legacy.Enemies)
+            .Statuses["proto.status.weak"]);
+        Assert.Empty(Assert.Single(legacy.Enemies).PowerStates);
+    }
+
+    [Fact]
+    public void CanonicalPoisonTurnsAndImmediateTriggerPreserveStackDecay()
+    {
+        var combat = EffectCombat(EffectEnemy());
+        combat = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+            combat, 11, "proto.status.poison", 3);
+        var rng = PrototypeRng.CreateBundle("p1-poison-life-cycle");
+        combat = PrototypeGameEngine.ResolveEnemyStatusStageForSourceRegression(
+            combat, PrototypeTurnStage.EnemyTurnStart, rng);
+        var afterFirst = Assert.Single(combat.Enemies);
+        Assert.Equal(27, afterFirst.Hp);
+        Assert.Equal(2, afterFirst.EnemyEffectStacks("proto.status.poison"));
+        Assert.Empty(afterFirst.Statuses);
+
+        combat = PrototypeGameEngine.TriggerEnemyStatusForSourceRegression(
+            combat, 11, "proto.status.poison", rng);
+        var afterTrigger = Assert.Single(combat.Enemies);
+        Assert.Equal(25, afterTrigger.Hp);
+        Assert.Equal(1, afterTrigger.EnemyEffectStacks("proto.status.poison"));
+
+        combat = PrototypeGameEngine.ResolveEnemyStatusStageForSourceRegression(
+            combat, PrototypeTurnStage.EnemyTurnStart, rng);
+        var expired = Assert.Single(combat.Enemies);
+        Assert.Equal(24, expired.Hp);
+        Assert.Equal(0, expired.EnemyEffectStacks("proto.status.poison"));
+        Assert.Empty(expired.PowerStates);
+    }
+
+    [Fact]
+    public void EnemyWeakAndVulnerableExpireAtEnemySideTurnEnd()
+    {
+        var combat = EffectCombat(EffectEnemy());
+        foreach (var id in new[] { "proto.status.weak", "proto.status.vulnerable" })
+            combat = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+                combat, 11, id, 2);
+
+        var rng = PrototypeRng.CreateBundle("p1-weak-vulnerable-decay");
+        combat = PrototypeGameEngine.ResolveEnemyStatusStageForSourceRegression(
+            combat, PrototypeTurnStage.EnemyTurnStart, rng);
+        Assert.Equal(2, Assert.Single(combat.Enemies)
+            .EnemyEffectStacks("proto.status.weak"));
+        combat = PrototypeGameEngine.ResolveEnemyStatusStageForSourceRegression(
+            combat, PrototypeTurnStage.EnemyTurnEnd, rng);
+        Assert.Equal(1, Assert.Single(combat.Enemies)
+            .EnemyEffectStacks("proto.status.weak"));
+        Assert.Equal(1, Assert.Single(combat.Enemies)
+            .EnemyEffectStacks("proto.status.vulnerable"));
+
+        combat = PrototypeGameEngine.ResolveEnemyStatusStageForSourceRegression(
+            combat, PrototypeTurnStage.EnemyTurnEnd, rng);
+        Assert.Empty(Assert.Single(combat.Enemies).PowerStates);
+    }
+
+    [Fact]
+    public void CanonicalPoisonMultiplierAndArtifactDebuffBlocking()
+    {
+        var artifact = EffectEnemy() with
+        {
+            Powers = [new PrototypePowerInstanceState("proto.power.artifact", 1, 1)]
+        };
+        var combat = EffectCombat(artifact);
+        combat = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+            combat, 11, "proto.status.poison", 3);
+        Assert.Equal(0, Assert.Single(combat.Enemies)
+            .EnemyEffectStacks("proto.status.poison"));
+        Assert.Empty(Assert.Single(combat.Enemies).PowerStates);
+
+        combat = PrototypeGameEngine.ApplyEnemyStatusForSourceRegression(
+            combat, 11, "proto.status.poison", 3);
+        combat = PrototypeGameEngine.MultiplyEnemyStatusForSourceRegression(
+            combat, 11, "proto.status.poison", 2);
+        Assert.Equal(6, Assert.Single(combat.Enemies)
+            .EnemyEffectStacks("proto.status.poison"));
+        combat = PrototypeGameEngine.MultiplyEnemyStatusForSourceRegression(
+            combat, 11, "proto.status.poison", 0);
+        Assert.Equal(0, Assert.Single(combat.Enemies)
+            .EnemyEffectStacks("proto.status.poison"));
+    }
 }

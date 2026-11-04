@@ -3033,6 +3033,24 @@ public sealed partial class PrototypeGameEngine
         return combat;
     }
 
+    // Opt-in migration acceptance seams; they invoke the actual combat
+    // mutators and turn-stage lifecycle without bypassing debuff prevention.
+    internal static CombatState ApplyEnemyStatusForSourceRegression(
+        CombatState combat, int enemyId, string statusId, int amount) =>
+        ApplyEnemyStatus(combat, enemyId, statusId, amount);
+
+    internal static CombatState MultiplyEnemyStatusForSourceRegression(
+        CombatState combat, int enemyId, string statusId, int multiplier) =>
+        MultiplyEnemyStatus(combat, enemyId, statusId, multiplier);
+
+    internal static CombatState TriggerEnemyStatusForSourceRegression(
+        CombatState combat, int enemyId, string statusId, RngBundle rng) =>
+        TriggerEnemyStatus(combat, enemyId, statusId, rng);
+
+    internal static CombatState ResolveEnemyStatusStageForSourceRegression(
+        CombatState combat, PrototypeTurnStage stage, RngBundle rng) =>
+        ResolveEnemyStatusStage(combat, stage, rng);
+
     private static CombatState ResolveEnemyStatusStage(
         CombatState combat,
         PrototypeTurnStage stage,
