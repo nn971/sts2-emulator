@@ -69,6 +69,10 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     // ActionExecutor callback proves execution of the same action object.
     private readonly Dictionary<object, long> _requested =
         new(ReferenceEqualityComparer.Instance);
+    // A request's source ordinal is stable even when a later native queue
+    // callback runs synchronously or requests are admitted out of order.
+    private readonly Dictionary<object, long> _requestOrdinals =
+        new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<(string Kind, int Turn)> _turnCheckpoints = [];
     private long _nextInputRequestId;
     private long _nextHandMenuId;
@@ -227,15 +231,33 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
     {
         if (_closed) return;
         ArgumentNullException.ThrowIfNull(action);
+        if (_requested.ContainsKey(action))
+        {
+            ObservationFailure("native_input_request",
+                "DUPLICATE_NATIVE_REQUEST_OBJECT");
+            return;
+        }
         long id = ++_nextInputRequestId;
-        _requested[action] = id;
+        long ordinal = Next();
+        _requested.Add(action, id);
+        _requestOrdinals.Add(action, ordinal);
+        // This is the state at RequestEnqueue entry, even when another
+        // action is still executing. It is never promoted to a complete
+        // strict legal-action menu or an idle player decision.
+        long[] active = _activeOrder.ToArray();
         Write(new NativeActionEnvelopeRecord(
-            "native_input_request", Next(), NativeType: nativeType,
+            "native_input_request", ordinal, NativeType: nativeType,
             CanonicalAction: canonicalAction, State: Snapshot(state),
             Data: JsonSerializer.SerializeToElement(new
             {
                 input_request_id = id,
                 source = "ActionQueueSynchronizer.RequestEnqueue.prefix",
+                submission_state_coverage = state.HasValue
+                    ? "SOURCE_CANONICAL_STATE_AT_REQUEST"
+                    : "UNOBSERVED",
+                active_executor_action_ids_at_submission = active,
+                submitted_while_executor_active = active.Length != 0,
+                strict_legal_menu = "NOT_CAPTURED",
                 native_acceptance = "UNVERIFIED",
                 human_origin = "UNVERIFIED",
                 input_injected = false
@@ -574,6 +596,7 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
             Data: JsonSerializer.SerializeToElement(new
             {
                 input_request_id = requestId,
+                submission_ordinal = _requestOrdinals[action],
                 native_action_state = nativeState,
                 native_action_id = nativeActionId,
                 queue_result = result,
@@ -659,7 +682,9 @@ public sealed class NativeActionEnvelopeRecorder : IAsyncDisposable
                 ? JsonSerializer.SerializeToElement(new
                 {
                     input_request_id = requestId,
+                    submission_ordinal = _requestOrdinals[action],
                     request_execution_link = "SAME_NATIVE_ACTION_OBJECT",
+                    strict_legal_menu = "NOT_CAPTURED",
                     human_origin = "UNVERIFIED"
                 })
                 : null));
