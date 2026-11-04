@@ -118,9 +118,9 @@ public sealed class PrototypeEnemyEffectPowerCatalogTests
 
         foreach (var enemy in new[] { legacy, canonical, mixed })
         {
-            Assert.Equal(15, PrototypeCombat.EnemyHitDamage(
+            Assert.Equal(15, PrototypeGameEngine.EnemyHitDamage(
                 enemy, combat, attack, act: 1, ascension: 0));
-            Assert.Equal(20, PrototypeCombat.EnemyHitDamage(
+            Assert.Equal(20, PrototypeGameEngine.EnemyHitDamage(
                 enemy, combat, nonAttack, act: 1, ascension: 0));
         }
     }
