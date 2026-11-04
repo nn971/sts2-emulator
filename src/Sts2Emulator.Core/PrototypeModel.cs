@@ -2133,6 +2133,16 @@ public sealed record EnemyCombatState
             ? PowerStates.Where(power => power.PowerId == powerId)
                 .Sum(power => power.Stacks)
             : 0;
+
+    // Revival and reattachment cleanse the three enemy debuffs while
+    // retaining unrelated powers such as Strength and Reattach. Clearing
+    // the legacy Statuses projection no longer clears canonical stacks.
+    public EnemyCombatState WithoutEnemyEffectDebuffs() => this with
+    {
+        Powers = PowerStates.Where(power =>
+            !PrototypeContent.EnemyStatusPowerIds.Values.Contains(
+                power.PowerId, StringComparer.Ordinal)).ToArray()
+    };
 }
 
 public sealed record CombatCardInstance(

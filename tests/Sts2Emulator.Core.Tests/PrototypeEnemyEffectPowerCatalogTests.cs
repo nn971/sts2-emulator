@@ -454,4 +454,37 @@ public sealed class PrototypeEnemyEffectPowerCatalogTests
         Assert.Throws<InvalidDataException>(() =>
             RunSnapshot.Load(tampered.ToJsonString()));
     }
+
+    [Fact]
+    public void ResurrectionAndReattachmentCleanseCanonicalDebuffs()
+    {
+        var source = EffectEnemy() with
+        {
+            Powers =
+            [
+                new PrototypePowerInstanceState(
+                    "proto.power.poison", 4, 10),
+                new PrototypePowerInstanceState(
+                    "proto.power.weak", 2, 11, LegacyStatusStacks: 1),
+                new PrototypePowerInstanceState(
+                    "proto.power.vulnerable", 3, 12),
+                new PrototypePowerInstanceState(
+                    "proto.power.strength", 5, 13)
+            ]
+        };
+        foreach (var canonical in new[] { false, true })
+        {
+            var enemy = source with { CanonicalEnemyPowerView = canonical };
+            var revived = enemy.WithoutEnemyEffectDebuffs();
+            Assert.Equal(0, revived.EnemyEffectStacks("proto.status.poison"));
+            Assert.Equal(0, revived.EnemyEffectStacks("proto.status.weak"));
+            Assert.Equal(0, revived.EnemyEffectStacks("proto.status.vulnerable"));
+            var preserved = Assert.Single(revived.PowerStates);
+            Assert.Equal("proto.power.strength", preserved.PowerId);
+            Assert.Equal(5, preserved.Stacks);
+            Assert.Empty(revived.Statuses);
+            Assert.Equal(enemy.InstanceId, revived.InstanceId);
+            Assert.Equal(enemy.Hp, revived.Hp);
+        }
+    }
 }

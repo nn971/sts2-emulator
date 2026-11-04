@@ -3960,7 +3960,7 @@ public sealed partial class PrototypeGameEngine
                                 PrototypeNativeHiveElites.ReattachId)))
                 {
                     enemy = enemy.ReattachDeadMoveResolved
-                        ? enemy with
+                        ? enemy.WithoutEnemyEffectDebuffs() with
                         {
                             Hp = Math.Min(definition.HpRangeAt(act,
                                 ascension).Max,
@@ -3971,9 +3971,7 @@ public sealed partial class PrototypeGameEngine
                             Block = 0,
                             LastMoveId = "reattach",
                             ReattachDeadMoveResolved = false,
-                            AiStateId = "reattach_random",
-                            Statuses = new Dictionary<string, int>(
-                                StringComparer.Ordinal)
+                            AiStateId = "reattach_random"
                         }
                         : enemy with
                         {
@@ -3994,14 +3992,11 @@ public sealed partial class PrototypeGameEngine
                     var hpRange = definition.HpRangeAt(
                         act,
                         ascension);
-                    enemy = enemy with
+                    enemy = enemy.WithoutEnemyEffectDebuffs() with
                     {
                         Hp = hpRange.Max,
                         Block = 0,
-                        LastMoveId = "revive",
-                        Statuses =
-                            new Dictionary<string, int>(
-                                StringComparer.Ordinal)
+                        LastMoveId = "revive"
                     };
                     enemies[index] = enemy;
                 }
@@ -4535,8 +4530,6 @@ public sealed partial class PrototypeGameEngine
                                 CompletedPhaseMaxHp =
                                     enemy.CompletedPhaseMaxHp + enemy.MaxHp,
                                 Block = 0,
-                                Statuses = new Dictionary<string, int>(
-                                    StringComparer.Ordinal),
                                 Powers = enemy.PowerStates.Where(power =>
                                     power.PowerId == "proto.power.minion")
                                     .ToArray(),
