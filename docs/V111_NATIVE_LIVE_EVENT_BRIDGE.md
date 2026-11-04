@@ -1229,12 +1229,17 @@ types include:
   **raw** `MerchantEntry._cost`, on shop entry and after successful
   purchases. Actual displayed cost after price modifiers and
   purchase eligibility remain `NOT_CAPTURED_FROM_NATIVE_UI` /
-  `NOT_VERIFIED`. The observer deliberately avoids calling
-  `MerchantEntry.Cost` or regenerating a shop.
+  `NOT_VERIFIED` in the stock snapshot. A separate `shop_source_cost`
+  record captures the **returned value** whenever original game code
+  invokes `MerchantEntry.Cost`, correlated to a source stock slot.
+  The Inspector never calls the getter or evaluates the price hook.
+  The getter's role in the visible UI remains `UNVERIFIED_UI_USAGE`.
 - `reward_offer`, `reward_selection_requested`,
   `reward_skip_requested`: source reward-set identity, reward
   type, populated flag and source object identity on selection;
-  detailed contents and async effect settlement remain unverified.
+  native-populated card model IDs, relic/potion model IDs and gold
+  amounts are copied from original reward objects. Other reward
+  content types and asynchronous effect settlement remain unverified.
 - `event_choice_request` / `event_choice_return`: original
   `EventSynchronizer.ChooseLocalOption` choices and source
   selected index, including after the initial combat.
@@ -1274,8 +1279,8 @@ denotes internally coherent source records only.
 **Next acceptance work:** verify local pinned-DLL compilation,
 capture one original-game map/reward/shop sequence, compare its
 offers and selected transactions with an independently advanced
-persistent emulator, and extend selected-reward contents,
-native displayed shop pricing, event state changes and RNG
-generation parity. The existing 24-action original combat sidecar
+persistent emulator, and extend special reward contents and
+modifier attributes, native UI-rendered shop pricing, event state changes
+and RNG generation parity. The existing 24-action original combat sidecar
 still requires independent emulator replay; source-only auditing
 is a separate completed gate.
