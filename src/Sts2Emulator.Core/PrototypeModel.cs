@@ -2507,6 +2507,12 @@ public sealed partial record CombatState(
     bool IsPlayerSideActive = true,
     SemanticDeckStateV111? SemanticDeck = null)
 {
+    // Opt-in during differential migration: old snapshots and native runs
+    // retain their legacy status storage until the full contract is accepted.
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool CanonicalEnemyEffectPowers { get; init; }
+
     /// <summary>
     /// Atomic mechanics/provider envelope for this combat. Existing snapshot
     /// fields remain flattened projections.
