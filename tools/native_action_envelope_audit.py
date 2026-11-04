@@ -516,6 +516,11 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     or source.get("native_type") != record.get("native_type")):
                     strict_failures.append(
                         f"Invalid source request/executor link at ordinal {ordinal}")
+                elif "submission_ordinal" in (record.get("data") or {}) and (
+                    record["data"]["submission_ordinal"] != source["ordinal"]
+                    or record["data"].get("strict_legal_menu") != "NOT_CAPTURED"):
+                    strict_failures.append(
+                        f"Invalid source submission link at ordinal {ordinal}")
                 else:
                     report["source_request_execution_links"] += 1
         elif typ == "action_resumed":
@@ -723,6 +728,27 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                 or not isinstance(record.get("native_type"), str)):
                 strict_failures.append(f"Invalid native input request at {ordinal}")
             else:
+                # Pre-v2 sidecars omit these fields. New source-time evidence
+                # must agree with the actual ordered executor timeline and
+                # must never assert that a full legal menu was observed.
+                coverage = data.get("submission_state_coverage")
+                if coverage is not None:
+                    observed_ids = data.get(
+                        "active_executor_action_ids_at_submission")
+                    expected_ids = sorted(running)
+                    if (coverage != (
+                            "SOURCE_CANONICAL_STATE_AT_REQUEST"
+                            if isinstance(record.get("state"), dict)
+                            else "UNOBSERVED")
+                        or not isinstance(observed_ids, list)
+                        or any(type(i) is not int for i in observed_ids)
+                        or sorted(observed_ids) != expected_ids
+                        or len(observed_ids) != len(expected_ids)
+                        or data.get("submitted_while_executor_active") is not
+                            bool(expected_ids)
+                        or data.get("strict_legal_menu") != "NOT_CAPTURED"):
+                        strict_failures.append(
+                            f"Invalid native submission evidence at ordinal {ordinal}")
                 input_requests[request_id] = record
                 active_actions_at_input_request[request_id] = sorted(running)
                 report["native_input_requests"].append({
@@ -731,6 +757,8 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     "native_type": record["native_type"],
                     "canonical_action": record.get("canonical_action"),
                     "acceptance": "UNVERIFIED",
+                    "submission_state_coverage": coverage or "LEGACY_UNVERIFIED",
+                    "active_executor_action_ids_at_submission": sorted(running),
                 })
         elif typ == "native_input_outcome":
             data = record.get("data") or {}
@@ -756,7 +784,9 @@ def audit(records: list[dict], error: str | None = None) -> dict:
                     "ActionQueueSynchronizer.RequestEnqueue.postfix"
                 or data.get("human_origin") != "UNVERIFIED"
                 or data.get("legal_menu_verified") is not False
-                or data.get("queue_result") != expected):
+                or data.get("queue_result") != expected
+                or ("submission_ordinal" in data and
+                    data["submission_ordinal"] != request["ordinal"])):
                 strict_failures.append(f"Invalid native input outcome at {ordinal}")
             else:
                 request_outcomes.add(request_id)
