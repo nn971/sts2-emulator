@@ -3127,7 +3127,13 @@ public sealed partial class PrototypeGameEngine
                             != applied.ApplicationOrder || stacks > 0)
                         .Select(power => power.ApplicationOrder
                             == applied.ApplicationOrder
-                            ? power with { Stacks = stacks }
+                            ? power with
+                            {
+                                Stacks = stacks,
+                                LegacyStatusStacks = Math.Max(0,
+                                    power.LegacyStatusStacks
+                                    - (applied.Stacks - stacks))
+                            }
                             : power)
                         .ToArray()
                 };
@@ -3206,7 +3212,11 @@ public sealed partial class PrototypeGameEngine
                             Stacks = power.Stacks -
                                 definition.EnemyStacksDecayAtSideTurnEnd
                                 - (definition.EnemyEffectDecayStage == stage
-                                    ? definition.EnemyEffectDecayAtStage : 0)
+                                    ? definition.EnemyEffectDecayAtStage : 0),
+                            LegacyStatusStacks = Math.Max(0,
+                                power.LegacyStatusStacks -
+                                (definition.EnemyEffectDecayStage == stage
+                                    ? definition.EnemyEffectDecayAtStage : 0))
                         };
                     })
                     .Where(power => power.Stacks > 0
@@ -15232,7 +15242,12 @@ public sealed partial class PrototypeGameEngine
                     || remaining > 0)
                 .Select(power => power.ApplicationOrder
                     == target.ApplicationOrder
-                    ? power with { Stacks = remaining } : power)
+                    ? power with
+                    {
+                        Stacks = remaining,
+                        LegacyStatusStacks = Math.Max(0,
+                            power.LegacyStatusStacks - definition.DecayOnTrigger)
+                    } : power)
                 .ToArray();
             enemies[index] = enemies[index] with { Powers = powers };
             combat = combat with { Enemies = enemies };
@@ -15912,7 +15927,12 @@ public sealed partial class PrototypeGameEngine
         var powers = enemy.PowerStates
             .Where(power => power.PowerId != powerId || multiplier > 0)
             .Select(power => power.PowerId == powerId
-                ? power with { Stacks = checked(power.Stacks * multiplier) }
+                ? power with
+                {
+                    Stacks = checked(power.Stacks * multiplier),
+                    LegacyStatusStacks = checked(
+                        power.LegacyStatusStacks * multiplier)
+                }
                 : power)
             .ToArray();
         enemies[index] = enemy with { Powers = powers };
@@ -15928,13 +15948,29 @@ public sealed partial class PrototypeGameEngine
         if (!PrototypeContent.EnemyStatusPowerIds.TryGetValue(
                 statusId, out var powerId))
             throw new InvalidOperationException($"Unknown enemy effect '{statusId}'.");
+        var before = combat.Enemies.Single(enemy =>
+            enemy.InstanceId == enemyId).EnemyEffectStacks(statusId);
         var applied = ApplyEnemyPower(combat, enemyId, powerId, amount);
-        if (!combat.CanonicalEnemyEffectPowers)
-            return applied;
         var enemies = applied.Enemies.Select(enemy =>
-            enemy.InstanceId == enemyId
-                ? enemy with { CanonicalEnemyPowerView = true }
-                : enemy).ToArray();
+        {
+            if (enemy.InstanceId != enemyId)
+                return enemy;
+            if (combat.CanonicalEnemyEffectPowers)
+                return enemy with { CanonicalEnemyPowerView = true };
+            var delta = enemy.EnemyEffectStacks(statusId) - before;
+            if (delta <= 0)
+                return enemy;
+            return enemy with
+            {
+                Powers = enemy.PowerStates.Select(power =>
+                    power.PowerId == powerId
+                    ? power with
+                    {
+                        LegacyStatusStacks = checked(
+                            power.LegacyStatusStacks + delta)
+                    } : power).ToArray()
+            };
+        }).ToArray();
         return applied with { Enemies = enemies };
     }
 

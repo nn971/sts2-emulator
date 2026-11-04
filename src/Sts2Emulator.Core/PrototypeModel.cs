@@ -1294,7 +1294,12 @@ public sealed record PrototypePowerInstanceState(
     long? PendingAttackingCardInstanceId = null,
     // A curse applied at hand cleanup must survive its first
     // immediately following player-turn-end duration tick.
-    bool SkipNextPlayerTurnEnd = false)
+    bool SkipNextPlayerTurnEnd = false,
+    // Compatibility provenance on the canonical power instance, not a
+    // second combat-effect stack store. Zero for ordinary power effects.
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    int LegacyStatusStacks = 0)
 {
     public PrototypePowerInstanceState Fork() => this with
     {
@@ -2056,18 +2061,22 @@ public sealed record EnemyCombatState
         get => CanonicalEnemyPowerView
             ? new Dictionary<string, int>(StringComparer.Ordinal)
             : PowerStates
-            .Where(power => power.Stacks > 0
-                && PrototypeContent.EnemyStatusPowerIds.Values.Contains(
-                    power.PowerId, StringComparer.Ordinal))
-            .GroupBy(power => power.PowerId, StringComparer.Ordinal)
-            .ToDictionary(
-                group => PrototypeContent.EnemyStatusPowerIds
-                    .Single(entry => entry.Value == group.Key).Key,
-                group => group.Sum(power => power.Stacks),
-                StringComparer.Ordinal);
+                .Where(power => power.LegacyStatusStacks > 0)
+                .ToDictionary(
+                    power => PrototypeContent.EnemyStatusPowerIds.Single(
+                        entry => entry.Value == power.PowerId).Key,
+                    power => power.LegacyStatusStacks,
+                    StringComparer.Ordinal);
         init => Powers = MergeEnemyStatuses(value,
-            PowerStates.Where(power => !PrototypeContent.EnemyStatusPowerIds.Values
-                .Contains(power.PowerId, StringComparer.Ordinal)).ToArray());
+            PowerStates.Select(power =>
+                PrototypeContent.EnemyStatusPowerIds.Values.Contains(
+                    power.PowerId, StringComparer.Ordinal)
+                    ? power with
+                    {
+                        Stacks = power.Stacks - power.LegacyStatusStacks,
+                        LegacyStatusStacks = 0
+                    } : power)
+                .Where(power => power.Stacks > 0).ToArray());
     }
 
     private static PrototypePowerInstanceState[] MergeEnemyStatuses(
@@ -2076,7 +2085,6 @@ public sealed record EnemyCombatState
         var owned = (powers ?? []).Select(power => power.Fork()).ToList();
         if (legacy is null)
             return owned.ToArray();
-        var ordinal = 0;
         foreach (var (statusId, stacks) in legacy
             .OrderBy(item => item.Key, StringComparer.Ordinal))
         {
@@ -2086,14 +2094,27 @@ public sealed record EnemyCombatState
                     $"Unknown enemy legacy effect '{statusId}'.");
             if (stacks <= 0)
                 continue;
-            // A new canonical snapshot may include a derived status projection
-            // for v1 readers. If it equals the power's total, it is an alias.
-            var existing = owned.Where(power => power.PowerId == powerId)
-                .Sum(power => power.Stacks);
-            if (existing == stacks)
-                continue;
-            owned.Add(new PrototypePowerInstanceState(
-                powerId, stacks, long.MinValue + ordinal++));
+            var index = owned.FindIndex(power => power.PowerId == powerId);
+            if (index < 0)
+            {
+                // Order 0 is reserved for legacy, non-subscribing fixtures.
+                // Application-order validation excludes only this adapter.
+                owned.Add(new PrototypePowerInstanceState(
+                    powerId, stacks, 0, LegacyStatusStacks: stacks));
+            }
+            else
+            {
+                var power = owned[index];
+                var delta = checked(stacks - power.LegacyStatusStacks);
+                if (delta < 0)
+                    throw new InvalidOperationException(
+                        "Legacy effect exceeds canonical provenance");
+                owned[index] = power with
+                {
+                    Stacks = checked(power.Stacks + delta),
+                    LegacyStatusStacks = stacks
+                };
+            }
         }
         return owned.ToArray();
     }

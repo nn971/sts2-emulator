@@ -1023,9 +1023,15 @@ public sealed class PrototypeAiEnvironment
             .Select(power => new PrototypeAiPower(power.PowerId, power.Stacks))
             .ToArray();
         if (!canonical)
-            return (enemy.Statuses,
-                rawPowers.Where(power => !canonicalIds.Contains(power.PowerId))
-                    .ToArray());
+        {
+            var visible = enemy.PowerStates
+                .Where(power => power.Stacks > 0)
+                .Select(power => new PrototypeAiPower(
+                    power.PowerId, power.Stacks - power.LegacyStatusStacks))
+                .Where(power => power.Stacks > 0)
+                .ToArray();
+            return (enemy.Statuses, visible);
+        }
 
         var nonEffects = rawPowers.Where(power => !canonicalIds.Contains(
             power.PowerId)).ToList();
