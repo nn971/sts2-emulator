@@ -86,7 +86,20 @@ public sealed class SemanticCardSelectionV111Tests
     [Fact]
     public void NonCompactDrawPileChoicePublishesOnlySelectedCandidates()
     {
-        var (run, _) = PlayerWithSemanticDeck("p2-h16-public-draw-pile-candidates");
+        // Use a normal public-v0 entry rather than a synthetic semantic
+        // deck/Nature fixture. This must pass with the pinned H16 emulator.
+        var environment = new PrototypeAiEnvironment();
+        var engine = new PrototypeGameEngine();
+        var run = environment.Reset("p2-h16-public-draw-pile-candidates");
+        run = engine.Step(run, Assert.Single(engine.GetLegalActions(run))).State;
+        var combatEntrance = engine.GetLegalActions(run).First(action =>
+        {
+            var payload = action.ReadPayload<ChooseMapNodePayload>();
+            return run.World!.Map.AvailableNodes()
+                .Single(node => node.NodeId == payload.NodeId)
+                .RoomType == PrototypeRoomType.Combat;
+        });
+        run = engine.Step(run, combatEntrance).State;
         var combat = run.World!.Combat!;
         Assert.NotEmpty(combat.Hand);
         var selectedId = combat.Hand[0];
@@ -100,7 +113,6 @@ public sealed class SemanticCardSelectionV111Tests
             ExperimentalCompactCardSelection = false,
             World = run.World with { Combat = hiddenDraw }
         };
-        var environment = new PrototypeAiEnvironment();
         var ordinaryFrame = environment.Observe(ordinary);
         Assert.Null(ordinaryFrame.Observation.Combat!.SelectionCandidates);
         Assert.Equal(hiddenDraw.DrawPile.Length,
