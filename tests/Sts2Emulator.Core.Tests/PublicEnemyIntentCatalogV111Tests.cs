@@ -13,6 +13,12 @@ public sealed class PublicEnemyIntentCatalogV111Tests
         Assert.Equal(ChanceLawV111.NativeSourceGridSize,
             catalog.ProbabilityDenominator);
         Assert.NotEmpty(catalog.Enemies);
+        Assert.NotNull(catalog.DamagePowers);
+        Assert.NotNull(catalog.DamageRelics);
+        Assert.NotNull(catalog.EnemyStatusPowerIds);
+        Assert.Equal(PrototypeContent.Powers.Count, catalog.DamagePowers!.Length);
+        Assert.Equal(PrototypeContent.EnemyStatusPowerIds,
+            catalog.EnemyStatusPowerIds);
         Assert.All(catalog.Enemies, rule =>
         {
             var source = PrototypeContent.Enemy(rule.EnemyId);
@@ -20,6 +26,25 @@ public sealed class PublicEnemyIntentCatalogV111Tests
             Assert.Equal(source.Moves.Select(move => move.MaxConsecutiveUses),
                 rule.MaxConsecutiveUses);
             Assert.Equal(source.MovePolicy.ToString(), rule.MovePolicy);
+            Assert.Equal(source.Moves.Length, rule.MoveDamage?.Length);
+            for (var j = 0; j < source.Moves.Length; j++)
+            {
+                var move = source.Moves[j];
+                var damage = Assert.IsType<PublicEnemyMoveDamageV111>(
+                    rule.MoveDamage![j]);
+                Assert.Equal(move.Id, damage.MoveId);
+                Assert.Equal(move.Effects.Count(effect =>
+                    effect.Kind == PrototypeEnemyEffectKind.DamagePlayer),
+                    damage.Effects.Length);
+                var sourceDamage = move.Effects.Where(effect =>
+                    effect.Kind == PrototypeEnemyEffectKind.DamagePlayer).ToArray();
+                for (var k = 0; k < sourceDamage.Length; k++)
+                {
+                    Assert.Equal(sourceDamage[k].Amount, damage.Effects[k].Amount);
+                    Assert.Equal(sourceDamage[k].Repetitions, damage.Effects[k].Repetitions);
+                    Assert.Equal(sourceDamage[k].IsAttack, damage.Effects[k].IsAttack);
+                }
+            }
             if (source.Ai is null)
             {
                 Assert.Null(rule.Ai);
