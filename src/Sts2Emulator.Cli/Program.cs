@@ -37,6 +37,7 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
     Console.WriteLine("                          Audit seeded Overgrowth encounter/boss coverage");
     Console.WriteLine("  prototype-manifest     Print the machine-readable prototype capability manifest");
     Console.WriteLine("  prototype-ai-jsonl     Run the long-lived prototype AI JSONL bridge on stdin/stdout");
+    Console.WriteLine("  public-intent-catalog-v111  Export source enemy rules and exact Native NextInt weights (no run state)");
     Console.WriteLine("  reference-preflight <game-dir> [data-dir]");
     Console.WriteLine("                          Fingerprint the exact installed STS2 build");
     Console.WriteLine("  reference-inspect <game-dir> <pattern> [data-dir]");
@@ -62,6 +63,18 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
 
 switch (args[0])
 {
+    case "public-intent-catalog-v111":
+    {
+        if (args.Length != 1)
+            throw new ArgumentException("public-intent-catalog-v111 accepts no arguments.");
+        Console.WriteLine(JsonSerializer.Serialize(
+            PublicEnemyIntentCatalogV111.Create(),
+            new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+            }));
+        break;
+    }
     case "replay":
     {
         if (args.Length != 2) throw new ArgumentException("replay requires one normalized canonical JSONL trace.");
