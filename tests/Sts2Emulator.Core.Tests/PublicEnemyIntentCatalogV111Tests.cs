@@ -20,6 +20,29 @@ public sealed class PublicEnemyIntentCatalogV111Tests
             Assert.Equal(source.Moves.Select(move => move.MaxConsecutiveUses),
                 rule.MaxConsecutiveUses);
             Assert.Equal(source.MovePolicy.ToString(), rule.MovePolicy);
+            if (source.Ai is null)
+            {
+                Assert.Null(rule.Ai);
+            }
+            else
+            {
+                var publicAi = Assert.IsType<PublicEnemyAiDefinitionV111>(rule.Ai);
+                Assert.Equal(source.Ai.InitialStateId, publicAi.InitialStateId);
+                Assert.Equal(source.Ai.States.Length, publicAi.States.Length);
+                for (var i = 0; i < source.Ai.States.Length; i++)
+                {
+                    var expected = source.Ai.States[i];
+                    var actual = publicAi.States[i];
+                    Assert.Equal(expected.Id, actual.Id);
+                    Assert.Equal(expected.Kind.ToString(), actual.Kind);
+                    Assert.Equal(expected.MoveIndex, actual.MoveIndex);
+                    Assert.Equal(expected.NextStateId, actual.NextStateId);
+                    Assert.Equal(expected.Branches?.Length ?? 0,
+                        actual.Branches.Length);
+                    Assert.Equal(expected.ConditionalBranches?.Length ?? 0,
+                        actual.ConditionalBranches.Length);
+                }
+            }
         });
         foreach (var item in catalog.NativeNextIntWeights)
         {
