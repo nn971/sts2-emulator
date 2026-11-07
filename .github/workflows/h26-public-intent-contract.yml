@@ -35,7 +35,7 @@ jobs:
           import json
           with open("/tmp/h26-catalog.json") as f:
               obj = json.load(f)
-          assert obj["schema"] == "sts2-h26-public-intent-rules-v1"
+          assert obj["schema"] == "sts2-h26-public-intent-rules-v2"
           assert obj["probability_denominator"] > 0
           assert obj["enemies"]
           assert obj["native_next_int_weights"]
