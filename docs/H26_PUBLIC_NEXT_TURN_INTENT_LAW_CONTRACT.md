@@ -114,6 +114,30 @@ next-turn support consistency audit identify the remaining cases.
 Live native parity for exceptional status, summon and phase transitions
 remains an acceptance gate before full-coverage claims.
 
+## H26-D public gross-damage effects (v3)
+
+The v3 catalog additionally exports each source `DamagePlayer` effect
+(amount, act/ascension scaling, hit count, dynamic/stored-damage flags and
+earlier non-damage effects), plus the public numeric power and relic
+modifiers used by `PrototypeGameEngine.EnemyHitDamage`. Values are static
+rules; the catalog never observes an enemy's unprojected AI state.
+
+The AI decoder combines these rules with the known next-intent probability
+law and visible enemy/player powers at a specified public state. It
+returns a **conditional pre-Block gross damage distribution** and explicitly
+marks unsupported conditional effects as `UNAVAILABLE`.
+The public current-intent `intent_damage`/`intent_hits` HUD fields are
+computed by the authoritative emulator damage path; H26-D audits that
+its source-based calculation agrees with those previews on supported
+public states. Any mismatch is a fidelity gate.
+
+Next-turn damage after changing powers, statuses, block, summoned enemies,
+or special hit-trigger chains is handled by recalculating from the next
+public observation. The v3 catalog does not imply unconditional future
+HP loss or an action-by-action forward rollout. Its probability source
+and damage source have distinct provenance, and the experiment fingerprints
+both catalog and AI code contents.
+
 ## H26 v1 gate
 
 H26 v1 currently trains using exact **present visible** per-hit intent
