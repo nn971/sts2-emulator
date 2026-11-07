@@ -79,6 +79,33 @@ engine's damage projection, rather than trusting present-turn numbers.
    or uniform fallback.
 5. Native inspector parity tests validate the shape and conditioning.
 
+## Implemented first slice: versioned public source-rule catalog
+
+`PublicEnemyIntentCatalogV111.Create()` exports the enemy ID, move IDs,
+move-selection policy, opening sequence, consecutive-use limits, and loop
+positions from `PrototypeContent.Enemies`. It also exports **exact**
+Native `NextInt` integer grid weights using the existing
+`ChanceLawEngineV111.NativeNextIntGridWeights`.
+
+The pure CLI command is:
+
+```shell
+dotnet run --project src/Sts2Emulator.Cli/Sts2Emulator.Cli.csproj \
+  -- public-intent-catalog-v111
+```
+
+It reads no run snapshot, consumes no RNG, and leaves the canonical
+player observation schema unchanged. A scoped .NET test validates the
+catalog against source enemy definitions and exact Native weights.
+
+The H26 training branch consumes this catalog and calculates
+`CONDITIONAL_EXACT` next-intent laws when the **visible current move**
+uniquely determines the next move's eligible support. An explicit
+`UNAVAILABLE` outcome handles ambiguity and unverified conditions.
+The prediction is conditional on the displayed move executing normally.
+State-machine history reconstruction and live native parity remain
+unimplemented acceptance gates.
+
 ## H26 v1 gate
 
 H26 v1 currently trains using exact **present visible** per-hit intent
