@@ -33,6 +33,7 @@ public sealed record PublicEnemyIntentCatalogV111(
     public static PublicEnemyIntentCatalogV111 Create()
     {
         var rules = PrototypeContent.Enemies.Values
+            .Where(enemy => enemy.Moves.Length > 0)
             .OrderBy(enemy => enemy.Id, StringComparer.Ordinal)
             .Select(enemy => new PublicEnemyIntentRuleV111(
                 enemy.Id,
