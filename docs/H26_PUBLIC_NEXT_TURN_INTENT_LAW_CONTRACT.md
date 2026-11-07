@@ -82,9 +82,11 @@ engine's damage projection, rather than trusting present-turn numbers.
 ## Implemented first slice: versioned public source-rule catalog
 
 `PublicEnemyIntentCatalogV111.Create()` exports the enemy ID, move IDs,
-move-selection policy, opening sequence, consecutive-use limits, and loop
-positions from `PrototypeContent.Enemies`. It also exports **exact**
-Native `NextInt` integer grid weights using the existing
+move-selection policy, opening sequence, consecutive-use limits, loop positions,
+and **all state-machine transition graphs** (move states, weighted random
+branches, repeat limits, conditional branches) from `PrototypeContent.Enemies`.
+The v2 catalog also exports **exact** Native `NextInt` integer grid weights
+for source-sized random support bounds up to 256 using the existing
 `ChanceLawEngineV111.NativeNextIntGridWeights`.
 
 The pure CLI command is:
@@ -103,8 +105,14 @@ The H26 training branch consumes this catalog and calculates
 uniquely determines the next move's eligible support. An explicit
 `UNAVAILABLE` outcome handles ambiguity and unverified conditions.
 The prediction is conditional on the displayed move executing normally.
-State-machine history reconstruction and live native parity remain
-unimplemented acceptance gates.
+The H26 policy reconstructs resolvable AI successor states using the visible
+move and an episode-local public intent history. It resolves supported
+weighted lotteries using exact source-grid masses, while masking ambiguous
+or unsupported formation/phase/stun cases. Per-enemy coverage and a public
+next-turn support consistency audit identify the remaining cases.
+
+Live native parity for exceptional status, summon and phase transitions
+remains an acceptance gate before full-coverage claims.
 
 ## H26 v1 gate
 
